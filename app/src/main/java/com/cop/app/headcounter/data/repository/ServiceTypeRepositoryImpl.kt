@@ -14,8 +14,8 @@ class ServiceTypeRepositoryImpl @Inject constructor(
     private val serviceDao: ServiceDao
 ) : ServiceTypeRepository {
 
-    override fun getServiceTypesByBranch(branchId: String): Flow<List<ServiceTypeEntity>> {
-        return serviceTypeDao.getServiceTypesByBranch(branchId)
+    override fun getAllServiceTypes(): Flow<List<ServiceTypeEntity>> {
+        return serviceTypeDao.getAllServiceTypes()
     }
 
     override suspend fun getServiceTypeById(id: String): ServiceTypeEntity? {
@@ -27,7 +27,6 @@ class ServiceTypeRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createServiceType(
-        branchId: String,
         name: String,
         dayType: String,
         time: String,
@@ -37,7 +36,6 @@ class ServiceTypeRepositoryImpl @Inject constructor(
         val serviceTypeId = UUID.randomUUID().toString()
         val serviceType = ServiceTypeEntity(
             id = serviceTypeId,
-            branchId = branchId,
             name = name,
             dayType = dayType,
             time = time,
@@ -60,8 +58,8 @@ class ServiceTypeRepositoryImpl @Inject constructor(
         serviceTypeDao.deleteServiceType(id)
     }
 
-    override suspend fun getServiceTypeCount(branchId: String): Int {
-        return serviceTypeDao.getServiceTypeCount(branchId)
+    override suspend fun getServiceTypeCount(): Int {
+        return serviceTypeDao.getServiceTypeCount()
     }
 
     override suspend fun hasServices(serviceTypeId: String): Boolean {

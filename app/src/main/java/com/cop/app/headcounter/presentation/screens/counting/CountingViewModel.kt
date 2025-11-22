@@ -24,7 +24,7 @@ class CountingViewModel @Inject constructor(
 
     private val branchId: String = checkNotNull(savedStateHandle.get<String>("branchId"))
 
-    val serviceTypes = serviceTypeRepository.getServiceTypesByBranch(branchId)
+    val serviceTypes = serviceTypeRepository.getAllServiceTypes()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

@@ -4,14 +4,13 @@ import com.cop.app.headcounter.data.local.entities.ServiceTypeEntity
 import kotlinx.coroutines.flow.Flow
 
 interface ServiceTypeRepository {
-    fun getServiceTypesByBranch(branchId: String): Flow<List<ServiceTypeEntity>>
+    fun getAllServiceTypes(): Flow<List<ServiceTypeEntity>>
 
     suspend fun getServiceTypeById(id: String): ServiceTypeEntity?
 
     fun getServiceTypeByIdFlow(id: String): Flow<ServiceTypeEntity?>
 
     suspend fun createServiceType(
-        branchId: String,
         name: String,
         dayType: String,
         time: String,
@@ -23,7 +22,7 @@ interface ServiceTypeRepository {
 
     suspend fun deleteServiceType(id: String)
 
-    suspend fun getServiceTypeCount(branchId: String): Int
+    suspend fun getServiceTypeCount(): Int
 
     suspend fun hasServices(serviceTypeId: String): Boolean
 }

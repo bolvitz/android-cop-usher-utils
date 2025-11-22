@@ -19,7 +19,7 @@ fun BranchListScreen(
     viewModel: BranchListViewModel = hiltViewModel(),
     onBranchClick: (String) -> Unit,
     onManageAreas: (String) -> Unit = {},
-    onManageServiceTypes: (String) -> Unit = {},
+    onManageServiceTypes: () -> Unit = {},
     onEditBranch: (String) -> Unit = {},
     onAddBranch: () -> Unit,
     onNavigateToHistory: () -> Unit,
@@ -35,6 +35,9 @@ fun BranchListScreen(
             TopAppBar(
                 title = { Text("Church Attendance") },
                 actions = {
+                    IconButton(onClick = onManageServiceTypes) {
+                        Icon(Icons.Default.CalendarMonth, "Service Types")
+                    }
                     IconButton(onClick = onNavigateToHistory) {
                         Icon(Icons.Default.History, "History")
                     }
@@ -129,13 +132,6 @@ fun BranchListScreen(
                                             Icon(
                                                 Icons.Default.Settings,
                                                 contentDescription = "Manage Areas",
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
-                                        }
-                                        IconButton(onClick = { onManageServiceTypes(branchWithAreas.branch.id) }) {
-                                            Icon(
-                                                Icons.Default.CalendarMonth,
-                                                contentDescription = "Manage Service Types",
                                                 tint = MaterialTheme.colorScheme.primary
                                             )
                                         }

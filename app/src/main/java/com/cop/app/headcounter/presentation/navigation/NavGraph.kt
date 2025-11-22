@@ -35,9 +35,6 @@ fun NavGraph(
                 onManageAreas = { branchId ->
                     navController.navigate(Screen.AreaManagement.createRoute(branchId))
                 },
-                onManageServiceTypes = { branchId ->
-                    navController.navigate(Screen.ServiceTypeManagement.createRoute(branchId))
-                },
                 onEditBranch = { branchId ->
                     navController.navigate(Screen.BranchSetup.createRoute(branchId))
                 },
@@ -52,6 +49,9 @@ fun NavGraph(
                 },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
+                },
+                onManageServiceTypes = {
+                    navController.navigate(Screen.ServiceTypeManagement.route)
                 }
             )
         }
@@ -77,10 +77,7 @@ fun NavGraph(
             )
         }
 
-        composable(
-            route = Screen.ServiceTypeManagement.route,
-            arguments = listOf(navArgument("branchId") { type = NavType.StringType })
-        ) {
+        composable(route = Screen.ServiceTypeManagement.route) {
             ServiceTypeManagementScreen(
                 onNavigateBack = { navController.popBackStack() }
             )

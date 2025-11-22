@@ -17,7 +17,5 @@ sealed class Screen(val route: String) {
     object AreaManagement : Screen("area_management/{branchId}") {
         fun createRoute(branchId: String) = "area_management/$branchId"
     }
-    object ServiceTypeManagement : Screen("service_type_management/{branchId}") {
-        fun createRoute(branchId: String) = "service_type_management/$branchId"
-    }
+    object ServiceTypeManagement : Screen("service_type_management")
 }

@@ -12,16 +12,13 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ServiceTypeManagementViewModel @Inject constructor(
-    private val serviceTypeRepository: ServiceTypeRepository,
-    savedStateHandle: SavedStateHandle
+    private val serviceTypeRepository: ServiceTypeRepository
 ) : ViewModel() {
-
-    private val branchId: String = savedStateHandle.get<String>("branchId") ?: ""
 
     private val _uiState = MutableStateFlow(ServiceTypeManagementUiState())
     val uiState: StateFlow<ServiceTypeManagementUiState> = _uiState.asStateFlow()
 
-    val serviceTypes = serviceTypeRepository.getServiceTypesByBranch(branchId)
+    val serviceTypes = serviceTypeRepository.getAllServiceTypes()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -38,7 +35,6 @@ class ServiceTypeManagementViewModel @Inject constructor(
             try {
                 val displayOrder = serviceTypes.value.size
                 serviceTypeRepository.createServiceType(
-                    branchId = branchId,
                     name = name,
                     dayType = dayType,
                     time = time,

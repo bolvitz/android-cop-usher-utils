@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ServiceTypeDao {
-    @Query("SELECT * FROM service_types WHERE branchId = :branchId AND isActive = 1 ORDER BY displayOrder ASC, dayType ASC, time ASC")
-    fun getServiceTypesByBranch(branchId: String): Flow<List<ServiceTypeEntity>>
+    @Query("SELECT * FROM service_types WHERE isActive = 1 ORDER BY displayOrder ASC, dayType ASC, time ASC")
+    fun getAllServiceTypes(): Flow<List<ServiceTypeEntity>>
 
     @Query("SELECT * FROM service_types WHERE id = :id")
     suspend fun getServiceTypeById(id: String): ServiceTypeEntity?
@@ -30,6 +30,6 @@ interface ServiceTypeDao {
     @Query("DELETE FROM service_types WHERE id = :id")
     suspend fun permanentlyDeleteServiceType(id: String)
 
-    @Query("SELECT COUNT(*) FROM service_types WHERE branchId = :branchId AND isActive = 1")
-    suspend fun getServiceTypeCount(branchId: String): Int
+    @Query("SELECT COUNT(*) FROM service_types WHERE isActive = 1")
+    suspend fun getServiceTypeCount(): Int
 }
