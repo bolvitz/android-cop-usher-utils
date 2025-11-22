@@ -244,7 +244,7 @@ fun ServiceHistoryCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
-                </Column>
+                }
 
                 // Total Attendance Badge
                 Surface(
