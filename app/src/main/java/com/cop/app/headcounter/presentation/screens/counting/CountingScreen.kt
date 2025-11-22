@@ -3,6 +3,8 @@ package com.cop.app.headcounter.presentation.screens.counting
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -109,97 +111,96 @@ fun CountingScreen(
             }
 
             uiState.serviceId != null -> {
-                Column(
+                val animatedAttendance by animateIntAsState(
+                    targetValue = uiState.totalAttendance,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    ),
+                    label = "attendanceAnimation"
+                )
+
+                LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp)
+                        .padding(paddingValues),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Total attendance card - compact
-                    val animatedAttendance by animateIntAsState(
-                        targetValue = uiState.totalAttendance,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        ),
-                        label = "attendanceAnimation"
-                    )
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    "Total Attendance",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                                )
-                                if (uiState.totalCapacity > 0) {
-                                    val percentage = (uiState.totalAttendance.toFloat() / uiState.totalCapacity * 100).toInt()
-                                    Text(
-                                        text = "$percentage% of ${uiState.totalCapacity}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                    )
-                                }
-                            }
-                            Text(
-                                text = animatedAttendance.toString(),
-                                style = MaterialTheme.typography.displayMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Area counting cards
-                    if (uiState.areaCounts.isEmpty()) {
+                    item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
                             )
                         ) {
-                            Text(
-                                "Loading areas...",
-                                modifier = Modifier.padding(16.dp),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            uiState.areaCounts.forEach { areaCount ->
-                                AreaCountCard(
-                                    areaCount = areaCount,
-                                    isLocked = uiState.isLocked,
-                                    onIncrement = {
-                                        haptic.counter()
-                                        viewModel.incrementCount(areaCount.id)
-                                    },
-                                    onDecrement = {
-                                        haptic.counter()
-                                        viewModel.decrementCount(areaCount.id)
-                                    },
-                                    onSetCount = { newCount ->
-                                        viewModel.setCount(areaCount.id, newCount)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        "Total Attendance",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    )
+                                    if (uiState.totalCapacity > 0) {
+                                        val percentage = (uiState.totalAttendance.toFloat() / uiState.totalCapacity * 100).toInt()
+                                        Text(
+                                            text = "$percentage% of ${uiState.totalCapacity}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                        )
                                     }
+                                }
+                                Text(
+                                    text = animatedAttendance.toString(),
+                                    style = MaterialTheme.typography.displayMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
+                        }
+                    }
+
+                    // Area counting cards
+                    if (uiState.areaCounts.isEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                Text(
+                                    "Loading areas...",
+                                    modifier = Modifier.padding(16.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        items(uiState.areaCounts) { areaCount ->
+                            AreaCountCard(
+                                areaCount = areaCount,
+                                isLocked = uiState.isLocked,
+                                onIncrement = {
+                                    haptic.counter()
+                                    viewModel.incrementCount(areaCount.id)
+                                },
+                                onDecrement = {
+                                    haptic.counter()
+                                    viewModel.decrementCount(areaCount.id)
+                                },
+                                onSetCount = { newCount ->
+                                    viewModel.setCount(areaCount.id, newCount)
+                                }
+                            )
                         }
                     }
                 }
