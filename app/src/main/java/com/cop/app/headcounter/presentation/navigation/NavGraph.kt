@@ -38,9 +38,6 @@ fun NavGraph(
                 onEditBranch = { branchId ->
                     navController.navigate(Screen.BranchSetup.createRoute(branchId))
                 },
-                onNavigateToHistory = {
-                    navController.navigate(Screen.History.createRoute())
-                },
                 onBranchHistory = { branchId ->
                     navController.navigate(Screen.History.createRoute(branchId))
                 },

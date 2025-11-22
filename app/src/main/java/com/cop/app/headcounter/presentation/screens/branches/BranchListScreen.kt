@@ -26,7 +26,6 @@ fun BranchListScreen(
     onBranchClick: (String) -> Unit,
     onManageAreas: (String) -> Unit = {},
     onEditBranch: (String) -> Unit = {},
-    onNavigateToHistory: () -> Unit,
     onBranchHistory: (String) -> Unit = {},
     onNavigateToReports: () -> Unit,
     onNavigateToSettings: () -> Unit
@@ -41,12 +40,6 @@ fun BranchListScreen(
             TopAppBar(
                 title = { Text("Church Attendance") },
                 actions = {
-                    IconButton(onClick = {
-                        haptic.light()
-                        onNavigateToHistory()
-                    }) {
-                        Icon(Icons.Default.History, "History")
-                    }
                     IconButton(onClick = {
                         haptic.light()
                         onNavigateToReports()
