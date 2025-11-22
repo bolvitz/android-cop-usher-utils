@@ -2,8 +2,12 @@ package com.cop.app.headcounter.presentation.screens.reports
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cop.app.headcounter.data.local.entities.BranchEntity
+import com.cop.app.headcounter.data.local.entities.ServiceTypeEntity
 import com.cop.app.headcounter.data.local.entities.ServiceWithAreaCounts
+import com.cop.app.headcounter.domain.repository.BranchRepository
 import com.cop.app.headcounter.domain.repository.ServiceRepository
+import com.cop.app.headcounter.domain.repository.ServiceTypeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -12,11 +16,36 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ReportsViewModel @Inject constructor(
-    private val serviceRepository: ServiceRepository
+    private val serviceRepository: ServiceRepository,
+    private val branchRepository: BranchRepository,
+    private val serviceTypeRepository: ServiceTypeRepository
 ) : ViewModel() {
 
     private val _selectedPeriod = MutableStateFlow(ReportPeriod.LAST_30_DAYS)
     val selectedPeriod: StateFlow<ReportPeriod> = _selectedPeriod.asStateFlow()
+
+    private val _selectedBranch = MutableStateFlow<String?>(null) // null = All Branches
+    val selectedBranch: StateFlow<String?> = _selectedBranch.asStateFlow()
+
+    private val _selectedServiceType = MutableStateFlow<String?>(null) // null = All Services
+    val selectedServiceType: StateFlow<String?> = _selectedServiceType.asStateFlow()
+
+    // Get all branches for filter dropdown
+    val branches: StateFlow<List<BranchEntity>> = branchRepository.getAllBranches()
+        .map { branchesWithAreas -> branchesWithAreas.map { it.branch } }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    // Get all service types for filter dropdown
+    val serviceTypes: StateFlow<List<ServiceTypeEntity>> = serviceTypeRepository.getAllServiceTypes()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     private val dateRange = _selectedPeriod.map { period ->
         period.getDateRange()
@@ -26,8 +55,31 @@ class ReportsViewModel @Inject constructor(
         initialValue = ReportPeriod.LAST_30_DAYS.getDateRange()
     )
 
-    val servicesWithAreaCounts: StateFlow<List<ServiceWithAreaCounts>> = dateRange.flatMapLatest { (startDate, endDate) ->
-        serviceRepository.getServicesWithAreaCountsByDateRange(startDate, endDate)
+    val servicesWithAreaCounts: StateFlow<List<ServiceWithAreaCounts>> = combine(
+        dateRange,
+        _selectedBranch,
+        _selectedServiceType
+    ) { (startDate, endDate), branchId, serviceTypeId ->
+        Triple(startDate to endDate, branchId, serviceTypeId)
+    }.flatMapLatest { (dateRange, branchId, serviceTypeId) ->
+        serviceRepository.getServicesWithAreaCountsByDateRange(dateRange.first, dateRange.second)
+            .map { services ->
+                // Filter by branch if selected
+                val branchFiltered = if (branchId != null) {
+                    services.filter { it.service.branchId == branchId }
+                } else {
+                    services
+                }
+
+                // Filter by service type if selected
+                val serviceTypeFiltered = if (serviceTypeId != null) {
+                    branchFiltered.filter { it.service.serviceTypeId == serviceTypeId }
+                } else {
+                    branchFiltered
+                }
+
+                serviceTypeFiltered
+            }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -44,6 +96,14 @@ class ReportsViewModel @Inject constructor(
 
     fun selectPeriod(period: ReportPeriod) {
         _selectedPeriod.value = period
+    }
+
+    fun selectBranch(branchId: String?) {
+        _selectedBranch.value = branchId
+    }
+
+    fun selectServiceType(serviceTypeId: String?) {
+        _selectedServiceType.value = serviceTypeId
     }
 
     private fun calculateReportData(services: List<ServiceWithAreaCounts>): ReportData {

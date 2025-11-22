@@ -26,7 +26,14 @@ fun ReportsScreen(
     val haptic = rememberHapticFeedback()
     val selectedPeriod by viewModel.selectedPeriod.collectAsState()
     val reportData by viewModel.reportData.collectAsState()
+    val branches by viewModel.branches.collectAsState()
+    val serviceTypes by viewModel.serviceTypes.collectAsState()
+    val selectedBranch by viewModel.selectedBranch.collectAsState()
+    val selectedServiceType by viewModel.selectedServiceType.collectAsState()
+
     var showPeriodMenu by remember { mutableStateOf(false) }
+    var showBranchMenu by remember { mutableStateOf(false) }
+    var showServiceTypeMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -110,6 +117,134 @@ fun ReportsScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // Filter section
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Branch filter
+                        Box(modifier = Modifier.weight(1f)) {
+                            OutlinedButton(
+                                onClick = {
+                                    haptic.light()
+                                    showBranchMenu = true
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = selectedBranch?.let { branchId ->
+                                        branches.find { it.id == branchId }?.name ?: "All Branches"
+                                    } ?: "All Branches",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    Icons.Default.ArrowDropDown,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showBranchMenu,
+                                onDismissRequest = { showBranchMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("All Branches") },
+                                    onClick = {
+                                        haptic.selection()
+                                        viewModel.selectBranch(null)
+                                        showBranchMenu = false
+                                    },
+                                    leadingIcon = if (selectedBranch == null) {
+                                        { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
+                                    } else null
+                                )
+                                branches.forEach { branch ->
+                                    DropdownMenuItem(
+                                        text = { Text(branch.name) },
+                                        onClick = {
+                                            haptic.selection()
+                                            viewModel.selectBranch(branch.id)
+                                            showBranchMenu = false
+                                        },
+                                        leadingIcon = if (selectedBranch == branch.id) {
+                                            { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
+                                        } else null
+                                    )
+                                }
+                            }
+                        }
+
+                        // Service type filter
+                        Box(modifier = Modifier.weight(1f)) {
+                            OutlinedButton(
+                                onClick = {
+                                    haptic.light()
+                                    showServiceTypeMenu = true
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Event,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = selectedServiceType?.let { serviceTypeId ->
+                                        serviceTypes.find { it.id == serviceTypeId }?.name ?: "All Services"
+                                    } ?: "All Services",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    Icons.Default.ArrowDropDown,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showServiceTypeMenu,
+                                onDismissRequest = { showServiceTypeMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("All Services") },
+                                    onClick = {
+                                        haptic.selection()
+                                        viewModel.selectServiceType(null)
+                                        showServiceTypeMenu = false
+                                    },
+                                    leadingIcon = if (selectedServiceType == null) {
+                                        { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
+                                    } else null
+                                )
+                                serviceTypes.forEach { serviceType ->
+                                    DropdownMenuItem(
+                                        text = { Text(serviceType.name) },
+                                        onClick = {
+                                            haptic.selection()
+                                            viewModel.selectServiceType(serviceType.id)
+                                            showServiceTypeMenu = false
+                                        },
+                                        leadingIcon = if (selectedServiceType == serviceType.id) {
+                                            { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
+                                        } else null
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Summary cards
                 item {
                     Row(
