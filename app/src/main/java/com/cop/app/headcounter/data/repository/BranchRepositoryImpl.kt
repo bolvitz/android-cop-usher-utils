@@ -33,6 +33,14 @@ class BranchRepositoryImpl @Inject constructor(
     override fun getActiveBranchCount(): Flow<Int> =
         branchDao.getActiveBranchCount()
 
+    override suspend fun branchNameExists(name: String, excludeBranchId: String?): Boolean {
+        val allBranches = branchDao.getAllBranchesWithAreas().first()
+        return allBranches.any { branchWithAreas ->
+            branchWithAreas.branch.name.equals(name, ignoreCase = true) &&
+            branchWithAreas.branch.id != excludeBranchId
+        }
+    }
+
     override suspend fun createBranch(
         name: String,
         location: String,

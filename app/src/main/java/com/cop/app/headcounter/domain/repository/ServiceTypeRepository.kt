@@ -10,6 +10,8 @@ interface ServiceTypeRepository {
 
     fun getServiceTypeByIdFlow(id: String): Flow<ServiceTypeEntity?>
 
+    suspend fun serviceTypeNameExists(name: String, excludeServiceTypeId: String? = null): Boolean
+
     suspend fun createServiceType(
         name: String,
         dayType: String,

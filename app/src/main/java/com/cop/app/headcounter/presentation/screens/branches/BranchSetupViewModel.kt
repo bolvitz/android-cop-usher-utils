@@ -83,6 +83,19 @@ class BranchSetupViewModel @Inject constructor(
             try {
                 _uiState.value = state.copy(isLoading = true)
 
+                // Check if branch name already exists
+                val nameExists = branchRepository.branchNameExists(
+                    name = state.name,
+                    excludeBranchId = if (isNewBranch) null else branchId
+                )
+                if (nameExists) {
+                    _uiState.value = state.copy(
+                        isLoading = false,
+                        error = "A branch with this name already exists. Please choose a different name."
+                    )
+                    return@launch
+                }
+
                 if (isNewBranch) {
                     // Create new branch
                     val newBranchId = branchRepository.createBranch(

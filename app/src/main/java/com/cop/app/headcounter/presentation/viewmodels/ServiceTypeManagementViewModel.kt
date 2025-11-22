@@ -33,6 +33,18 @@ class ServiceTypeManagementViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
+                // Check if service type name already exists
+                val nameExists = serviceTypeRepository.serviceTypeNameExists(
+                    name = name,
+                    excludeServiceTypeId = null
+                )
+                if (nameExists) {
+                    _uiState.value = _uiState.value.copy(
+                        error = "A service type with this name already exists. Please choose a different name."
+                    )
+                    return@launch
+                }
+
                 val displayOrder = serviceTypes.value.size
                 serviceTypeRepository.createServiceType(
                     name = name,
@@ -55,6 +67,18 @@ class ServiceTypeManagementViewModel @Inject constructor(
     fun updateServiceType(serviceType: ServiceTypeEntity) {
         viewModelScope.launch {
             try {
+                // Check if service type name already exists (excluding current service type)
+                val nameExists = serviceTypeRepository.serviceTypeNameExists(
+                    name = serviceType.name,
+                    excludeServiceTypeId = serviceType.id
+                )
+                if (nameExists) {
+                    _uiState.value = _uiState.value.copy(
+                        error = "A service type with this name already exists. Please choose a different name."
+                    )
+                    return@launch
+                }
+
                 serviceTypeRepository.updateServiceType(serviceType)
                 _uiState.value = _uiState.value.copy(
                     message = "Service type updated successfully"

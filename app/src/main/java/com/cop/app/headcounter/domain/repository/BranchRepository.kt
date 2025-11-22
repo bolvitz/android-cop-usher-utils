@@ -9,6 +9,7 @@ interface BranchRepository {
     fun getAllBranches(): Flow<List<BranchWithAreas>>
     fun getBranchById(id: String): Flow<BranchWithAreas?>
     fun getActiveBranchCount(): Flow<Int>
+    suspend fun branchNameExists(name: String, excludeBranchId: String? = null): Boolean
 
     suspend fun createBranch(
         name: String,

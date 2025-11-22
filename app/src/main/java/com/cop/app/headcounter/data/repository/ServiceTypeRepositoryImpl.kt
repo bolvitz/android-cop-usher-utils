@@ -26,6 +26,14 @@ class ServiceTypeRepositoryImpl @Inject constructor(
         return serviceTypeDao.getServiceTypeByIdFlow(id)
     }
 
+    override suspend fun serviceTypeNameExists(name: String, excludeServiceTypeId: String?): Boolean {
+        val allServiceTypes = serviceTypeDao.getAllServiceTypes().first()
+        return allServiceTypes.any { serviceType ->
+            serviceType.name.equals(name, ignoreCase = true) &&
+            serviceType.id != excludeServiceTypeId
+        }
+    }
+
     override suspend fun createServiceType(
         name: String,
         dayType: String,
