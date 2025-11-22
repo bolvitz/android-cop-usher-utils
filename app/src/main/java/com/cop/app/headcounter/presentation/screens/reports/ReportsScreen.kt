@@ -108,7 +108,7 @@ fun ReportsScreen(
                     .fillMaxSize()
                     .padding(paddingValues),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Summary cards
                 item {
@@ -213,108 +213,85 @@ fun AreaStatisticsCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp)
+            modifier = Modifier.padding(12.dp)
         ) {
-            // Area name and total count - EMPHASIZED
+            // Area name and counts in compact layout
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = areaStatistics.areaName,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "${areaStatistics.servicesCount} services counted",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                // Area name
+                Text(
+                    text = areaStatistics.areaName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
 
-                // Total count badge - LARGE AND PROMINENT
-                Surface(
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.padding(start = 16.dp)
+                // Average count - EMPHASIZED
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                    Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = areaStatistics.totalCount.toString(),
-                            style = MaterialTheme.typography.displayMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            text = areaStatistics.averageCount.toString(),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Total",
+                            text = "avg",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+
+                    // Total count - smaller
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = areaStatistics.totalCount.toString(),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                text = "total",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Average count - EMPHASIZED
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Average per service",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    areaStatistics.averageCount.toString(),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Capacity utilization
+            // Capacity utilization bar
             if (areaStatistics.capacity > 0) {
                 val utilizationPercentage = (areaStatistics.averageCount.toFloat() / areaStatistics.capacity * 100).toInt()
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            "Capacity utilization",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            "$utilizationPercentage% (${areaStatistics.averageCount}/${areaStatistics.capacity})",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = when {
-                                utilizationPercentage < 50 -> MaterialTheme.colorScheme.tertiary
-                                utilizationPercentage < 80 -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.error
-                            }
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     LinearProgressIndicator(
                         progress = (utilizationPercentage / 100f).coerceIn(0f, 1f),
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp),
+                            .weight(1f)
+                            .height(6.dp),
                         color = when {
                             utilizationPercentage < 50 -> MaterialTheme.colorScheme.tertiary
                             utilizationPercentage < 80 -> MaterialTheme.colorScheme.primary
@@ -322,42 +299,53 @@ fun AreaStatisticsCard(
                         },
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
+                    Text(
+                        text = "$utilizationPercentage%",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = when {
+                            utilizationPercentage < 50 -> MaterialTheme.colorScheme.tertiary
+                            utilizationPercentage < 80 -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.error
+                        }
+                    )
                 }
             }
 
             // Expandable details section
-            Spacer(modifier = Modifier.height(12.dp))
+            if (expanded) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(8.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    DetailRow("Services counted", areaStatistics.servicesCount.toString())
+                    DetailRow("Highest count", areaStatistics.maxCount.toString())
+                    DetailRow("Lowest count", areaStatistics.minCount.toString())
+                    DetailRow("Capacity", areaStatistics.capacity.toString())
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+            }
 
+            // Expand/collapse button
             TextButton(
                 onClick = {
                     haptic.light()
                     expanded = !expanded
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(0.dp),
+                contentPadding = PaddingValues(4.dp)
             ) {
-                Text(if (expanded) "Hide details" else "Show details")
+                Text(
+                    if (expanded) "Less" else "More",
+                    style = MaterialTheme.typography.labelSmall
+                )
                 Icon(
                     if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
                 )
-            }
-
-            AnimatedVisibility(
-                visible = expanded,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Divider()
-                    DetailRow("Highest count", areaStatistics.maxCount.toString())
-                    DetailRow("Lowest count", areaStatistics.minCount.toString())
-                    DetailRow("Capacity", areaStatistics.capacity.toString())
-                }
             }
         }
     }
