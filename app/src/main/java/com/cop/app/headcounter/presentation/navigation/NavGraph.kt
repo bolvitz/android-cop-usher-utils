@@ -1,6 +1,7 @@
 package com.cop.app.headcounter.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -17,11 +18,13 @@ import com.cop.app.headcounter.presentation.screens.settings.SettingsScreen
 @Composable
 fun NavGraph(
     navController: NavHostController,
-    startDestination: String = Screen.BranchList.route
+    startDestination: String = Screen.BranchList.route,
+    modifier: Modifier = Modifier
 ) {
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = startDestination,
+        modifier = modifier
     ) {
         composable(Screen.BranchList.route) {
             BranchListScreen(
