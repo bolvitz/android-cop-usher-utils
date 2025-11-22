@@ -14,6 +14,9 @@ interface AreaCountDao {
     @Query("SELECT * FROM area_counts WHERE id = :areaCountId")
     fun getAreaCountById(areaCountId: String): Flow<AreaCountEntity?>
 
+    @Query("SELECT * FROM area_counts WHERE areaTemplateId = :areaTemplateId")
+    fun getAreaCountsByTemplateId(areaTemplateId: String): Flow<List<AreaCountEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAreaCount(areaCount: AreaCountEntity)
 
