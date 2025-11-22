@@ -24,4 +24,5 @@ interface BranchRepository {
     suspend fun deleteBranch(branchId: String)
     suspend fun setBranchActive(branchId: String, isActive: Boolean)
     suspend fun createDefaultAreasForBranch(branchId: String, areaCount: Int = 6)
+    suspend fun hasServices(branchId: String): Boolean
 }

@@ -1,5 +1,6 @@
 package com.cop.app.headcounter.data.repository
 
+import com.cop.app.headcounter.data.local.dao.AreaCountDao
 import com.cop.app.headcounter.data.local.dao.AreaTemplateDao
 import com.cop.app.headcounter.data.local.entities.AreaTemplateEntity
 import com.cop.app.headcounter.domain.models.AreaType
@@ -10,7 +11,8 @@ import java.util.UUID
 import javax.inject.Inject
 
 class AreaRepositoryImpl @Inject constructor(
-    private val areaTemplateDao: AreaTemplateDao
+    private val areaTemplateDao: AreaTemplateDao,
+    private val areaCountDao: AreaCountDao
 ) : AreaRepository {
 
     override fun getAreasByBranch(branchId: String): Flow<List<AreaTemplateEntity>> =
@@ -78,5 +80,10 @@ class AreaRepositoryImpl @Inject constructor(
         }
 
         areaTemplateDao.insertAreas(newAreas)
+    }
+
+    override suspend fun hasAreaCounts(areaId: String): Boolean {
+        val counts = areaCountDao.getAreaCountsByTemplateId(areaId).first()
+        return counts.isNotEmpty()
     }
 }

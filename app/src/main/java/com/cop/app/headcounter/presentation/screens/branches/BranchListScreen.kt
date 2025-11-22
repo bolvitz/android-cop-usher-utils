@@ -20,12 +20,15 @@ fun BranchListScreen(
     onBranchClick: (String) -> Unit,
     onManageAreas: (String) -> Unit = {},
     onManageServiceTypes: (String) -> Unit = {},
+    onEditBranch: (String) -> Unit = {},
     onAddBranch: () -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToReports: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showDeleteDialog by remember { mutableStateOf<String?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -136,6 +139,37 @@ fun BranchListScreen(
                                                 tint = MaterialTheme.colorScheme.primary
                                             )
                                         }
+                                        var expanded by remember { mutableStateOf(false) }
+                                        Box {
+                                            IconButton(onClick = { expanded = true }) {
+                                                Icon(Icons.Default.MoreVert, "More options")
+                                            }
+                                            DropdownMenu(
+                                                expanded = expanded,
+                                                onDismissRequest = { expanded = false }
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = { Text("Edit") },
+                                                    onClick = {
+                                                        expanded = false
+                                                        onEditBranch(branchWithAreas.branch.id)
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(Icons.Default.Edit, null)
+                                                    }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = { Text("Delete") },
+                                                    onClick = {
+                                                        expanded = false
+                                                        showDeleteDialog = branchWithAreas.branch.id
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
+                                                    }
+                                                )
+                                            }
+                                        }
                                     }
                                 }
 
@@ -164,6 +198,46 @@ fun BranchListScreen(
                 ) {
                     Text("Error: ${state.message}")
                 }
+            }
+        }
+
+        // Delete confirmation dialog
+        showDeleteDialog?.let { branchId ->
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = null },
+                title = { Text("Delete Branch") },
+                text = { Text("Are you sure you want to delete this branch? This action cannot be undone.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.deleteBranch(branchId) { error ->
+                                errorMessage = error
+                            }
+                            showDeleteDialog = null
+                        }
+                    ) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        // Error snackbar
+        errorMessage?.let { error ->
+            Snackbar(
+                modifier = Modifier.padding(16.dp),
+                action = {
+                    TextButton(onClick = { errorMessage = null }) {
+                        Text("OK")
+                    }
+                }
+            ) {
+                Text(error)
             }
         }
     }

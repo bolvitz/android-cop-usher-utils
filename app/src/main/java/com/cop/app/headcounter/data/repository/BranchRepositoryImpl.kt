@@ -2,6 +2,7 @@ package com.cop.app.headcounter.data.repository
 
 import com.cop.app.headcounter.data.local.dao.AreaTemplateDao
 import com.cop.app.headcounter.data.local.dao.BranchDao
+import com.cop.app.headcounter.data.local.dao.ServiceDao
 import com.cop.app.headcounter.data.local.entities.AreaTemplateEntity
 import com.cop.app.headcounter.data.local.entities.BranchEntity
 import com.cop.app.headcounter.data.local.entities.BranchWithAreas
@@ -15,7 +16,8 @@ import javax.inject.Inject
 
 class BranchRepositoryImpl @Inject constructor(
     private val branchDao: BranchDao,
-    private val areaTemplateDao: AreaTemplateDao
+    private val areaTemplateDao: AreaTemplateDao,
+    private val serviceDao: ServiceDao
 ) : BranchRepository {
 
     override fun getAllActiveBranches(): Flow<List<BranchWithAreas>> =
@@ -128,5 +130,10 @@ class BranchRepositoryImpl @Inject constructor(
         )
 
         areaTemplateDao.insertAreas(defaultAreas)
+    }
+
+    override suspend fun hasServices(branchId: String): Boolean {
+        val services = serviceDao.getRecentServicesByBranch(branchId, 1).first()
+        return services.isNotEmpty()
     }
 }

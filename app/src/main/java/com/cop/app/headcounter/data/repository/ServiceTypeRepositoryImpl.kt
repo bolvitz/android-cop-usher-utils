@@ -1,14 +1,17 @@
 package com.cop.app.headcounter.data.repository
 
+import com.cop.app.headcounter.data.local.dao.ServiceDao
 import com.cop.app.headcounter.data.local.dao.ServiceTypeDao
 import com.cop.app.headcounter.data.local.entities.ServiceTypeEntity
 import com.cop.app.headcounter.domain.repository.ServiceTypeRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import java.util.UUID
 import javax.inject.Inject
 
 class ServiceTypeRepositoryImpl @Inject constructor(
-    private val serviceTypeDao: ServiceTypeDao
+    private val serviceTypeDao: ServiceTypeDao,
+    private val serviceDao: ServiceDao
 ) : ServiceTypeRepository {
 
     override fun getServiceTypesByBranch(branchId: String): Flow<List<ServiceTypeEntity>> {
@@ -59,5 +62,10 @@ class ServiceTypeRepositoryImpl @Inject constructor(
 
     override suspend fun getServiceTypeCount(branchId: String): Int {
         return serviceTypeDao.getServiceTypeCount(branchId)
+    }
+
+    override suspend fun hasServices(serviceTypeId: String): Boolean {
+        val services = serviceDao.getRecentServices(999).first()
+        return services.any { it.service.serviceTypeId == serviceTypeId }
     }
 }

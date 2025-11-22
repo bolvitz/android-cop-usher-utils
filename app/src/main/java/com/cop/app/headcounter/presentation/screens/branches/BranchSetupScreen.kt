@@ -22,10 +22,12 @@ fun BranchSetupScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    val isEditMode = viewModel.isEditMode()
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add Branch") },
+                title = { Text(if (isEditMode) "Edit Branch" else "Add Branch") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, "Back")
@@ -108,8 +110,13 @@ fun BranchSetupScreen(
             Button(
                 onClick = {
                     viewModel.saveBranch { branchId ->
-                        // Navigate to area management after creating branch
-                        onManageAreas(branchId)
+                        if (isEditMode) {
+                            // Navigate back after updating
+                            onNavigateBack()
+                        } else {
+                            // Navigate to area management after creating branch
+                            onManageAreas(branchId)
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -121,7 +128,7 @@ fun BranchSetupScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Create Branch & Setup Areas")
+                    Text(if (isEditMode) "Update Branch" else "Create Branch & Setup Areas")
                 }
             }
         }

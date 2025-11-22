@@ -40,9 +40,19 @@ class BranchListViewModel @Inject constructor(
         }
     }
 
-    fun deleteBranch(branchId: String) {
+    fun deleteBranch(branchId: String, onError: (String) -> Unit) {
         viewModelScope.launch {
-            branchRepository.deleteBranch(branchId)
+            try {
+                // Check if branch has services
+                if (branchRepository.hasServices(branchId)) {
+                    onError("Cannot delete branch: It has service records. Delete those services first.")
+                    return@launch
+                }
+
+                branchRepository.deleteBranch(branchId)
+            } catch (e: Exception) {
+                onError(e.message ?: "Failed to delete branch")
+            }
         }
     }
 }

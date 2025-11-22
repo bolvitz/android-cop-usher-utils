@@ -74,6 +74,14 @@ class ServiceTypeManagementViewModel @Inject constructor(
     fun deleteServiceType(id: String) {
         viewModelScope.launch {
             try {
+                // Check if service type is being used in any service
+                if (serviceTypeRepository.hasServices(id)) {
+                    _uiState.value = _uiState.value.copy(
+                        error = "Cannot delete service type: It is being used in one or more services. Delete those services first."
+                    )
+                    return@launch
+                }
+
                 serviceTypeRepository.deleteServiceType(id)
                 _uiState.value = _uiState.value.copy(
                     message = "Service type deleted successfully"

@@ -38,6 +38,9 @@ fun NavGraph(
                 onManageServiceTypes = { branchId ->
                     navController.navigate(Screen.ServiceTypeManagement.createRoute(branchId))
                 },
+                onEditBranch = { branchId ->
+                    navController.navigate(Screen.BranchSetup.createRoute(branchId))
+                },
                 onAddBranch = {
                     navController.navigate(Screen.BranchSetup.createRoute())
                 },

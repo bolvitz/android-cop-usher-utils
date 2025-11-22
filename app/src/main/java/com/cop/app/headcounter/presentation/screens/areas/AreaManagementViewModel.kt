@@ -88,6 +88,14 @@ class AreaManagementViewModel @Inject constructor(
     fun deleteArea(areaId: String) {
         viewModelScope.launch {
             try {
+                // Check if area has counts in any service
+                if (areaRepository.hasAreaCounts(areaId)) {
+                    _uiState.value = _uiState.value.copy(
+                        error = "Cannot delete area: It has attendance counts in one or more services. Delete those services first."
+                    )
+                    return@launch
+                }
+
                 areaRepository.deleteArea(areaId)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

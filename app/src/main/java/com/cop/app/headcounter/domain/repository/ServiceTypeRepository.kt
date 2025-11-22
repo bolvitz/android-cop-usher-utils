@@ -24,4 +24,6 @@ interface ServiceTypeRepository {
     suspend fun deleteServiceType(id: String)
 
     suspend fun getServiceTypeCount(branchId: String): Int
+
+    suspend fun hasServices(serviceTypeId: String): Boolean
 }

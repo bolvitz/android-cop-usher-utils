@@ -83,18 +83,39 @@ class BranchSetupViewModel @Inject constructor(
             try {
                 _uiState.value = state.copy(isLoading = true)
 
-                val newBranchId = branchRepository.createBranch(
-                    name = state.name,
-                    location = state.location,
-                    code = state.code,
-                    contactPerson = state.contactPerson,
-                    contactEmail = state.contactEmail,
-                    contactPhone = state.contactPhone,
-                    color = state.color
-                )
-
-                _uiState.value = state.copy(isLoading = false)
-                onSuccess(newBranchId)
+                if (isNewBranch) {
+                    // Create new branch
+                    val newBranchId = branchRepository.createBranch(
+                        name = state.name,
+                        location = state.location,
+                        code = state.code,
+                        contactPerson = state.contactPerson,
+                        contactEmail = state.contactEmail,
+                        contactPhone = state.contactPhone,
+                        color = state.color
+                    )
+                    _uiState.value = state.copy(isLoading = false)
+                    onSuccess(newBranchId)
+                } else {
+                    // Update existing branch
+                    branchRepository.getBranchById(branchId!!).collect { branchWithAreas ->
+                        branchWithAreas?.let { existing ->
+                            val updatedBranch = existing.branch.copy(
+                                name = state.name,
+                                location = state.location,
+                                code = state.code,
+                                contactPerson = state.contactPerson,
+                                contactEmail = state.contactEmail,
+                                contactPhone = state.contactPhone,
+                                color = state.color,
+                                updatedAt = System.currentTimeMillis()
+                            )
+                            branchRepository.updateBranch(updatedBranch)
+                            _uiState.value = state.copy(isLoading = false)
+                            onSuccess(branchId)
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 _uiState.value = state.copy(
                     isLoading = false,
@@ -103,6 +124,10 @@ class BranchSetupViewModel @Inject constructor(
             }
         }
     }
+
+    fun isEditMode(): Boolean = !isNewBranch
+
+    fun getBranchId(): String? = if (isNewBranch) null else branchId
 }
 
 data class BranchSetupUiState(

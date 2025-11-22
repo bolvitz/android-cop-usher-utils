@@ -22,4 +22,5 @@ interface AreaRepository {
     suspend fun setAreaActive(areaId: String, isActive: Boolean)
     suspend fun reorderAreas(areaIds: List<String>)
     suspend fun duplicateAreaToBranches(areaId: String, targetBranchIds: List<String>)
+    suspend fun hasAreaCounts(areaId: String): Boolean
 }
