@@ -25,9 +25,7 @@ fun BranchListScreen(
     viewModel: BranchListViewModel = hiltViewModel(),
     onBranchClick: (String) -> Unit,
     onManageAreas: (String) -> Unit = {},
-    onManageServiceTypes: () -> Unit = {},
     onEditBranch: (String) -> Unit = {},
-    onAddBranch: () -> Unit,
     onNavigateToHistory: () -> Unit,
     onBranchHistory: (String) -> Unit = {},
     onNavigateToReports: () -> Unit,
@@ -43,12 +41,6 @@ fun BranchListScreen(
             TopAppBar(
                 title = { Text("Church Attendance") },
                 actions = {
-                    IconButton(onClick = {
-                        haptic.light()
-                        onManageServiceTypes()
-                    }) {
-                        Icon(Icons.Default.CalendarMonth, "Service Types")
-                    }
                     IconButton(onClick = {
                         haptic.light()
                         onNavigateToHistory()
@@ -69,25 +61,6 @@ fun BranchListScreen(
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            val fabScale by animateFloatAsState(
-                targetValue = 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                ),
-                label = "fabScale"
-            )
-            FloatingActionButton(
-                onClick = {
-                    haptic.medium()
-                    onAddBranch()
-                },
-                modifier = Modifier.scale(fabScale)
-            ) {
-                Icon(Icons.Default.Add, "Add Branch")
-            }
         }
     ) { paddingValues ->
         when (val state = uiState) {

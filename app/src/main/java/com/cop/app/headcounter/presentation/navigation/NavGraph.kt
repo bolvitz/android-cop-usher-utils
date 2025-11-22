@@ -38,9 +38,6 @@ fun NavGraph(
                 onEditBranch = { branchId ->
                     navController.navigate(Screen.BranchSetup.createRoute(branchId))
                 },
-                onAddBranch = {
-                    navController.navigate(Screen.BranchSetup.createRoute())
-                },
                 onNavigateToHistory = {
                     navController.navigate(Screen.History.createRoute())
                 },
@@ -52,9 +49,6 @@ fun NavGraph(
                 },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
-                },
-                onManageServiceTypes = {
-                    navController.navigate(Screen.ServiceTypeManagement.route)
                 }
             )
         }
@@ -128,7 +122,13 @@ fun NavGraph(
 
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onManageServiceTypes = {
+                    navController.navigate(Screen.ServiceTypeManagement.route)
+                },
+                onAddBranch = {
+                    navController.navigate(Screen.BranchSetup.createRoute())
+                }
             )
         }
     }
