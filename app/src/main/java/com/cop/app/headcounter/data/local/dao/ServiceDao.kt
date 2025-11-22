@@ -3,6 +3,7 @@ package com.cop.app.headcounter.data.local.dao
 import androidx.room.*
 import com.cop.app.headcounter.data.local.entities.ServiceEntity
 import com.cop.app.headcounter.data.local.entities.ServiceWithDetails
+import com.cop.app.headcounter.data.local.entities.ServiceWithAreaCounts
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -69,4 +70,19 @@ interface ServiceDao {
         startDate: Long,
         endDate: Long
     ): Flow<Double?>
+
+    @Transaction
+    @Query("SELECT * FROM services ORDER BY date DESC, createdAt DESC LIMIT :limit")
+    fun getRecentServicesWithAreaCounts(limit: Int = 50): Flow<List<ServiceWithAreaCounts>>
+
+    @Transaction
+    @Query("""
+        SELECT * FROM services
+        WHERE date BETWEEN :startDate AND :endDate
+        ORDER BY date DESC, createdAt DESC
+    """)
+    fun getServicesWithAreaCountsByDateRange(
+        startDate: Long,
+        endDate: Long
+    ): Flow<List<ServiceWithAreaCounts>>
 }

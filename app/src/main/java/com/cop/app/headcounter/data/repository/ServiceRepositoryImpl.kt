@@ -7,6 +7,7 @@ import com.cop.app.headcounter.data.local.dao.ServiceDao
 import com.cop.app.headcounter.data.local.entities.AreaCountEntity
 import com.cop.app.headcounter.data.local.entities.ServiceEntity
 import com.cop.app.headcounter.data.local.entities.ServiceWithDetails
+import com.cop.app.headcounter.data.local.entities.ServiceWithAreaCounts
 import com.cop.app.headcounter.data.models.CountHistoryItem
 import com.cop.app.headcounter.domain.models.ServiceType
 import com.cop.app.headcounter.domain.repository.ServiceRepository
@@ -55,6 +56,15 @@ class ServiceRepositoryImpl @Inject constructor(
         endDate: Long
     ): Flow<Double?> =
         serviceDao.getAverageAttendance(branchId, startDate, endDate)
+
+    override fun getRecentServicesWithAreaCounts(limit: Int): Flow<List<ServiceWithAreaCounts>> =
+        serviceDao.getRecentServicesWithAreaCounts(limit)
+
+    override fun getServicesWithAreaCountsByDateRange(
+        startDate: Long,
+        endDate: Long
+    ): Flow<List<ServiceWithAreaCounts>> =
+        serviceDao.getServicesWithAreaCountsByDateRange(startDate, endDate)
 
     override suspend fun createNewService(
         branchId: String,

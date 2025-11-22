@@ -3,6 +3,7 @@ package com.cop.app.headcounter.presentation.screens.counting
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cop.app.headcounter.data.local.dao.AreaCountDao
 import com.cop.app.headcounter.data.local.entities.AreaTemplateEntity
 import com.cop.app.headcounter.data.local.entities.ServiceTypeEntity
 import com.cop.app.headcounter.domain.models.ServiceType
@@ -19,6 +20,7 @@ class CountingViewModel @Inject constructor(
     private val branchRepository: BranchRepository,
     private val serviceRepository: ServiceRepository,
     private val serviceTypeRepository: ServiceTypeRepository,
+    private val areaCountDao: AreaCountDao,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -101,15 +103,35 @@ class CountingViewModel @Inject constructor(
 
     private fun loadServiceDetails(serviceId: String) {
         viewModelScope.launch {
+            // Load service details
             serviceRepository.getServiceById(serviceId).collect { serviceWithDetails ->
                 serviceWithDetails?.let { details ->
-                    // Load area counts
                     _uiState.value = _uiState.value.copy(
                         totalAttendance = details.service.totalAttendance,
                         totalCapacity = details.service.totalCapacity,
                         isLocked = details.service.isLocked
                     )
                 }
+            }
+        }
+
+        // Load area counts
+        viewModelScope.launch {
+            areaCountDao.getAreaCountsByService(serviceId).collect { areaCounts ->
+                val areaCountStates = areaCounts.map { areaCountWithTemplate ->
+                    AreaCountState(
+                        id = areaCountWithTemplate.areaCount.id,
+                        template = areaCountWithTemplate.template,
+                        count = areaCountWithTemplate.areaCount.count,
+                        capacity = areaCountWithTemplate.areaCount.capacity,
+                        notes = areaCountWithTemplate.areaCount.notes,
+                        percentage = if (areaCountWithTemplate.areaCount.capacity > 0) {
+                            (areaCountWithTemplate.areaCount.count.toFloat() / areaCountWithTemplate.areaCount.capacity * 100).toInt()
+                        } else 0,
+                        lastUpdated = areaCountWithTemplate.areaCount.lastUpdated
+                    )
+                }
+                _uiState.value = _uiState.value.copy(areaCounts = areaCountStates)
             }
         }
     }
@@ -239,8 +261,7 @@ class CountingViewModel @Inject constructor(
     }
 
     private suspend fun getCurrentCount(areaCountId: String): Int {
-        // This would need to be implemented by fetching from the repository
-        return 0 // Placeholder
+        return _uiState.value.areaCounts.find { it.id == areaCountId }?.count ?: 0
     }
 }
 

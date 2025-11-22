@@ -29,3 +29,18 @@ data class AreaCountWithTemplate(
     )
     val template: AreaTemplateEntity
 )
+
+data class ServiceWithAreaCounts(
+    @Embedded val service: ServiceEntity,
+    @Relation(
+        parentColumn = "branchId",
+        entityColumn = "id"
+    )
+    val branch: BranchEntity,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "serviceId",
+        entity = AreaCountEntity::class
+    )
+    val areaCounts: List<AreaCountWithTemplate>
+)

@@ -1,6 +1,7 @@
 package com.cop.app.headcounter.domain.repository
 
 import com.cop.app.headcounter.data.local.entities.ServiceWithDetails
+import com.cop.app.headcounter.data.local.entities.ServiceWithAreaCounts
 import com.cop.app.headcounter.domain.models.ServiceType
 import kotlinx.coroutines.flow.Flow
 
@@ -22,6 +23,12 @@ interface ServiceRepository {
         startDate: Long,
         endDate: Long
     ): Flow<Double?>
+
+    fun getRecentServicesWithAreaCounts(limit: Int): Flow<List<ServiceWithAreaCounts>>
+    fun getServicesWithAreaCountsByDateRange(
+        startDate: Long,
+        endDate: Long
+    ): Flow<List<ServiceWithAreaCounts>>
 
     suspend fun createNewService(
         branchId: String,
