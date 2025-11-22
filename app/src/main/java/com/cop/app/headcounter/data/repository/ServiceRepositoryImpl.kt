@@ -224,18 +224,18 @@ class ServiceRepositoryImpl @Inject constructor(
                     val area = areaCountWithTemplate.areaCount
                     val template = areaCountWithTemplate.template
 
-                    // Create a readable format with dots connecting name to count
-                    val maxNameLength = 28
+                    // Create a readable format: "Name: Count" with proper spacing
+                    val maxNameLength = 20
                     val truncatedName = if (template.name.length > maxNameLength) {
                         template.name.take(maxNameLength - 3) + "..."
                     } else {
-                        template.name
+                        template.name.padEnd(maxNameLength)
                     }
 
-                    val dotsNeeded = maxNameLength - truncatedName.length
-                    val dots = ".".repeat(dotsNeeded)
+                    // Format count with leading zeros for better alignment
+                    val countStr = area.count.toString().padStart(3, ' ')
 
-                    appendLine("${truncatedName}${dots} ${area.count.toString().padStart(4)}")
+                    appendLine("${truncatedName}    ${countStr}")
 
                     if (area.notes.isNotEmpty()) {
                         appendLine("  Note: ${area.notes}")
@@ -243,7 +243,7 @@ class ServiceRepositoryImpl @Inject constructor(
                 }
 
             appendLine("-".repeat(40))
-            appendLine("TOTAL................... ${service.totalAttendance.toString().padStart(4)}")
+            appendLine("TOTAL${" ".repeat(19)}${service.totalAttendance.toString().padStart(3, ' ')}")
 
             if (service.notes.isNotEmpty()) {
                 appendLine()

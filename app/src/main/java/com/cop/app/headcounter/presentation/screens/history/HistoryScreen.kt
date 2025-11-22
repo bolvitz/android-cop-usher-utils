@@ -456,13 +456,11 @@ fun ServiceReportDialog(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = MaterialTheme.shapes.small
             ) {
-                Text(
-                    text = report,
+                ServiceReportText(
+                    report = report,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        .padding(12.dp)
                 )
             }
         },
@@ -472,4 +470,97 @@ fun ServiceReportDialog(
             }
         }
     )
+}
+
+@Composable
+fun ServiceReportText(report: String, modifier: Modifier = Modifier) {
+    val lines = remember(report) { report.split("\n") }
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+
+    Column(modifier = modifier) {
+        lines.forEach { line ->
+            when {
+                // Headers (all caps lines)
+                line.matches(Regex("^[A-Z][A-Z ]+$")) -> {
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = primaryColor,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                }
+                // Lines with area counts (name followed by spaces and number)
+                line.matches(Regex("^[A-Za-z0-9 .]+\\s{2,}\\d+$")) && !line.startsWith("TOTAL") -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        val parts = line.split(Regex("\\s{2,}"))
+                        if (parts.size == 2) {
+                            Text(
+                                text = parts[0],
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                color = onSurfaceVariant
+                            )
+                            Text(
+                                text = parts[1],
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                color = primaryColor
+                            )
+                        } else {
+                            Text(
+                                text = line,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+                // TOTAL line
+                line.startsWith("TOTAL") -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        val parts = line.split(Regex("\\s{2,}"))
+                        if (parts.size == 2) {
+                            Text(
+                                text = parts[0],
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            )
+                            Text(
+                                text = parts[1],
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                color = primaryColor
+                            )
+                        } else {
+                            Text(
+                                text = line,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+                // Regular lines
+                else -> {
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                }
+            }
+        }
+    }
 }
