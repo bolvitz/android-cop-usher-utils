@@ -363,7 +363,7 @@ fun AreaCountCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                </Column>
+                }
 
                 // Count display
                 Text(
