@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-    namespace = "com.church.attendancecounter"
+    namespace = "com.cop.app.headcounter"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.church.attendancecounter"
+        applicationId = "com.cop.app.headcounter"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

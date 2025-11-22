@@ -44,5 +44,5 @@
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
 
 # Models
--keep class com.church.attendancecounter.data.local.entities.** { *; }
--keep class com.church.attendancecounter.domain.models.** { *; }
+-keep class com.cop.app.headcounter.data.local.entities.** { *; }
+-keep class com.cop.app.headcounter.domain.models.** { *; }
