@@ -37,10 +37,12 @@ fun CountingScreen(
                 title = {
                     Column {
                         Text(uiState.branchName)
-                        Text(
-                            text = ServiceType.fromString(uiState.serviceType.name).displayName,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        if (uiState.serviceName.isNotEmpty()) {
+                            Text(
+                                text = uiState.serviceName,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
@@ -158,11 +160,44 @@ fun CountingScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(
-                        "Area counts will appear here",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
+                    // Area counting cards
+                    if (uiState.areaCounts.isEmpty()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Text(
+                                "Loading areas...",
+                                modifier = Modifier.padding(16.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            uiState.areaCounts.forEach { areaCount ->
+                                AreaCountCard(
+                                    areaCount = areaCount,
+                                    isLocked = uiState.isLocked,
+                                    onIncrement = {
+                                        haptic.counter()
+                                        viewModel.incrementCount(areaCount.id)
+                                    },
+                                    onDecrement = {
+                                        haptic.counter()
+                                        viewModel.decrementCount(areaCount.id)
+                                    },
+                                    onSetCount = { newCount ->
+                                        viewModel.setCount(areaCount.id, newCount)
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -278,4 +313,172 @@ fun CreateServiceDialog(
             }
         }
     )
+}
+
+@Composable
+fun AreaCountCard(
+    areaCount: AreaCountState,
+    isLocked: Boolean,
+    onIncrement: () -> Unit,
+    onDecrement: () -> Unit,
+    onSetCount: (Int) -> Unit
+) {
+    val animatedCount by animateIntAsState(
+        targetValue = areaCount.count,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "areaCountAnimation"
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isLocked)
+                MaterialTheme.colorScheme.surfaceVariant
+            else
+                MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Area name and count
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = areaCount.template.name,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    if (areaCount.capacity > 0) {
+                        val percentage = (areaCount.count.toFloat() / areaCount.capacity * 100).toInt()
+                        Text(
+                            text = "$percentage% of ${areaCount.capacity} capacity",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                </Column>
+
+                // Count display
+                Text(
+                    text = animatedCount.toString(),
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Progress bar
+            if (areaCount.capacity > 0) {
+                val progress = (areaCount.count.toFloat() / areaCount.capacity).coerceIn(0f, 1f)
+                LinearProgressIndicator(
+                    progress = progress,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = when {
+                        progress < 0.5f -> MaterialTheme.colorScheme.tertiary
+                        progress < 0.8f -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.error
+                    }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            // Increment/Decrement buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Decrement button
+                FilledTonalButton(
+                    onClick = onDecrement,
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLocked && areaCount.count > 0,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                ) {
+                    Icon(Icons.Default.Remove, "Decrease")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("−1")
+                }
+
+                // Increment button
+                FilledTonalButton(
+                    onClick = onIncrement,
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLocked,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                ) {
+                    Icon(Icons.Default.Add, "Increase")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("+1")
+                }
+            }
+
+            // Quick add buttons
+            if (!isLocked) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { onSetCount(areaCount.count + 5) },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(8.dp)
+                    ) {
+                        Text("+5", style = MaterialTheme.typography.labelMedium)
+                    }
+                    OutlinedButton(
+                        onClick = { onSetCount(areaCount.count + 10) },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(8.dp)
+                    ) {
+                        Text("+10", style = MaterialTheme.typography.labelMedium)
+                    }
+                    OutlinedButton(
+                        onClick = { onSetCount(areaCount.count + 20) },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(8.dp)
+                    ) {
+                        Text("+20", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+
+            // Lock indicator
+            if (isLocked) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Default.Lock,
+                        "Locked",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        "Service locked",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+    }
 }
