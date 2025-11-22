@@ -94,3 +94,4 @@ kls_database.db
 # Backup files
 *.bak
 *~
+/.kotlin/
