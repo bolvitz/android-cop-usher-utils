@@ -204,9 +204,8 @@ class ServiceRepositoryImpl @Inject constructor(
 
         return buildString {
             appendLine("ATTENDANCE REPORT")
-            appendLine("=".repeat(50))
-            appendLine("Branch: ${branch.name} (${branch.code})")
-            appendLine("Location: ${branch.location}")
+            appendLine("=".repeat(40))
+            appendLine("Branch: ${branch.name}")
             appendLine("Date: ${dateFormat.format(Date(service.date))}")
             appendLine("Service: $serviceTypeName")
             if (service.serviceName.isNotEmpty()) {
@@ -216,7 +215,7 @@ class ServiceRepositoryImpl @Inject constructor(
             appendLine()
 
             appendLine("AREA BREAKDOWN")
-            appendLine("-".repeat(50))
+            appendLine("-".repeat(40))
 
             areaCounts
                 .sortedBy { it.template.displayOrder }
@@ -224,18 +223,26 @@ class ServiceRepositoryImpl @Inject constructor(
                     val area = areaCountWithTemplate.areaCount
                     val template = areaCountWithTemplate.template
 
-                    appendLine(
-                        "${template.name.padEnd(30)} " +
-                                "${area.count.toString().padStart(6)}"
-                    )
+                    // Create a readable format with dots connecting name to count
+                    val maxNameLength = 28
+                    val truncatedName = if (template.name.length > maxNameLength) {
+                        template.name.take(maxNameLength - 3) + "..."
+                    } else {
+                        template.name
+                    }
+
+                    val dotsNeeded = maxNameLength - truncatedName.length
+                    val dots = ".".repeat(dotsNeeded)
+
+                    appendLine("${truncatedName}${dots} ${area.count.toString().padStart(4)}")
 
                     if (area.notes.isNotEmpty()) {
                         appendLine("  Note: ${area.notes}")
                     }
                 }
 
-            appendLine("-".repeat(50))
-            appendLine("TOTAL ATTENDANCE: ${service.totalAttendance}")
+            appendLine("-".repeat(40))
+            appendLine("TOTAL................... ${service.totalAttendance.toString().padStart(4)}")
 
             if (service.notes.isNotEmpty()) {
                 appendLine()
