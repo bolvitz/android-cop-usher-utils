@@ -28,6 +28,9 @@ fun NavGraph(
                 onBranchClick = { branchId ->
                     navController.navigate(Screen.Counting.createRoute(branchId))
                 },
+                onManageAreas = { branchId ->
+                    navController.navigate(Screen.AreaManagement.createRoute(branchId))
+                },
                 onAddBranch = {
                     navController.navigate(Screen.BranchSetup.createRoute())
                 },
