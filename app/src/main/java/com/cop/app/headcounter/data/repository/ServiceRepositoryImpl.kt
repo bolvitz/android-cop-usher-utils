@@ -4,6 +4,7 @@ import com.cop.app.headcounter.data.local.dao.AreaCountDao
 import com.cop.app.headcounter.data.local.dao.AreaTemplateDao
 import com.cop.app.headcounter.data.local.dao.BranchDao
 import com.cop.app.headcounter.data.local.dao.ServiceDao
+import com.cop.app.headcounter.data.local.database.AppDatabase
 import com.cop.app.headcounter.data.local.entities.AreaCountEntity
 import com.cop.app.headcounter.data.local.entities.ServiceEntity
 import com.cop.app.headcounter.data.local.entities.ServiceWithDetails
@@ -20,6 +21,7 @@ import java.util.*
 import javax.inject.Inject
 
 class ServiceRepositoryImpl @Inject constructor(
+    private val database: AppDatabase,
     private val serviceDao: ServiceDao,
     private val areaCountDao: AreaCountDao,
     private val areaTemplateDao: AreaTemplateDao,
@@ -115,31 +117,34 @@ class ServiceRepositoryImpl @Inject constructor(
         newCount: Int,
         action: String
     ) {
-        val areaCount = areaCountDao.getAreaCountById(areaCountId).first() ?: return
+        // Wrap both updates in a transaction to prevent flickering from separate Flow emissions
+        database.withTransaction {
+            val areaCount = areaCountDao.getAreaCountById(areaCountId).first() ?: return@withTransaction
 
-        val historyItem = CountHistoryItem(
-            timestamp = System.currentTimeMillis(),
-            oldCount = areaCount.count,
-            newCount = newCount,
-            action = action
-        )
-
-        val currentHistory = if (areaCount.countHistory.isEmpty()) {
-            emptyList()
-        } else {
-            json.decodeFromString<List<CountHistoryItem>>(areaCount.countHistory)
-        }
-        val updatedHistory = currentHistory + historyItem
-
-        areaCountDao.updateAreaCount(
-            areaCount.copy(
-                count = newCount,
-                countHistory = json.encodeToString(updatedHistory),
-                lastUpdated = System.currentTimeMillis()
+            val historyItem = CountHistoryItem(
+                timestamp = System.currentTimeMillis(),
+                oldCount = areaCount.count,
+                newCount = newCount,
+                action = action
             )
-        )
 
-        updateServiceTotal(serviceId)
+            val currentHistory = if (areaCount.countHistory.isEmpty()) {
+                emptyList()
+            } else {
+                json.decodeFromString<List<CountHistoryItem>>(areaCount.countHistory)
+            }
+            val updatedHistory = currentHistory + historyItem
+
+            areaCountDao.updateAreaCount(
+                areaCount.copy(
+                    count = newCount,
+                    countHistory = json.encodeToString(updatedHistory),
+                    lastUpdated = System.currentTimeMillis()
+                )
+            )
+
+            updateServiceTotal(serviceId)
+        }
     }
 
     override suspend fun incrementAreaCount(serviceId: String, areaCountId: String, amount: Int) {
