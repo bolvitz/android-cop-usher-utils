@@ -2,7 +2,7 @@ package com.cop.app.headcounter.presentation.utils
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 
@@ -81,7 +81,7 @@ fun rememberShakeAnimation(trigger: Boolean): Float {
     val shakeOffset = remember { Animatable(0f) }
 
     if (trigger) {
-        androidx.compose.runtime.LaunchedEffect(trigger) {
+        LaunchedEffect(trigger) {
             repeat(3) {
                 shakeOffset.animateTo(10f, tween(50))
                 shakeOffset.animateTo(-10f, tween(50))
