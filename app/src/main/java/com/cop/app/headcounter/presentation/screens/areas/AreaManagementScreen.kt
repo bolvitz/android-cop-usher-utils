@@ -3,6 +3,7 @@ package com.cop.app.headcounter.presentation.screens.areas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -10,6 +11,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.cop.app.headcounter.domain.models.AreaType
@@ -240,7 +243,10 @@ fun AddAreaDialog(
                     onValueChange = { name = it },
                     label = { Text("Area Name") },
                     placeholder = { Text("e.g., Bay 1, Baby Room, etc.") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words
+                    )
                 )
 
                 ExposedDropdownMenuBox(
@@ -277,7 +283,10 @@ fun AddAreaDialog(
                     value = capacity,
                     onValueChange = { capacity = it.filter { char -> char.isDigit() } },
                     label = { Text("Capacity") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    )
                 )
             }
         },
@@ -357,14 +366,20 @@ fun QuickAddAreasDialog(
                     value = count,
                     onValueChange = { count = it.filter { char -> char.isDigit() } },
                     label = { Text("Number of Areas") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    )
                 )
 
                 OutlinedTextField(
                     value = startNumber,
                     onValueChange = { startNumber = it.filter { char -> char.isDigit() } },
                     label = { Text("Starting Number") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    )
                 )
 
                 val previewText = buildString {
@@ -441,14 +456,20 @@ fun EditAreaDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Area Name") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words
+                    )
                 )
 
                 OutlinedTextField(
                     value = capacity,
                     onValueChange = { capacity = it.filter { char -> char.isDigit() } },
                     label = { Text("Capacity") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    )
                 )
 
                 Text(

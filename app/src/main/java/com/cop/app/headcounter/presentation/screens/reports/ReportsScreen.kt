@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.cop.app.headcounter.presentation.utils.HapticFeedbackHelper
 import com.cop.app.headcounter.presentation.utils.rememberHapticFeedback
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -203,7 +204,7 @@ fun SummaryCard(
 @Composable
 fun AreaStatisticsCard(
     areaStatistics: AreaStatistics,
-    haptic: com.cop.app.headcounter.presentation.utils.HapticFeedback
+    haptic: HapticFeedbackHelper
 ) {
     var expanded by remember { mutableStateOf(false) }
 

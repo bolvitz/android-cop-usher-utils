@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,7 +51,10 @@ fun BranchSetupScreen(
                 label = { Text("Branch Name") },
                 placeholder = { Text("e.g., Main Campus") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words
+                )
             )
 
             OutlinedTextField(
@@ -59,7 +63,10 @@ fun BranchSetupScreen(
                 label = { Text("Location") },
                 placeholder = { Text("Address or location description") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words
+                )
             )
 
             OutlinedTextField(
@@ -68,7 +75,10 @@ fun BranchSetupScreen(
                 label = { Text("Branch Code") },
                 placeholder = { Text("e.g., MC") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Characters
+                )
             )
 
             OutlinedTextField(
@@ -76,7 +86,10 @@ fun BranchSetupScreen(
                 onValueChange = viewModel::updateContactPerson,
                 label = { Text("Contact Person (Optional)") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words
+                )
             )
 
             OutlinedTextField(
@@ -84,7 +97,10 @@ fun BranchSetupScreen(
                 onValueChange = viewModel::updateContactEmail,
                 label = { Text("Contact Email (Optional)") },
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    capitalization = KeyboardCapitalization.None
+                ),
                 singleLine = true
             )
 
