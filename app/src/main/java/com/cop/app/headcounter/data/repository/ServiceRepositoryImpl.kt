@@ -223,15 +223,10 @@ class ServiceRepositoryImpl @Inject constructor(
                 .forEach { areaCountWithTemplate ->
                     val area = areaCountWithTemplate.areaCount
                     val template = areaCountWithTemplate.template
-                    val percentage = if (area.capacity > 0) {
-                        (area.count.toFloat() / area.capacity * 100).toInt()
-                    } else 0
 
                     appendLine(
-                        "${template.name.padEnd(20)} " +
-                                "${area.count.toString().padStart(4)} / " +
-                                "${area.capacity.toString().padStart(4)} " +
-                                "(${percentage.toString().padStart(3)}%)"
+                        "${template.name.padEnd(30)} " +
+                                "${area.count.toString().padStart(6)}"
                     )
 
                     if (area.notes.isNotEmpty()) {
@@ -240,14 +235,7 @@ class ServiceRepositoryImpl @Inject constructor(
                 }
 
             appendLine("-".repeat(50))
-            val totalPercentage = if (service.totalCapacity > 0) {
-                (service.totalAttendance.toFloat() / service.totalCapacity * 100).toInt()
-            } else 0
-
-            appendLine(
-                "TOTAL: ${service.totalAttendance} / ${service.totalCapacity} " +
-                        "($totalPercentage% capacity)"
-            )
+            appendLine("TOTAL ATTENDANCE: ${service.totalAttendance}")
 
             if (service.notes.isNotEmpty()) {
                 appendLine()
