@@ -47,6 +47,12 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideServiceTypeDao(database: AppDatabase): ServiceTypeDao {
+        return database.serviceTypeDao()
+    }
+
+    @Provides
+    @Singleton
     fun provideAreaCountDao(database: AppDatabase): AreaCountDao {
         return database.areaCountDao()
     }

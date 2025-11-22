@@ -3,9 +3,11 @@ package com.cop.app.headcounter.di
 import com.cop.app.headcounter.data.repository.AreaRepositoryImpl
 import com.cop.app.headcounter.data.repository.BranchRepositoryImpl
 import com.cop.app.headcounter.data.repository.ServiceRepositoryImpl
+import com.cop.app.headcounter.data.repository.ServiceTypeRepositoryImpl
 import com.cop.app.headcounter.domain.repository.AreaRepository
 import com.cop.app.headcounter.domain.repository.BranchRepository
 import com.cop.app.headcounter.domain.repository.ServiceRepository
+import com.cop.app.headcounter.domain.repository.ServiceTypeRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -33,4 +35,10 @@ abstract class RepositoryModule {
     abstract fun bindServiceRepository(
         serviceRepositoryImpl: ServiceRepositoryImpl
     ): ServiceRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindServiceTypeRepository(
+        serviceTypeRepositoryImpl: ServiceTypeRepositoryImpl
+    ): ServiceTypeRepository
 }

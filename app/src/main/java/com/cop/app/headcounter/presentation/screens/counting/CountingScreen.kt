@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.cop.app.headcounter.data.local.entities.ServiceTypeEntity
 import com.cop.app.headcounter.domain.models.ServiceType
 import java.text.SimpleDateFormat
 import java.util.*
@@ -20,6 +21,7 @@ fun CountingScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val serviceTypes by viewModel.serviceTypes.collectAsState()
     val canUndo by viewModel.canUndo.collectAsState()
     val canRedo by viewModel.canRedo.collectAsState()
     var showCreateDialog by remember { mutableStateOf(uiState.serviceId == null) }
@@ -57,9 +59,10 @@ fun CountingScreen(
     ) { paddingValues ->
         if (showCreateDialog) {
             CreateServiceDialog(
+                serviceTypes = serviceTypes,
                 onDismiss = { showCreateDialog = false; onNavigateBack() },
-                onCreate = { serviceType, date, countedBy, serviceName ->
-                    viewModel.createNewService(serviceType, date, countedBy, serviceName)
+                onCreate = { serviceTypeId, serviceTypeName, date, countedBy ->
+                    viewModel.createNewService(serviceTypeId, serviceTypeName, date, countedBy)
                     showCreateDialog = false
                 }
             )
@@ -146,12 +149,12 @@ fun CountingScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateServiceDialog(
+    serviceTypes: List<ServiceTypeEntity>,
     onDismiss: () -> Unit,
-    onCreate: (ServiceType, Long, String, String) -> Unit
+    onCreate: (String, String, Long, String) -> Unit
 ) {
-    var serviceType by remember { mutableStateOf(ServiceType.SUNDAY_AM) }
+    var selectedServiceType by remember { mutableStateOf<ServiceTypeEntity?>(serviceTypes.firstOrNull()) }
     var countedBy by remember { mutableStateOf("") }
-    var serviceName by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -159,59 +162,72 @@ fun CreateServiceDialog(
         title = { Text("Start New Service") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = serviceType.displayName,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Service Type") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
+                if (serviceTypes.isEmpty()) {
+                    Text(
+                        "No service types configured. Please set up service types first.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
                     )
-                    ExposedDropdownMenu(
+                } else {
+                    ExposedDropdownMenuBox(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false }
+                        onExpandedChange = { expanded = !expanded }
                     ) {
-                        ServiceType.entries.forEach { type ->
-                            DropdownMenuItem(
-                                text = { Text(type.displayName) },
-                                onClick = {
-                                    serviceType = type
-                                    expanded = false
-                                }
-                            )
+                        OutlinedTextField(
+                            value = selectedServiceType?.let {
+                                "${it.name} - ${it.dayType} ${it.time}"
+                            } ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Service Type") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            serviceTypes.forEach { type ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(type.name, style = MaterialTheme.typography.bodyMedium)
+                                            Text(
+                                                "${type.dayType} • ${type.time}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        selectedServiceType = type
+                                        expanded = false
+                                    }
+                                )
+                            }
                         }
                     }
+
+                    OutlinedTextField(
+                        value = countedBy,
+                        onValueChange = { countedBy = it },
+                        label = { Text("Counted By") },
+                        placeholder = { Text("Your name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-
-                OutlinedTextField(
-                    value = countedBy,
-                    onValueChange = { countedBy = it },
-                    label = { Text("Counted By") },
-                    placeholder = { Text("Your name") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = serviceName,
-                    onValueChange = { serviceName = it },
-                    label = { Text("Service Name (Optional)") },
-                    placeholder = { Text("e.g., Easter Service") },
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    onCreate(serviceType, System.currentTimeMillis(), countedBy, serviceName)
+                    selectedServiceType?.let { type ->
+                        onCreate(type.id, type.name, System.currentTimeMillis(), countedBy)
+                    }
                 },
-                enabled = countedBy.isNotBlank()
+                enabled = countedBy.isNotBlank() && selectedServiceType != null && serviceTypes.isNotEmpty()
             ) {
                 Text("Start Counting")
             }

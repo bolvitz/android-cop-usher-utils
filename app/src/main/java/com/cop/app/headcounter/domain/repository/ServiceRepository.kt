@@ -28,7 +28,8 @@ interface ServiceRepository {
         serviceType: ServiceType,
         date: Long,
         countedBy: String,
-        serviceName: String = ""
+        serviceName: String = "",
+        serviceTypeId: String? = null
     ): String
 
     suspend fun updateServiceCount(

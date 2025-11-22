@@ -11,10 +11,11 @@ import com.cop.app.headcounter.data.local.entities.*
         BranchEntity::class,
         AreaTemplateEntity::class,
         ServiceEntity::class,
+        ServiceTypeEntity::class,
         AreaCountEntity::class,
         UserEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -22,6 +23,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun branchDao(): BranchDao
     abstract fun areaTemplateDao(): AreaTemplateDao
     abstract fun serviceDao(): ServiceDao
+    abstract fun serviceTypeDao(): ServiceTypeDao
     abstract fun areaCountDao(): AreaCountDao
     abstract fun userDao(): UserDao
 

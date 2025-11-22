@@ -13,6 +13,7 @@ import com.cop.app.headcounter.presentation.screens.branches.BranchSetupScreen
 import com.cop.app.headcounter.presentation.screens.counting.CountingScreen
 import com.cop.app.headcounter.presentation.screens.history.HistoryScreen
 import com.cop.app.headcounter.presentation.screens.reports.ReportsScreen
+import com.cop.app.headcounter.presentation.screens.servicetypes.ServiceTypeManagementScreen
 import com.cop.app.headcounter.presentation.screens.settings.SettingsScreen
 
 @Composable
@@ -33,6 +34,9 @@ fun NavGraph(
                 },
                 onManageAreas = { branchId ->
                     navController.navigate(Screen.AreaManagement.createRoute(branchId))
+                },
+                onManageServiceTypes = { branchId ->
+                    navController.navigate(Screen.ServiceTypeManagement.createRoute(branchId))
                 },
                 onAddBranch = {
                     navController.navigate(Screen.BranchSetup.createRoute())
@@ -66,6 +70,15 @@ fun NavGraph(
             arguments = listOf(navArgument("branchId") { type = NavType.StringType })
         ) {
             AreaManagementScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.ServiceTypeManagement.route,
+            arguments = listOf(navArgument("branchId") { type = NavType.StringType })
+        ) {
+            ServiceTypeManagementScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

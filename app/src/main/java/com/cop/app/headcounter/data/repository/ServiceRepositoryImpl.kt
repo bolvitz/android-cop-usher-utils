@@ -61,7 +61,8 @@ class ServiceRepositoryImpl @Inject constructor(
         serviceType: ServiceType,
         date: Long,
         countedBy: String,
-        serviceName: String
+        serviceName: String,
+        serviceTypeId: String?
     ): String {
         val serviceId = UUID.randomUUID().toString()
 
@@ -72,6 +73,7 @@ class ServiceRepositoryImpl @Inject constructor(
         val service = ServiceEntity(
             id = serviceId,
             branchId = branchId,
+            serviceTypeId = serviceTypeId,
             date = date,
             serviceType = serviceType.name,
             serviceName = serviceName,

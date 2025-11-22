@@ -14,16 +14,23 @@ import java.util.UUID
             parentColumns = ["id"],
             childColumns = ["branchId"],
             onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = ServiceTypeEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["serviceTypeId"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("branchId"), Index("date"), Index("serviceType")]
+    indices = [Index("branchId"), Index("date"), Index("serviceType"), Index("serviceTypeId")]
 )
 data class ServiceEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
     val branchId: String,
+    val serviceTypeId: String? = null, // References ServiceTypeEntity for dynamic service types
     val date: Long, // Unix timestamp
-    val serviceType: String, // FRIDAY, SATURDAY_AM, SATURDAY_PM, SUNDAY_AM, SUNDAY_PM, SUNDAY_EVENING, MIDWEEK, SPECIAL
+    val serviceType: String = "", // Deprecated: kept for backward compatibility
     val serviceName: String = "", // Optional custom name like "Easter Service", "Christmas Eve"
     val totalAttendance: Int = 0,
     val totalCapacity: Int = 0,

@@ -4,9 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cop.app.headcounter.data.local.entities.AreaTemplateEntity
+import com.cop.app.headcounter.data.local.entities.ServiceTypeEntity
 import com.cop.app.headcounter.domain.models.ServiceType
 import com.cop.app.headcounter.domain.repository.BranchRepository
 import com.cop.app.headcounter.domain.repository.ServiceRepository
+import com.cop.app.headcounter.domain.repository.ServiceTypeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -16,10 +18,18 @@ import javax.inject.Inject
 class CountingViewModel @Inject constructor(
     private val branchRepository: BranchRepository,
     private val serviceRepository: ServiceRepository,
+    private val serviceTypeRepository: ServiceTypeRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val branchId: String = checkNotNull(savedStateHandle.get<String>("branchId"))
+
+    val serviceTypes = serviceTypeRepository.getServiceTypesByBranch(branchId)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     private val _uiState = MutableStateFlow(CountingUiState())
     val uiState: StateFlow<CountingUiState> = _uiState.asStateFlow()
@@ -52,10 +62,10 @@ class CountingViewModel @Inject constructor(
     }
 
     fun createNewService(
-        serviceType: ServiceType,
+        serviceTypeId: String,
+        serviceTypeName: String,
         date: Long,
-        countedBy: String,
-        serviceName: String = ""
+        countedBy: String
     ) {
         viewModelScope.launch {
             try {
@@ -63,17 +73,18 @@ class CountingViewModel @Inject constructor(
 
                 val serviceId = serviceRepository.createNewService(
                     branchId = branchId,
-                    serviceType = serviceType,
+                    serviceType = ServiceType.SUNDAY_AM, // Deprecated, kept for compatibility
                     date = date,
                     countedBy = countedBy,
-                    serviceName = serviceName
+                    serviceName = serviceTypeName,
+                    serviceTypeId = serviceTypeId
                 )
 
                 _uiState.value = _uiState.value.copy(
                     serviceId = serviceId,
-                    serviceType = serviceType,
+                    serviceType = ServiceType.SUNDAY_AM, // Deprecated
                     serviceDate = date,
-                    serviceName = serviceName,
+                    serviceName = serviceTypeName,
                     counterName = countedBy,
                     isLoading = false
                 )

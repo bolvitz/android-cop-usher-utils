@@ -19,6 +19,7 @@ fun BranchListScreen(
     viewModel: BranchListViewModel = hiltViewModel(),
     onBranchClick: (String) -> Unit,
     onManageAreas: (String) -> Unit = {},
+    onManageServiceTypes: (String) -> Unit = {},
     onAddBranch: () -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToReports: () -> Unit,
@@ -120,12 +121,21 @@ fun BranchListScreen(
                                             color = MaterialTheme.colorScheme.secondary
                                         )
                                     }
-                                    IconButton(onClick = { onManageAreas(branchWithAreas.branch.id) }) {
-                                        Icon(
-                                            Icons.Default.Settings,
-                                            contentDescription = "Manage Areas",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
+                                    Row {
+                                        IconButton(onClick = { onManageAreas(branchWithAreas.branch.id) }) {
+                                            Icon(
+                                                Icons.Default.Settings,
+                                                contentDescription = "Manage Areas",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        IconButton(onClick = { onManageServiceTypes(branchWithAreas.branch.id) }) {
+                                            Icon(
+                                                Icons.Default.CalendarMonth,
+                                                contentDescription = "Manage Service Types",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
                                     }
                                 }
 
