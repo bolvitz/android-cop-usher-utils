@@ -76,7 +76,7 @@ class BranchSetupViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(defaultAreaCount = count)
     }
 
-    fun saveBranch(onSuccess: () -> Unit) {
+    fun saveBranch(onSuccess: (String) -> Unit) {
         val state = _uiState.value
         if (state.name.isBlank() || state.location.isBlank() || state.code.isBlank()) {
             _uiState.value = state.copy(error = "Please fill in all required fields")
@@ -85,6 +85,8 @@ class BranchSetupViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
+                _uiState.value = state.copy(isLoading = true)
+
                 val newBranchId = branchRepository.createBranch(
                     name = state.name,
                     location = state.location,
@@ -95,12 +97,13 @@ class BranchSetupViewModel @Inject constructor(
                     color = state.color
                 )
 
-                // Create default areas
-                branchRepository.createDefaultAreasForBranch(newBranchId, state.defaultAreaCount)
-
-                onSuccess()
+                _uiState.value = state.copy(isLoading = false)
+                onSuccess(newBranchId)
             } catch (e: Exception) {
-                _uiState.value = state.copy(error = e.message ?: "Failed to save branch")
+                _uiState.value = state.copy(
+                    isLoading = false,
+                    error = e.message ?: "Failed to save branch"
+                )
             }
         }
     }

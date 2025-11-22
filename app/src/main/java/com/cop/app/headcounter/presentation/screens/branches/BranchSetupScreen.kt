@@ -17,7 +17,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun BranchSetupScreen(
     viewModel: BranchSetupViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onManageAreas: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -94,32 +95,37 @@ fun BranchSetupScreen(
                 singleLine = true
             )
 
-            Text("Default Area Configuration", style = MaterialTheme.typography.titleMedium)
+            Text("Area Configuration", style = MaterialTheme.typography.titleMedium)
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+            Card(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Number of bays:")
-                Row {
-                    IconButton(onClick = { if (uiState.defaultAreaCount > 1) viewModel.updateAreaCount(uiState.defaultAreaCount - 1) }) {
-                        Text("-")
-                    }
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text(
-                        text = uiState.defaultAreaCount.toString(),
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        "After creating the branch, you can customize areas dynamically:",
+                        style = MaterialTheme.typography.bodyMedium
                     )
-                    IconButton(onClick = { if (uiState.defaultAreaCount < 20) viewModel.updateAreaCount(uiState.defaultAreaCount + 1) }) {
-                        Text("+")
-                    }
+                    Text(
+                        "• Add bays (Bay 1, Bay 2, etc.)",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "• Add baby rooms",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "• Add car parking areas",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "• Add any custom areas you need",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
-
-            Text(
-                "This will create ${uiState.defaultAreaCount} bays, 2 baby rooms, and 1 balcony",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary
-            )
 
             uiState.error?.let { error ->
                 Text(
@@ -132,7 +138,12 @@ fun BranchSetupScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
-                onClick = { viewModel.saveBranch(onNavigateBack) },
+                onClick = {
+                    viewModel.saveBranch { branchId ->
+                        // Navigate to area management after creating branch
+                        onManageAreas(branchId)
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isLoading
             ) {
@@ -142,7 +153,7 @@ fun BranchSetupScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Create Branch")
+                    Text("Create Branch & Setup Areas")
                 }
             }
         }

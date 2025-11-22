@@ -6,6 +6,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.cop.app.headcounter.presentation.screens.areas.AreaManagementScreen
 import com.cop.app.headcounter.presentation.screens.branches.BranchListScreen
 import com.cop.app.headcounter.presentation.screens.branches.BranchSetupScreen
 import com.cop.app.headcounter.presentation.screens.counting.CountingScreen
@@ -47,6 +48,18 @@ fun NavGraph(
             arguments = listOf(navArgument("branchId") { type = NavType.StringType })
         ) {
             BranchSetupScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onManageAreas = { branchId ->
+                    navController.navigate(Screen.AreaManagement.createRoute(branchId))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.AreaManagement.route,
+            arguments = listOf(navArgument("branchId") { type = NavType.StringType })
+        ) {
+            AreaManagementScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
