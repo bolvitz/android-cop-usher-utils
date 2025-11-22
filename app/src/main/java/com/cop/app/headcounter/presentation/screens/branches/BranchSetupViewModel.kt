@@ -72,10 +72,6 @@ class BranchSetupViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(contactPhone = contactPhone)
     }
 
-    fun updateAreaCount(count: Int) {
-        _uiState.value = _uiState.value.copy(defaultAreaCount = count)
-    }
-
     fun saveBranch(onSuccess: (String) -> Unit) {
         val state = _uiState.value
         if (state.name.isBlank() || state.location.isBlank() || state.code.isBlank()) {
@@ -117,7 +113,6 @@ data class BranchSetupUiState(
     val contactEmail: String = "",
     val contactPhone: String = "",
     val color: String = "#1976D2",
-    val defaultAreaCount: Int = 6,
     val isLoading: Boolean = false,
     val error: String? = null
 )
