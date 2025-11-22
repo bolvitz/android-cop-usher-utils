@@ -102,36 +102,37 @@ class CountingViewModel @Inject constructor(
     }
 
     private fun loadServiceDetails(serviceId: String) {
+        // Combine both flows to avoid flickering from separate updates
         viewModelScope.launch {
-            // Load service details
-            serviceRepository.getServiceById(serviceId).collect { serviceWithDetails ->
+            combine(
+                serviceRepository.getServiceById(serviceId),
+                areaCountDao.getAreaCountsByService(serviceId)
+            ) { serviceWithDetails, areaCounts ->
+                Pair(serviceWithDetails, areaCounts)
+            }.collect { (serviceWithDetails, areaCounts) ->
                 serviceWithDetails?.let { details ->
+                    val areaCountStates = areaCounts.map { areaCountWithTemplate ->
+                        AreaCountState(
+                            id = areaCountWithTemplate.areaCount.id,
+                            template = areaCountWithTemplate.template,
+                            count = areaCountWithTemplate.areaCount.count,
+                            capacity = areaCountWithTemplate.areaCount.capacity,
+                            notes = areaCountWithTemplate.areaCount.notes,
+                            percentage = if (areaCountWithTemplate.areaCount.capacity > 0) {
+                                (areaCountWithTemplate.areaCount.count.toFloat() / areaCountWithTemplate.areaCount.capacity * 100).toInt()
+                            } else 0,
+                            lastUpdated = areaCountWithTemplate.areaCount.lastUpdated
+                        )
+                    }
+
+                    // Single atomic update to prevent flickering
                     _uiState.value = _uiState.value.copy(
                         totalAttendance = details.service.totalAttendance,
                         totalCapacity = details.service.totalCapacity,
-                        isLocked = details.service.isLocked
+                        isLocked = details.service.isLocked,
+                        areaCounts = areaCountStates
                     )
                 }
-            }
-        }
-
-        // Load area counts
-        viewModelScope.launch {
-            areaCountDao.getAreaCountsByService(serviceId).collect { areaCounts ->
-                val areaCountStates = areaCounts.map { areaCountWithTemplate ->
-                    AreaCountState(
-                        id = areaCountWithTemplate.areaCount.id,
-                        template = areaCountWithTemplate.template,
-                        count = areaCountWithTemplate.areaCount.count,
-                        capacity = areaCountWithTemplate.areaCount.capacity,
-                        notes = areaCountWithTemplate.areaCount.notes,
-                        percentage = if (areaCountWithTemplate.areaCount.capacity > 0) {
-                            (areaCountWithTemplate.areaCount.count.toFloat() / areaCountWithTemplate.areaCount.capacity * 100).toInt()
-                        } else 0,
-                        lastUpdated = areaCountWithTemplate.areaCount.lastUpdated
-                    )
-                }
-                _uiState.value = _uiState.value.copy(areaCounts = areaCountStates)
             }
         }
     }
