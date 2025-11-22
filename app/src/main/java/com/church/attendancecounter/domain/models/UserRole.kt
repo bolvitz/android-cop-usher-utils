@@ -1,0 +1,16 @@
+package com.church.attendancecounter.domain.models
+
+enum class UserRole(val displayName: String) {
+    ADMIN("Administrator"),
+    COUNTER("Counter"),
+    VIEWER("Viewer");
+
+    fun canEdit() = this == ADMIN || this == COUNTER
+    fun canManageBranches() = this == ADMIN
+
+    companion object {
+        fun fromString(value: String): UserRole {
+            return entries.find { it.name == value } ?: VIEWER
+        }
+    }
+}
