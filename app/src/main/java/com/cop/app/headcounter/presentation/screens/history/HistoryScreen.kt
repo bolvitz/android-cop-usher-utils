@@ -89,33 +89,38 @@ fun HistoryScreen(
             }
 
             is HistoryUiState.Success -> {
-                LazyColumn(
+                Surface(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    color = MaterialTheme.colorScheme.surfaceContainerLow
                 ) {
-                    items(state.services) { serviceWithDetails ->
-                        ServiceHistoryCard(
-                            service = serviceWithDetails,
-                            onResumeEdit = {
-                                haptic.medium()
-                                onServiceClick(serviceWithDetails.service.branchId, serviceWithDetails.service.id)
-                            },
-                            onViewReport = {
-                                haptic.light()
-                                viewModel.generateReport(serviceWithDetails.service.id)
-                            },
-                            onUnlock = {
-                                haptic.light()
-                                showUnlockDialog = serviceWithDetails.service.id
-                            },
-                            onDelete = {
-                                haptic.light()
-                                showDeleteDialog = serviceWithDetails.service.id
-                            }
-                        )
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(state.services) { serviceWithDetails ->
+                            ServiceHistoryCard(
+                                service = serviceWithDetails,
+                                onResumeEdit = {
+                                    haptic.medium()
+                                    onServiceClick(serviceWithDetails.service.branchId, serviceWithDetails.service.id)
+                                },
+                                onViewReport = {
+                                    haptic.light()
+                                    viewModel.generateReport(serviceWithDetails.service.id)
+                                },
+                                onUnlock = {
+                                    haptic.light()
+                                    showUnlockDialog = serviceWithDetails.service.id
+                                },
+                                onDelete = {
+                                    haptic.light()
+                                    showDeleteDialog = serviceWithDetails.service.id
+                                }
+                            )
+                        }
                     }
                 }
             }
