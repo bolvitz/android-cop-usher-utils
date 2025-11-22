@@ -220,6 +220,8 @@ fun ServiceTypeCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val haptic = rememberHapticFeedback()
+
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -278,10 +280,16 @@ fun ServiceTypeCard(
             }
 
             Row {
-                IconButton(onClick = onEdit) {
+                IconButton(onClick = {
+                    haptic.light()
+                    onEdit()
+                }) {
                     Icon(Icons.Default.Edit, "Edit")
                 }
-                IconButton(onClick = onDelete) {
+                IconButton(onClick = {
+                    haptic.medium()
+                    onDelete()
+                }) {
                     Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
                 }
             }
@@ -295,10 +303,22 @@ fun AddServiceTypeDialog(
     onDismiss: () -> Unit,
     onConfirm: (String, String, String, String) -> Unit
 ) {
+    val haptic = rememberHapticFeedback()
+    val daysOfWeek = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+
     var name by remember { mutableStateOf("") }
-    var dayType by remember { mutableStateOf("") }
-    var time by remember { mutableStateOf("") }
+    var dayType by remember { mutableStateOf(daysOfWeek[0]) }
+    var dayExpanded by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    var selectedHour by remember { mutableStateOf(9) }
+    var selectedMinute by remember { mutableStateOf(0) }
     var description by remember { mutableStateOf("") }
+
+    val timeString = remember(selectedHour, selectedMinute) {
+        val period = if (selectedHour >= 12) "PM" else "AM"
+        val displayHour = if (selectedHour == 0) 12 else if (selectedHour > 12) selectedHour - 12 else selectedHour
+        String.format("%d:%02d %s", displayHour, selectedMinute, period)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -316,22 +336,53 @@ fun AddServiceTypeDialog(
                     singleLine = true
                 )
 
-                OutlinedTextField(
-                    value = dayType,
-                    onValueChange = { dayType = it },
-                    label = { Text("Day") },
-                    placeholder = { Text("e.g., Sunday, Wednesday") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                // Day dropdown
+                ExposedDropdownMenuBox(
+                    expanded = dayExpanded,
+                    onExpandedChange = { dayExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = dayType,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Day") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = dayExpanded,
+                        onDismissRequest = { dayExpanded = false }
+                    ) {
+                        daysOfWeek.forEach { day ->
+                            DropdownMenuItem(
+                                text = { Text(day) },
+                                onClick = {
+                                    haptic.selection()
+                                    dayType = day
+                                    dayExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
 
+                // Time picker button
                 OutlinedTextField(
-                    value = time,
-                    onValueChange = { time = it },
+                    value = timeString,
+                    onValueChange = {},
+                    readOnly = true,
                     label = { Text("Time") },
-                    placeholder = { Text("e.g., 9:00 AM, 7:00 PM") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            haptic.light()
+                            showTimePicker = true
+                        }) {
+                            Icon(Icons.Default.Schedule, "Select time")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
@@ -347,21 +398,37 @@ fun AddServiceTypeDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (name.isNotBlank() && dayType.isNotBlank() && time.isNotBlank()) {
-                        onConfirm(name.trim(), dayType.trim(), time.trim(), description.trim())
-                    }
+                    haptic.success()
+                    onConfirm(name.trim(), dayType, timeString, description.trim())
                 },
-                enabled = name.isNotBlank() && dayType.isNotBlank() && time.isNotBlank()
+                enabled = name.isNotBlank()
             ) {
                 Text("Add")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = {
+                haptic.light()
+                onDismiss()
+            }) {
                 Text("Cancel")
             }
         }
     )
+
+    if (showTimePicker) {
+        TimePickerDialog(
+            onDismiss = { showTimePicker = false },
+            onConfirm = { hour, minute ->
+                haptic.selection()
+                selectedHour = hour
+                selectedMinute = minute
+                showTimePicker = false
+            },
+            initialHour = selectedHour,
+            initialMinute = selectedMinute
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -371,10 +438,27 @@ fun EditServiceTypeDialog(
     onDismiss: () -> Unit,
     onConfirm: (ServiceTypeEntity) -> Unit
 ) {
+    val haptic = rememberHapticFeedback()
+    val daysOfWeek = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+
     var name by remember { mutableStateOf(serviceType.name) }
     var dayType by remember { mutableStateOf(serviceType.dayType) }
-    var time by remember { mutableStateOf(serviceType.time) }
+    var dayExpanded by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    // Parse existing time
+    val (initialHour, initialMinute) = remember(serviceType.time) {
+        parseTime(serviceType.time)
+    }
+    var selectedHour by remember { mutableStateOf(initialHour) }
+    var selectedMinute by remember { mutableStateOf(initialMinute) }
     var description by remember { mutableStateOf(serviceType.description) }
+
+    val timeString = remember(selectedHour, selectedMinute) {
+        val period = if (selectedHour >= 12) "PM" else "AM"
+        val displayHour = if (selectedHour == 0) 12 else if (selectedHour > 12) selectedHour - 12 else selectedHour
+        String.format("%d:%02d %s", displayHour, selectedMinute, period)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -391,20 +475,53 @@ fun EditServiceTypeDialog(
                     singleLine = true
                 )
 
-                OutlinedTextField(
-                    value = dayType,
-                    onValueChange = { dayType = it },
-                    label = { Text("Day") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                // Day dropdown
+                ExposedDropdownMenuBox(
+                    expanded = dayExpanded,
+                    onExpandedChange = { dayExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = dayType,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Day") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = dayExpanded,
+                        onDismissRequest = { dayExpanded = false }
+                    ) {
+                        daysOfWeek.forEach { day ->
+                            DropdownMenuItem(
+                                text = { Text(day) },
+                                onClick = {
+                                    haptic.selection()
+                                    dayType = day
+                                    dayExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
 
+                // Time picker button
                 OutlinedTextField(
-                    value = time,
-                    onValueChange = { time = it },
+                    value = timeString,
+                    onValueChange = {},
+                    readOnly = true,
                     label = { Text("Time") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            haptic.light()
+                            showTimePicker = true
+                        }) {
+                            Icon(Icons.Default.Schedule, "Select time")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
@@ -419,26 +536,99 @@ fun EditServiceTypeDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (name.isNotBlank() && dayType.isNotBlank() && time.isNotBlank()) {
-                        onConfirm(
-                            serviceType.copy(
-                                name = name.trim(),
-                                dayType = dayType.trim(),
-                                time = time.trim(),
-                                description = description.trim()
-                            )
+                    haptic.success()
+                    onConfirm(
+                        serviceType.copy(
+                            name = name.trim(),
+                            dayType = dayType,
+                            time = timeString,
+                            description = description.trim()
                         )
-                    }
+                    )
                 },
-                enabled = name.isNotBlank() && dayType.isNotBlank() && time.isNotBlank()
+                enabled = name.isNotBlank()
             ) {
                 Text("Save")
             }
         },
         dismissButton = {
+            TextButton(onClick = {
+                haptic.light()
+                onDismiss()
+            }) {
+                Text("Cancel")
+            }
+        }
+    )
+
+    if (showTimePicker) {
+        TimePickerDialog(
+            onDismiss = { showTimePicker = false },
+            onConfirm = { hour, minute ->
+                haptic.selection()
+                selectedHour = hour
+                selectedMinute = minute
+                showTimePicker = false
+            },
+            initialHour = selectedHour,
+            initialMinute = selectedMinute
+        )
+    }
+}
+
+/**
+ * Parse time string like "9:00 AM" or "7:30 PM" to hour and minute
+ */
+private fun parseTime(timeString: String): Pair<Int, Int> {
+    return try {
+        val parts = timeString.trim().split(" ")
+        val timeParts = parts[0].split(":")
+        val hour = timeParts[0].toInt()
+        val minute = timeParts.getOrNull(1)?.toInt() ?: 0
+        val isPM = parts.getOrNull(1)?.uppercase() == "PM"
+
+        val hour24 = when {
+            isPM && hour != 12 -> hour + 12
+            !isPM && hour == 12 -> 0
+            else -> hour
+        }
+
+        Pair(hour24, minute)
+    } catch (e: Exception) {
+        Pair(9, 0) // Default to 9:00 AM if parsing fails
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TimePickerDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (hour: Int, minute: Int) -> Unit,
+    initialHour: Int = 9,
+    initialMinute: Int = 0
+) {
+    val timePickerState = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = false
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onConfirm(timePickerState.hour, timePickerState.minute)
+            }) {
+                Text("OK")
+            }
+        },
+        text = {
+            TimePicker(state = timePickerState)
         }
     )
 }
