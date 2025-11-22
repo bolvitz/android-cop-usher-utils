@@ -249,7 +249,7 @@ fun ReportsScreen(
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         SummaryCard(
                             title = "Total Services",
@@ -263,16 +263,13 @@ fun ReportsScreen(
                             icon = Icons.Default.People,
                             modifier = Modifier.weight(1f)
                         )
+                        SummaryCard(
+                            title = "Average Attendance",
+                            value = reportData.averageAttendance.toString(),
+                            icon = Icons.Default.TrendingUp,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
-                }
-
-                item {
-                    SummaryCard(
-                        title = "Average Attendance",
-                        value = reportData.averageAttendance.toString(),
-                        icon = Icons.Default.TrendingUp,
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
 
                 // Area breakdown section header
