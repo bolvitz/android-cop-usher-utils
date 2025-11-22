@@ -95,38 +95,6 @@ fun BranchSetupScreen(
                 singleLine = true
             )
 
-            Text("Area Configuration", style = MaterialTheme.typography.titleMedium)
-
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        "After creating the branch, you can customize areas dynamically:",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        "• Add bays (Bay 1, Bay 2, etc.)",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        "• Add baby rooms",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        "• Add car parking areas",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        "• Add any custom areas you need",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-
             uiState.error?.let { error ->
                 Text(
                     text = error,
