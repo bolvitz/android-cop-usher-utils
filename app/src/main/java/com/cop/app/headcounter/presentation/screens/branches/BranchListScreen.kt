@@ -29,6 +29,7 @@ fun BranchListScreen(
     onEditBranch: (String) -> Unit = {},
     onAddBranch: () -> Unit,
     onNavigateToHistory: () -> Unit,
+    onBranchHistory: (String) -> Unit = {},
     onNavigateToReports: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
@@ -188,6 +189,16 @@ fun BranchListScreen(
                                         )
                                     }
                                     Row {
+                                        IconButton(onClick = {
+                                            haptic.light()
+                                            onBranchHistory(branchWithAreas.branch.id)
+                                        }) {
+                                            Icon(
+                                                Icons.Default.History,
+                                                contentDescription = "Branch History",
+                                                tint = MaterialTheme.colorScheme.secondary
+                                            )
+                                        }
                                         IconButton(onClick = {
                                             haptic.light()
                                             onManageAreas(branchWithAreas.branch.id)

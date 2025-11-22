@@ -1,5 +1,6 @@
 package com.cop.app.headcounter.presentation.screens.history
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cop.app.headcounter.data.local.entities.ServiceWithDetails
@@ -11,8 +12,11 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    private val serviceRepository: ServiceRepository
+    private val serviceRepository: ServiceRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    private val branchId: String? = savedStateHandle.get<String>("branchId")
 
     private val _uiState = MutableStateFlow<HistoryUiState>(HistoryUiState.Loading)
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
@@ -26,7 +30,13 @@ class HistoryViewModel @Inject constructor(
 
     private fun loadServices() {
         viewModelScope.launch {
-            serviceRepository.getRecentServices(100).collect { services ->
+            val servicesFlow = if (branchId != null) {
+                serviceRepository.getRecentServicesByBranch(branchId, 100)
+            } else {
+                serviceRepository.getRecentServices(100)
+            }
+
+            servicesFlow.collect { services ->
                 if (services.isEmpty()) {
                     _uiState.value = HistoryUiState.Empty
                 } else {

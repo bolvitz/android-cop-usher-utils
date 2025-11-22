@@ -42,7 +42,10 @@ fun NavGraph(
                     navController.navigate(Screen.BranchSetup.createRoute())
                 },
                 onNavigateToHistory = {
-                    navController.navigate(Screen.History.route)
+                    navController.navigate(Screen.History.createRoute())
+                },
+                onBranchHistory = { branchId ->
+                    navController.navigate(Screen.History.createRoute(branchId))
                 },
                 onNavigateToReports = {
                     navController.navigate(Screen.Reports.route)
@@ -99,7 +102,16 @@ fun NavGraph(
             )
         }
 
-        composable(Screen.History.route) {
+        composable(
+            route = Screen.History.route,
+            arguments = listOf(
+                navArgument("branchId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) {
             HistoryScreen(
                 onServiceClick = { branchId, serviceId ->
                     navController.navigate(Screen.Counting.createRoute(branchId, serviceId))

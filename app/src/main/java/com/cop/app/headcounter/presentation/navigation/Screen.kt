@@ -10,7 +10,11 @@ sealed class Screen(val route: String) {
             if (serviceId != null) "counting/$branchId?serviceId=$serviceId"
             else "counting/$branchId"
     }
-    object History : Screen("history")
+    object History : Screen("history?branchId={branchId}") {
+        fun createRoute(branchId: String? = null) =
+            if (branchId != null) "history?branchId=$branchId"
+            else "history"
+    }
     object HistoryDetail : Screen("history/{serviceId}") {
         fun createRoute(serviceId: String) = "history/$serviceId"
     }
