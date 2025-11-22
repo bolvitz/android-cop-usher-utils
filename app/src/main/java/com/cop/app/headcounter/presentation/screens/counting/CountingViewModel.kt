@@ -25,6 +25,7 @@ class CountingViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val branchId: String = checkNotNull(savedStateHandle.get<String>("branchId"))
+    private val existingServiceId: String? = savedStateHandle.get<String>("serviceId")
 
     val serviceTypes = serviceTypeRepository.getAllServiceTypes()
         .stateIn(
@@ -47,6 +48,11 @@ class CountingViewModel @Inject constructor(
 
     init {
         loadBranch()
+        // If an existing service ID is provided, load it
+        existingServiceId?.let { serviceId ->
+            _uiState.value = _uiState.value.copy(serviceId = serviceId)
+            loadServiceDetails(serviceId)
+        }
     }
 
     private fun loadBranch() {
