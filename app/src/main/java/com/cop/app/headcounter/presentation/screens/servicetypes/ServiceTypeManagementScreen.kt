@@ -1,5 +1,7 @@
 package com.cop.app.headcounter.presentation.screens.servicetypes
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,10 +11,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.cop.app.headcounter.data.local.entities.ServiceTypeEntity
 import com.cop.app.headcounter.presentation.viewmodels.ServiceTypeManagementViewModel
+import com.cop.app.headcounter.presentation.utils.rememberHapticFeedback
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -20,6 +25,7 @@ fun ServiceTypeManagementScreen(
     viewModel: ServiceTypeManagementViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
+    val haptic = rememberHapticFeedback()
     val serviceTypes by viewModel.serviceTypes.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
 
@@ -40,14 +46,20 @@ fun ServiceTypeManagementScreen(
             TopAppBar(
                 title = { Text("Manage Service Types") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        haptic.light()
+                        onNavigateBack()
+                    }) {
                         Icon(Icons.Default.ArrowBack, "Back")
                     }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(onClick = {
+                haptic.medium()
+                showAddDialog = true
+            }) {
                 Icon(Icons.Default.Add, "Add Service Type")
             }
         }

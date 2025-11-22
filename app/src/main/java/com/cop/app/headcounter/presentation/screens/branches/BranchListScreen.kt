@@ -1,5 +1,7 @@
 package com.cop.app.headcounter.presentation.screens.branches
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,8 +12,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.cop.app.headcounter.presentation.utils.rememberHapticFeedback
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,6 +31,7 @@ fun BranchListScreen(
     onNavigateToReports: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
+    val haptic = rememberHapticFeedback()
     val uiState by viewModel.uiState.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -35,23 +41,49 @@ fun BranchListScreen(
             TopAppBar(
                 title = { Text("Church Attendance") },
                 actions = {
-                    IconButton(onClick = onManageServiceTypes) {
+                    IconButton(onClick = {
+                        haptic.light()
+                        onManageServiceTypes()
+                    }) {
                         Icon(Icons.Default.CalendarMonth, "Service Types")
                     }
-                    IconButton(onClick = onNavigateToHistory) {
+                    IconButton(onClick = {
+                        haptic.light()
+                        onNavigateToHistory()
+                    }) {
                         Icon(Icons.Default.History, "History")
                     }
-                    IconButton(onClick = onNavigateToReports) {
+                    IconButton(onClick = {
+                        haptic.light()
+                        onNavigateToReports()
+                    }) {
                         Icon(Icons.Default.Analytics, "Reports")
                     }
-                    IconButton(onClick = onNavigateToSettings) {
+                    IconButton(onClick = {
+                        haptic.light()
+                        onNavigateToSettings()
+                    }) {
                         Icon(Icons.Default.Settings, "Settings")
                     }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddBranch) {
+            val fabScale by animateFloatAsState(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
+                label = "fabScale"
+            )
+            FloatingActionButton(
+                onClick = {
+                    haptic.medium()
+                    onAddBranch()
+                },
+                modifier = Modifier.scale(fabScale)
+            ) {
                 Icon(Icons.Default.Add, "Add Branch")
             }
         }
@@ -69,13 +101,30 @@ fun BranchListScreen(
             }
 
             is BranchListUiState.Empty -> {
+                val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                val pulseScale by infiniteTransition.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.1f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1000, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "pulseScale"
+                )
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = pulseScale
+                            scaleY = pulseScale
+                        }
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Church,
                             contentDescription = null,
@@ -98,9 +147,19 @@ fun BranchListScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(state.branches) { branchWithAreas ->
+                    items(
+                        items = state.branches,
+                        key = { it.branch.id }
+                    ) { branchWithAreas ->
                         Card(
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItemPlacement(
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow
+                                    )
+                                )
                         ) {
                             Column(
                                 modifier = Modifier.padding(16.dp)
@@ -128,7 +187,10 @@ fun BranchListScreen(
                                         )
                                     }
                                     Row {
-                                        IconButton(onClick = { onManageAreas(branchWithAreas.branch.id) }) {
+                                        IconButton(onClick = {
+                                            haptic.light()
+                                            onManageAreas(branchWithAreas.branch.id)
+                                        }) {
                                             Icon(
                                                 Icons.Default.Settings,
                                                 contentDescription = "Manage Areas",
@@ -137,7 +199,10 @@ fun BranchListScreen(
                                         }
                                         var expanded by remember { mutableStateOf(false) }
                                         Box {
-                                            IconButton(onClick = { expanded = true }) {
+                                            IconButton(onClick = {
+                                                haptic.light()
+                                                expanded = true
+                                            }) {
                                                 Icon(Icons.Default.MoreVert, "More options")
                                             }
                                             DropdownMenu(
@@ -147,6 +212,7 @@ fun BranchListScreen(
                                                 DropdownMenuItem(
                                                     text = { Text("Edit") },
                                                     onClick = {
+                                                        haptic.light()
                                                         expanded = false
                                                         onEditBranch(branchWithAreas.branch.id)
                                                     },
@@ -157,6 +223,7 @@ fun BranchListScreen(
                                                 DropdownMenuItem(
                                                     text = { Text("Delete") },
                                                     onClick = {
+                                                        haptic.medium()
                                                         expanded = false
                                                         showDeleteDialog = branchWithAreas.branch.id
                                                     },
@@ -172,7 +239,10 @@ fun BranchListScreen(
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Button(
-                                    onClick = { onBranchClick(branchWithAreas.branch.id) },
+                                    onClick = {
+                                        haptic.medium()
+                                        onBranchClick(branchWithAreas.branch.id)
+                                    },
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Icon(Icons.Default.PlayArrow, contentDescription = null)
@@ -197,43 +267,62 @@ fun BranchListScreen(
             }
         }
 
-        // Delete confirmation dialog
-        showDeleteDialog?.let { branchId ->
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = null },
-                title = { Text("Delete Branch") },
-                text = { Text("Are you sure you want to delete this branch? This action cannot be undone.") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            viewModel.deleteBranch(branchId) { error ->
-                                errorMessage = error
+        // Delete confirmation dialog with animation
+        AnimatedVisibility(
+            visible = showDeleteDialog != null,
+            enter = fadeIn() + scaleIn(initialScale = 0.8f),
+            exit = fadeOut() + scaleOut(targetScale = 0.8f)
+        ) {
+            showDeleteDialog?.let { branchId ->
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = null },
+                    title = { Text("Delete Branch") },
+                    text = { Text("Are you sure you want to delete this branch? This action cannot be undone.") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                haptic.strong()
+                                viewModel.deleteBranch(branchId) { error ->
+                                    errorMessage = error
+                                }
+                                showDeleteDialog = null
                             }
-                            showDeleteDialog = null
+                        ) {
+                            Text("Delete", color = MaterialTheme.colorScheme.error)
                         }
-                    ) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            haptic.light()
+                            showDeleteDialog = null
+                        }) {
+                            Text("Cancel")
+                        }
                     }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = null }) {
-                        Text("Cancel")
-                    }
-                }
-            )
+                )
+            }
         }
 
-        // Error snackbar
-        errorMessage?.let { error ->
-            Snackbar(
-                modifier = Modifier.padding(16.dp),
-                action = {
-                    TextButton(onClick = { errorMessage = null }) {
-                        Text("OK")
+        // Error snackbar with animation
+        AnimatedVisibility(
+            visible = errorMessage != null,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        ) {
+            errorMessage?.let { error ->
+                Snackbar(
+                    modifier = Modifier.padding(16.dp),
+                    action = {
+                        TextButton(onClick = {
+                            haptic.light()
+                            errorMessage = null
+                        }) {
+                            Text("OK")
+                        }
                     }
+                ) {
+                    Text(error)
                 }
-            ) {
-                Text(error)
             }
         }
     }

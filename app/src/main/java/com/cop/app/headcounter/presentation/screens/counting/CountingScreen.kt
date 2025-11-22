@@ -1,5 +1,7 @@
 package com.cop.app.headcounter.presentation.screens.counting
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -7,10 +9,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.cop.app.headcounter.data.local.entities.ServiceTypeEntity
 import com.cop.app.headcounter.domain.models.ServiceType
+import com.cop.app.headcounter.presentation.utils.rememberHapticFeedback
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -20,6 +24,7 @@ fun CountingScreen(
     viewModel: CountingViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
+    val haptic = rememberHapticFeedback()
     val uiState by viewModel.uiState.collectAsState()
     val serviceTypes by viewModel.serviceTypes.collectAsState()
     val canUndo by viewModel.canUndo.collectAsState()
@@ -39,18 +44,36 @@ fun CountingScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        haptic.light()
+                        onNavigateBack()
+                    }) {
                         Icon(Icons.Default.ArrowBack, "Back")
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.undo() }, enabled = canUndo) {
+                    IconButton(
+                        onClick = {
+                            haptic.medium()
+                            viewModel.undo()
+                        },
+                        enabled = canUndo
+                    ) {
                         Icon(Icons.Default.Undo, "Undo")
                     }
-                    IconButton(onClick = { viewModel.redo() }, enabled = canRedo) {
+                    IconButton(
+                        onClick = {
+                            haptic.medium()
+                            viewModel.redo()
+                        },
+                        enabled = canRedo
+                    ) {
                         Icon(Icons.Default.Redo, "Redo")
                     }
-                    IconButton(onClick = { viewModel.shareReport() }) {
+                    IconButton(onClick = {
+                        haptic.light()
+                        viewModel.shareReport()
+                    }) {
                         Icon(Icons.Default.Share, "Share")
                     }
                 }
@@ -87,9 +110,20 @@ fun CountingScreen(
                         .padding(paddingValues)
                         .padding(16.dp)
                 ) {
-                    // Total attendance card
+                    // Total attendance card with animated counter
+                    val animatedAttendance by animateIntAsState(
+                        targetValue = uiState.totalAttendance,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        ),
+                        label = "attendanceAnimation"
+                    )
+
                     Card(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateContentSize()
                     ) {
                         Column(
                             modifier = Modifier.padding(24.dp),
@@ -98,7 +132,7 @@ fun CountingScreen(
                             Text("Total Attendance", style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = uiState.totalAttendance.toString(),
+                                text = animatedAttendance.toString(),
                                 style = MaterialTheme.typography.displayLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -153,6 +187,7 @@ fun CreateServiceDialog(
     onDismiss: () -> Unit,
     onCreate: (String, String, Long, String) -> Unit
 ) {
+    val haptic = rememberHapticFeedback()
     var selectedServiceType by remember { mutableStateOf<ServiceTypeEntity?>(serviceTypes.firstOrNull()) }
     var countedBy by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
@@ -202,6 +237,7 @@ fun CreateServiceDialog(
                                         }
                                     },
                                     onClick = {
+                                        haptic.selection()
                                         selectedServiceType = type
                                         expanded = false
                                     }
@@ -223,6 +259,7 @@ fun CreateServiceDialog(
         confirmButton = {
             Button(
                 onClick = {
+                    haptic.success()
                     selectedServiceType?.let { type ->
                         onCreate(type.id, type.name, System.currentTimeMillis(), countedBy)
                     }
@@ -233,7 +270,10 @@ fun CreateServiceDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = {
+                haptic.light()
+                onDismiss()
+            }) {
                 Text("Cancel")
             }
         }
