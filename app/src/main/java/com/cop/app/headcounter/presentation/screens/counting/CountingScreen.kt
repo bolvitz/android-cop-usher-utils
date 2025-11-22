@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -114,7 +115,7 @@ fun CountingScreen(
                         .padding(paddingValues)
                         .padding(16.dp)
                 ) {
-                    // Total attendance card with animated counter
+                    // Total attendance card - compact
                     val animatedAttendance by animateIntAsState(
                         targetValue = uiState.totalAttendance,
                         animationSpec = spring(
@@ -125,42 +126,43 @@ fun CountingScreen(
                     )
 
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateContentSize()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
                     ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Total Attendance", style = MaterialTheme.typography.titleMedium)
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Column {
+                                Text(
+                                    "Total Attendance",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                )
+                                if (uiState.totalCapacity > 0) {
+                                    val percentage = (uiState.totalAttendance.toFloat() / uiState.totalCapacity * 100).toInt()
+                                    Text(
+                                        text = "$percentage% of ${uiState.totalCapacity}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
                             Text(
                                 text = animatedAttendance.toString(),
-                                style = MaterialTheme.typography.displayLarge,
-                                color = MaterialTheme.colorScheme.primary
+                                style = MaterialTheme.typography.displayMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
-                            if (uiState.totalCapacity > 0) {
-                                Text(
-                                    text = "of ${uiState.totalCapacity} capacity",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                val percentage = (uiState.totalAttendance.toFloat() / uiState.totalCapacity * 100).toInt()
-                                LinearProgressIndicator(
-                                    progress = percentage / 100f,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 8.dp)
-                                )
-                                Text(
-                                    text = "$percentage%",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Area counting cards
                     if (uiState.areaCounts.isEmpty()) {
@@ -179,7 +181,7 @@ fun CountingScreen(
                         }
                     } else {
                         Column(
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             uiState.areaCounts.forEach { areaCount ->
                                 AreaCountCard(
@@ -347,7 +349,7 @@ fun AreaCountCard(
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(10.dp)
         ) {
             // Area name and count
             Row(
@@ -358,47 +360,51 @@ fun AreaCountCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = areaCount.template.name,
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
                     )
                     if (areaCount.capacity > 0) {
                         val percentage = (areaCount.count.toFloat() / areaCount.capacity * 100).toInt()
                         Text(
-                            text = "$percentage% of ${areaCount.capacity} capacity",
-                            style = MaterialTheme.typography.bodySmall,
+                            text = "$percentage% · ${areaCount.capacity} capacity",
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                // Count display
+                // Count display - smaller
                 Text(
                     text = animatedCount.toString(),
-                    style = MaterialTheme.typography.displaySmall,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Progress bar
+            // Progress bar - inline
             if (areaCount.capacity > 0) {
                 val progress = (areaCount.count.toFloat() / areaCount.capacity).coerceIn(0f, 1f)
                 LinearProgressIndicator(
                     progress = progress,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp),
                     color = when {
                         progress < 0.5f -> MaterialTheme.colorScheme.tertiary
                         progress < 0.8f -> MaterialTheme.colorScheme.primary
                         else -> MaterialTheme.colorScheme.error
                     }
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Increment/Decrement buttons
+            // Increment/Decrement buttons - compact
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 // Decrement button
                 FilledTonalButton(
@@ -408,11 +414,12 @@ fun AreaCountCard(
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                    ),
+                    contentPadding = PaddingValues(vertical = 8.dp, horizontal = 12.dp)
                 ) {
-                    Icon(Icons.Default.Remove, "Decrease")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("−1")
+                    Icon(Icons.Default.Remove, "Decrease", modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("1", style = MaterialTheme.typography.labelLarge)
                 }
 
                 // Increment button
@@ -423,41 +430,29 @@ fun AreaCountCard(
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    ),
+                    contentPadding = PaddingValues(vertical = 8.dp, horizontal = 12.dp)
                 ) {
-                    Icon(Icons.Default.Add, "Increase")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("+1")
+                    Icon(Icons.Default.Add, "Increase", modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("1", style = MaterialTheme.typography.labelLarge)
                 }
-            }
 
-            // Quick add buttons
-            if (!isLocked) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                // Quick add buttons in same row
+                if (!isLocked) {
                     OutlinedButton(
                         onClick = { onSetCount(areaCount.count + 5) },
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(8.dp)
+                        modifier = Modifier.weight(0.6f),
+                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 6.dp)
                     ) {
                         Text("+5", style = MaterialTheme.typography.labelMedium)
                     }
                     OutlinedButton(
                         onClick = { onSetCount(areaCount.count + 10) },
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(8.dp)
+                        modifier = Modifier.weight(0.6f),
+                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 6.dp)
                     ) {
                         Text("+10", style = MaterialTheme.typography.labelMedium)
-                    }
-                    OutlinedButton(
-                        onClick = { onSetCount(areaCount.count + 20) },
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(8.dp)
-                    ) {
-                        Text("+20", style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
