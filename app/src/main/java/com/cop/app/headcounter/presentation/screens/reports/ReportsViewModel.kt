@@ -146,7 +146,7 @@ class ReportsViewModel @Inject constructor(
                 averageCount = stats.totalCount / stats.servicesCount,
                 minCount = if (stats.minCount == Int.MAX_VALUE) 0 else stats.minCount
             )
-        }.sortedByDescending { it.totalCount }
+        }.sortedBy { it.areaName }
 
         return ReportData(
             totalServices = totalServices,
