@@ -253,19 +253,19 @@ fun ReportsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         SummaryCard(
-                            title = "Total Services",
+                            title = "Total\nServices",
                             value = reportData.totalServices.toString(),
                             icon = Icons.Default.Event,
                             modifier = Modifier.weight(1f)
                         )
                         SummaryCard(
-                            title = "Total Attendance",
+                            title = "Total\nAttendance",
                             value = reportData.totalAttendance.toString(),
                             icon = Icons.Default.People,
                             modifier = Modifier.weight(1f)
                         )
                         SummaryCard(
-                            title = "Average Attendance",
+                            title = "Average\nAttendance",
                             value = reportData.averageAttendance.toString(),
                             icon = Icons.Default.TrendingUp,
                             modifier = Modifier.weight(1f)
@@ -304,40 +304,45 @@ fun SummaryCard(
 ) {
     Card(
         modifier = modifier
-            .height(150.dp),
+            .height(170.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(horizontal = 12.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             Icon(
                 icon,
                 contentDescription = null,
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(36.dp),
                 tint = MaterialTheme.colorScheme.onPrimaryContainer
             )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                value,
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                lineHeight = MaterialTheme.typography.labelMedium.fontSize * 1.2
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    value,
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    title,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = MaterialTheme.typography.bodySmall.fontSize * 1.3
+                )
+            }
         }
     }
 }
