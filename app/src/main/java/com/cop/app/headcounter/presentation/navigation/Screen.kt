@@ -5,8 +5,10 @@ sealed class Screen(val route: String) {
     object BranchSetup : Screen("branch_setup/{branchId}") {
         fun createRoute(branchId: String = "new") = "branch_setup/$branchId"
     }
-    object Counting : Screen("counting/{branchId}") {
-        fun createRoute(branchId: String) = "counting/$branchId"
+    object Counting : Screen("counting/{branchId}?serviceId={serviceId}") {
+        fun createRoute(branchId: String, serviceId: String? = null) =
+            if (serviceId != null) "counting/$branchId?serviceId=$serviceId"
+            else "counting/$branchId"
     }
     object History : Screen("history")
     object HistoryDetail : Screen("history/{serviceId}") {

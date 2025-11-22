@@ -85,7 +85,14 @@ fun NavGraph(
 
         composable(
             route = Screen.Counting.route,
-            arguments = listOf(navArgument("branchId") { type = NavType.StringType })
+            arguments = listOf(
+                navArgument("branchId") { type = NavType.StringType },
+                navArgument("serviceId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
         ) {
             CountingScreen(
                 onNavigateBack = { navController.popBackStack() }
@@ -94,8 +101,8 @@ fun NavGraph(
 
         composable(Screen.History.route) {
             HistoryScreen(
-                onServiceClick = { serviceId ->
-                    navController.navigate(Screen.HistoryDetail.createRoute(serviceId))
+                onServiceClick = { branchId, serviceId ->
+                    navController.navigate(Screen.Counting.createRoute(branchId, serviceId))
                 },
                 onNavigateBack = { navController.popBackStack() }
             )

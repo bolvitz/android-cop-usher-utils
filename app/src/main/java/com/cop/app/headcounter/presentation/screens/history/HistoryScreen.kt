@@ -21,7 +21,7 @@ import java.util.*
 @Composable
 fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel(),
-    onServiceClick: (String) -> Unit,
+    onServiceClick: (branchId: String, serviceId: String) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     val haptic = rememberHapticFeedback()
@@ -101,7 +101,7 @@ fun HistoryScreen(
                             service = serviceWithDetails,
                             onResumeEdit = {
                                 haptic.medium()
-                                onServiceClick(serviceWithDetails.service.id)
+                                onServiceClick(serviceWithDetails.service.branchId, serviceWithDetails.service.id)
                             },
                             onViewReport = {
                                 haptic.light()
