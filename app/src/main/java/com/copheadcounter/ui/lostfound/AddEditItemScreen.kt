@@ -19,6 +19,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun AddEditItemScreen(
     item: LostFoundItem?,
+    branchId: String,
     onSave: (LostFoundItem) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
@@ -165,6 +166,7 @@ fun AddEditItemScreen(
                         if (name.isNotBlank() && description.isNotBlank() && location.isNotBlank()) {
                             val newItem = if (item == null) {
                                 LostFoundItem(
+                                    branchId = branchId,
                                     name = name,
                                     description = description,
                                     category = category,

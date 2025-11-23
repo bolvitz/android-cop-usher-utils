@@ -8,13 +8,8 @@ class CounterViewModel : ViewModel() {
     private val _counterItems = mutableStateListOf<CounterItem>()
     val counterItems: List<CounterItem> = _counterItems
 
-    init {
-        // Add a default counter for demonstration
-        addCounter("People")
-    }
-
-    fun addCounter(name: String) {
-        _counterItems.add(CounterItem(name = name))
+    fun addCounter(branchId: String, name: String) {
+        _counterItems.add(CounterItem(branchId = branchId, name = name))
     }
 
     fun incrementCount(id: String) {
@@ -41,5 +36,9 @@ class CounterViewModel : ViewModel() {
             val item = _counterItems[index]
             _counterItems[index] = item.copy(count = 0)
         }
+    }
+
+    fun getCountersForBranch(branchId: String): List<CounterItem> {
+        return _counterItems.filter { it.branchId == branchId }
     }
 }

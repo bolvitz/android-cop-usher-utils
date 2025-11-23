@@ -6,6 +6,7 @@ import java.time.LocalDateTime
 
 data class LostFoundItem(
     val id: String = UUID.randomUUID().toString(),
+    val branchId: String,
     val name: String,
     val description: String,
     val category: ItemCategory,

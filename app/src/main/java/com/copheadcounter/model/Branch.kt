@@ -2,9 +2,9 @@ package com.copheadcounter.model
 
 import java.util.UUID
 
-data class CounterItem(
+data class Branch(
     val id: String = UUID.randomUUID().toString(),
-    val branchId: String,
     val name: String,
-    val count: Int = 0
+    val location: String = "",
+    val description: String = ""
 )

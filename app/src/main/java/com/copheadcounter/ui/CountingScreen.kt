@@ -21,11 +21,12 @@ import com.copheadcounter.model.CounterItem
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CountingScreen(
+    branchName: String,
     counterItems: List<CounterItem>,
     onIncrementCount: (String) -> Unit,
     onDecrementCount: (String) -> Unit,
     onAddNewCounter: (String) -> Unit,
-    onNavigateBack: (() -> Unit)? = null,
+    onNavigateBack: (() -> Unit),
     modifier: Modifier = Modifier
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
@@ -33,15 +34,21 @@ fun CountingScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Head Counter") },
+                title = {
+                    Column {
+                        Text("Head Counter")
+                        Text(
+                            text = branchName,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                },
                 navigationIcon = {
-                    if (onNavigateBack != null) {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(
-                                imageVector = androidx.compose.material.icons.Icons.Default.ArrowBack,
-                                contentDescription = "Back"
-                            )
-                        }
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

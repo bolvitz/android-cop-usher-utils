@@ -12,27 +12,8 @@ class LostFoundViewModel : ViewModel() {
     private val _items = mutableStateListOf<LostFoundItem>()
     val items: List<LostFoundItem> = _items
 
-    init {
-        // Add sample items for demonstration
-        addItem(
-            name = "iPhone 13 Pro",
-            description = "Black iPhone with cracked screen protector",
-            category = ItemCategory.PHONE,
-            dateFound = LocalDate.now().minusDays(5),
-            location = "Library 2nd Floor",
-            notes = "Found near study area"
-        )
-        addItem(
-            name = "Brown Leather Wallet",
-            description = "Contains student ID and credit cards",
-            category = ItemCategory.WALLET,
-            dateFound = LocalDate.now().minusDays(12),
-            location = "Cafeteria",
-            notes = "Handed in by cleaning staff"
-        )
-    }
-
     fun addItem(
+        branchId: String,
         name: String,
         description: String,
         category: ItemCategory,
@@ -42,6 +23,7 @@ class LostFoundViewModel : ViewModel() {
     ) {
         _items.add(
             LostFoundItem(
+                branchId = branchId,
                 name = name,
                 description = description,
                 category = category,
@@ -118,5 +100,9 @@ class LostFoundViewModel : ViewModel() {
                 )
             }
         }
+    }
+
+    fun getItemsForBranch(branchId: String): List<LostFoundItem> {
+        return _items.filter { it.branchId == branchId }
     }
 }

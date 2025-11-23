@@ -12,8 +12,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.copheadcounter.navigation.NavGraph
 import com.copheadcounter.ui.theme.CopHeadCounterTheme
+import com.copheadcounter.viewmodel.BranchViewModel
 import com.copheadcounter.viewmodel.CounterViewModel
 import com.copheadcounter.viewmodel.LostFoundViewModel
+import com.copheadcounter.viewmodel.SettingsViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,18 +28,33 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
+                    val branchViewModel: BranchViewModel = viewModel()
                     val counterViewModel: CounterViewModel = viewModel()
                     val lostFoundViewModel: LostFoundViewModel = viewModel()
+                    val settingsViewModel: SettingsViewModel = viewModel()
 
                     NavGraph(
                         navController = navController,
-                        counterItems = counterViewModel.counterItems,
+                        branches = branchViewModel.branches,
+                        settings = settingsViewModel.settings,
+                        onAddBranch = { name, location, description ->
+                            branchViewModel.addBranch(name, location, description)
+                        },
+                        getBranchById = { id -> branchViewModel.getBranchById(id) },
+                        getCountersForBranch = { branchId ->
+                            counterViewModel.getCountersForBranch(branchId)
+                        },
                         onIncrementCount = { id -> counterViewModel.incrementCount(id) },
                         onDecrementCount = { id -> counterViewModel.decrementCount(id) },
-                        onAddNewCounter = { name -> counterViewModel.addCounter(name) },
-                        lostFoundItems = lostFoundViewModel.items,
-                        onAddItem = { item ->
+                        onAddNewCounter = { branchId, name ->
+                            counterViewModel.addCounter(branchId, name)
+                        },
+                        getItemsForBranch = { branchId ->
+                            lostFoundViewModel.getItemsForBranch(branchId)
+                        },
+                        onAddItem = { branchId, item ->
                             lostFoundViewModel.addItem(
+                                branchId = branchId,
                                 name = item.name,
                                 description = item.description,
                                 category = item.category,
@@ -54,7 +71,13 @@ class MainActivity : ComponentActivity() {
                         onUpdateStatus = { id, status ->
                             lostFoundViewModel.updateStatus(id, status)
                         },
-                        getItemById = { id -> lostFoundViewModel.getItemById(id) }
+                        getItemById = { id -> lostFoundViewModel.getItemById(id) },
+                        onCounterEnabledChange = { enabled ->
+                            settingsViewModel.updateCounterEnabled(enabled)
+                        },
+                        onLostFoundEnabledChange = { enabled ->
+                            settingsViewModel.updateLostFoundEnabled(enabled)
+                        }
                     )
                 }
             }

@@ -19,6 +19,7 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LostFoundListScreen(
+    branchName: String,
     items: List<LostFoundItem>,
     onItemClick: (String) -> Unit,
     onAddItem: () -> Unit,
@@ -45,7 +46,15 @@ fun LostFoundListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Lost & Found Inventory") },
+                title = {
+                    Column {
+                        Text("Lost & Found Inventory")
+                        Text(
+                            text = branchName,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
