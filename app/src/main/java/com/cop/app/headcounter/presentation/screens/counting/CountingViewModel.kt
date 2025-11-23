@@ -3,10 +3,10 @@ package com.cop.app.headcounter.presentation.screens.counting
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.cop.app.headcounter.data.local.dao.AreaCountDao
 import com.cop.app.headcounter.data.local.entities.AreaTemplateEntity
 import com.cop.app.headcounter.data.local.entities.ServiceTypeEntity
 import com.cop.app.headcounter.domain.models.ServiceType
+import com.cop.app.headcounter.domain.repository.AreaCountRepository
 import com.cop.app.headcounter.domain.repository.BranchRepository
 import com.cop.app.headcounter.domain.repository.ServiceRepository
 import com.cop.app.headcounter.domain.repository.ServiceTypeRepository
@@ -20,7 +20,7 @@ class CountingViewModel @Inject constructor(
     private val branchRepository: BranchRepository,
     private val serviceRepository: ServiceRepository,
     private val serviceTypeRepository: ServiceTypeRepository,
-    private val areaCountDao: AreaCountDao,
+    private val areaCountRepository: AreaCountRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -50,7 +50,7 @@ class CountingViewModel @Inject constructor(
         loadBranch()
         // If an existing service ID is provided, load it
         existingServiceId?.let { serviceId ->
-            _uiState.value = _uiState.value.copy(serviceId = serviceId)
+            _uiState.update { it.copy(serviceId = serviceId) }
             loadServiceDetails(serviceId)
         }
     }
@@ -59,11 +59,13 @@ class CountingViewModel @Inject constructor(
         viewModelScope.launch {
             branchRepository.getBranchById(branchId).collect { branchWithAreas ->
                 branchWithAreas?.let {
-                    _uiState.value = _uiState.value.copy(
-                        branchName = it.branch.name,
-                        branchCode = it.branch.code,
-                        isLoading = false
-                    )
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            branchName = it.branch.name,
+                            branchCode = it.branch.code,
+                            isLoading = false
+                        )
+                    }
                 }
             }
         }
@@ -77,7 +79,7 @@ class CountingViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(isLoading = true)
+                _uiState.update { it.copy(isLoading = true) }
 
                 val serviceId = serviceRepository.createNewService(
                     branchId = branchId,
@@ -88,21 +90,25 @@ class CountingViewModel @Inject constructor(
                     serviceTypeId = serviceTypeId
                 )
 
-                _uiState.value = _uiState.value.copy(
-                    serviceId = serviceId,
-                    serviceType = ServiceType.SUNDAY_AM, // Deprecated
-                    serviceDate = date,
-                    serviceName = serviceTypeName,
-                    counterName = countedBy,
-                    isLoading = false
-                )
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        serviceId = serviceId,
+                        serviceType = ServiceType.SUNDAY_AM, // Deprecated
+                        serviceDate = date,
+                        serviceName = serviceTypeName,
+                        counterName = countedBy,
+                        isLoading = false
+                    )
+                }
 
                 loadServiceDetails(serviceId)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = e.message
-                )
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        isLoading = false,
+                        error = e.message
+                    )
+                }
             }
         }
     }
@@ -112,7 +118,7 @@ class CountingViewModel @Inject constructor(
         viewModelScope.launch {
             combine(
                 serviceRepository.getServiceById(serviceId),
-                areaCountDao.getAreaCountsByService(serviceId)
+                areaCountRepository.getAreaCountsByService(serviceId)
             ) { serviceWithDetails, areaCounts ->
                 Pair(serviceWithDetails, areaCounts)
             }.collect { (serviceWithDetails, areaCounts) ->
@@ -132,12 +138,14 @@ class CountingViewModel @Inject constructor(
                     }
 
                     // Single atomic update to prevent flickering
-                    _uiState.value = _uiState.value.copy(
-                        totalAttendance = details.service.totalAttendance,
-                        totalCapacity = details.service.totalCapacity,
-                        isLocked = details.service.isLocked,
-                        areaCounts = areaCountStates
-                    )
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            totalAttendance = details.service.totalAttendance,
+                            totalCapacity = details.service.totalCapacity,
+                            isLocked = details.service.isLocked,
+                            areaCounts = areaCountStates
+                        )
+                    }
                 }
             }
         }
@@ -260,9 +268,9 @@ class CountingViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val report = serviceRepository.exportServiceReport(serviceId)
-                _uiState.value = _uiState.value.copy(shareableReport = report)
+                _uiState.update { it.copy(shareableReport = report) }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
+                _uiState.update { it.copy(error = e.message) }
             }
         }
     }

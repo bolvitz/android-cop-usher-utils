@@ -1,10 +1,14 @@
 package com.cop.app.headcounter.data.local.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 
-@Entity(tableName = "branches")
+@Entity(
+    tableName = "branches",
+    indices = [Index(value = ["code"], unique = true)]
+)
 data class BranchEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),

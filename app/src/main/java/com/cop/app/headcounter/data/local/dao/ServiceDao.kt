@@ -85,4 +85,7 @@ interface ServiceDao {
         startDate: Long,
         endDate: Long
     ): Flow<List<ServiceWithAreaCounts>>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM services WHERE serviceTypeId = :serviceTypeId LIMIT 1)")
+    suspend fun hasServicesWithType(serviceTypeId: String): Boolean
 }

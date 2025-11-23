@@ -6,8 +6,12 @@ import com.cop.app.headcounter.data.local.dao.ServiceDao
 import com.cop.app.headcounter.data.local.entities.AreaTemplateEntity
 import com.cop.app.headcounter.data.local.entities.BranchEntity
 import com.cop.app.headcounter.data.local.entities.BranchWithAreas
+import com.cop.app.headcounter.domain.common.AppError
+import com.cop.app.headcounter.domain.common.Result
+import com.cop.app.headcounter.domain.common.resultOf
 import com.cop.app.headcounter.domain.models.AreaType
 import com.cop.app.headcounter.domain.repository.BranchRepository
+import com.cop.app.headcounter.domain.validation.DomainValidators
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -41,6 +45,14 @@ class BranchRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun branchCodeExists(code: String, excludeBranchId: String?): Boolean {
+        val allBranches = branchDao.getAllBranchesWithAreas().first()
+        return allBranches.any { branchWithAreas ->
+            branchWithAreas.branch.code.equals(code, ignoreCase = true) &&
+            branchWithAreas.branch.id != excludeBranchId
+        }
+    }
+
     override suspend fun createBranch(
         name: String,
         location: String,
@@ -49,31 +61,103 @@ class BranchRepositoryImpl @Inject constructor(
         contactEmail: String,
         contactPhone: String,
         color: String
-    ): String {
-        val branchId = UUID.randomUUID().toString()
-        val branch = BranchEntity(
-            id = branchId,
+    ): Result<String> {
+        // Validate input
+        val validationResult = DomainValidators.validateBranchInput(
             name = name,
             location = location,
             code = code,
-            contactPerson = contactPerson,
-            contactEmail = contactEmail,
-            contactPhone = contactPhone,
-            color = color
+            contactEmail = contactEmail.takeIf { it.isNotBlank() },
+            contactPhone = contactPhone.takeIf { it.isNotBlank() }
         )
 
-        branchDao.insertBranch(branch)
-        return branchId
+        if (validationResult is Result.Error) {
+            return validationResult
+        }
+
+        // Check for duplicate name
+        if (branchNameExists(name)) {
+            return Result.Error(
+                AppError.AlreadyExists("Branch", "name", name)
+            )
+        }
+
+        // Check for duplicate code
+        if (branchCodeExists(code)) {
+            return Result.Error(
+                AppError.AlreadyExists("Branch", "code", code)
+            )
+        }
+
+        // Create branch
+        return resultOf {
+            val branchId = UUID.randomUUID().toString()
+            val branch = BranchEntity(
+                id = branchId,
+                name = name,
+                location = location,
+                code = code.uppercase(),
+                contactPerson = contactPerson,
+                contactEmail = contactEmail,
+                contactPhone = contactPhone,
+                color = color
+            )
+
+            branchDao.insertBranch(branch)
+            branchId
+        }
     }
 
-    override suspend fun updateBranch(branch: BranchEntity) {
-        branchDao.updateBranch(branch.copy(updatedAt = System.currentTimeMillis()))
+    override suspend fun updateBranch(branch: BranchEntity): Result<Unit> {
+        // Validate input
+        val validationResult = DomainValidators.validateBranchInput(
+            name = branch.name,
+            location = branch.location,
+            code = branch.code,
+            contactEmail = branch.contactEmail.takeIf { it.isNotBlank() },
+            contactPhone = branch.contactPhone.takeIf { it.isNotBlank() }
+        )
+
+        if (validationResult is Result.Error) {
+            return validationResult
+        }
+
+        // Check for duplicate name
+        if (branchNameExists(branch.name, excludeBranchId = branch.id)) {
+            return Result.Error(
+                AppError.AlreadyExists("Branch", "name", branch.name)
+            )
+        }
+
+        // Check for duplicate code
+        if (branchCodeExists(branch.code, excludeBranchId = branch.id)) {
+            return Result.Error(
+                AppError.AlreadyExists("Branch", "code", branch.code)
+            )
+        }
+
+        return resultOf {
+            branchDao.updateBranch(branch.copy(updatedAt = System.currentTimeMillis()))
+        }
     }
 
-    override suspend fun deleteBranch(branchId: String) {
+    override suspend fun deleteBranch(branchId: String): Result<Unit> {
+        // Check if branch has services
+        if (hasServices(branchId)) {
+            return Result.Error(
+                AppError.HasDependencies(
+                    resource = "Branch",
+                    dependencyCount = serviceDao.getRecentServicesByBranch(branchId, 999).first().size,
+                    dependencyType = "services"
+                )
+            )
+        }
+
         val branch = branchDao.getBranchById(branchId).first()
-        branch?.let {
-            branchDao.deleteBranch(it)
+            ?: return Result.Error(AppError.NotFound("Branch", branchId))
+
+        return resultOf {
+            branchDao.deleteBranch(branch)
         }
     }
 

@@ -2,6 +2,7 @@ package com.cop.app.headcounter.domain.repository
 
 import com.cop.app.headcounter.data.local.entities.BranchEntity
 import com.cop.app.headcounter.data.local.entities.BranchWithAreas
+import com.cop.app.headcounter.domain.common.Result
 import kotlinx.coroutines.flow.Flow
 
 interface BranchRepository {
@@ -10,6 +11,7 @@ interface BranchRepository {
     fun getBranchById(id: String): Flow<BranchWithAreas?>
     fun getActiveBranchCount(): Flow<Int>
     suspend fun branchNameExists(name: String, excludeBranchId: String? = null): Boolean
+    suspend fun branchCodeExists(code: String, excludeBranchId: String? = null): Boolean
 
     suspend fun createBranch(
         name: String,
@@ -19,10 +21,10 @@ interface BranchRepository {
         contactEmail: String = "",
         contactPhone: String = "",
         color: String = "#1976D2"
-    ): String
+    ): Result<String>
 
-    suspend fun updateBranch(branch: BranchEntity)
-    suspend fun deleteBranch(branchId: String)
+    suspend fun updateBranch(branch: BranchEntity): Result<Unit>
+    suspend fun deleteBranch(branchId: String): Result<Unit>
     suspend fun setBranchActive(branchId: String, isActive: Boolean)
     suspend fun createDefaultAreasForBranch(branchId: String, areaCount: Int = 6)
     suspend fun hasServices(branchId: String): Boolean

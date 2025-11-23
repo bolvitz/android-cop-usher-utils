@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.cop.app.headcounter.data.local.dao.*
 import com.cop.app.headcounter.data.local.database.AppDatabase
+import com.cop.app.headcounter.data.local.database.MIGRATION_3_4
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,7 +24,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             AppDatabase.DATABASE_NAME
         )
-            .fallbackToDestructiveMigration() // For development; use proper migrations in production
+            .addMigrations(MIGRATION_3_4)
             .build()
     }
 

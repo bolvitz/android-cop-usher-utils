@@ -71,7 +71,6 @@ class ServiceTypeRepositoryImpl @Inject constructor(
     }
 
     override suspend fun hasServices(serviceTypeId: String): Boolean {
-        val services = serviceDao.getRecentServices(999).first()
-        return services.any { it.service.serviceTypeId == serviceTypeId }
+        return serviceDao.hasServicesWithType(serviceTypeId)
     }
 }

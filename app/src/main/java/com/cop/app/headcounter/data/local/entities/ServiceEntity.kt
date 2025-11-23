@@ -22,7 +22,14 @@ import java.util.UUID
             onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("branchId"), Index("date"), Index("serviceType"), Index("serviceTypeId")]
+    indices = [
+        Index("branchId"),
+        Index("date"),
+        Index("serviceType"),
+        Index("serviceTypeId"),
+        Index(value = ["branchId", "date"], name = "idx_services_branch_date"),
+        Index(value = ["branchId", "serviceTypeId"], name = "idx_services_branch_type")
+    ]
 )
 data class ServiceEntity(
     @PrimaryKey

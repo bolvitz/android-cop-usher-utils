@@ -22,7 +22,11 @@ import java.util.UUID
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("serviceId"), Index("areaTemplateId")]
+    indices = [
+        Index("serviceId"),
+        Index("areaTemplateId"),
+        Index(value = ["serviceId", "areaTemplateId"], name = "idx_area_counts_service_template")
+    ]
 )
 data class AreaCountEntity(
     @PrimaryKey

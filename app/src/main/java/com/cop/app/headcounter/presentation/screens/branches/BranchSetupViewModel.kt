@@ -3,11 +3,13 @@ package com.cop.app.headcounter.presentation.screens.branches
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cop.app.headcounter.domain.common.Result
 import com.cop.app.headcounter.domain.repository.BranchRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -74,66 +76,68 @@ class BranchSetupViewModel @Inject constructor(
 
     fun saveBranch(onSuccess: (String) -> Unit) {
         val state = _uiState.value
-        if (state.name.isBlank() || state.location.isBlank() || state.code.isBlank()) {
-            _uiState.value = state.copy(error = "Please fill in all required fields")
-            return
-        }
 
         viewModelScope.launch {
-            try {
-                _uiState.value = state.copy(isLoading = true)
+            _uiState.update { it.copy(isLoading = true, error = null) }
 
-                // Check if branch name already exists
-                val nameExists = branchRepository.branchNameExists(
+            if (isNewBranch) {
+                // Create new branch
+                val result = branchRepository.createBranch(
                     name = state.name,
-                    excludeBranchId = if (isNewBranch) null else branchId
+                    location = state.location,
+                    code = state.code,
+                    contactPerson = state.contactPerson,
+                    contactEmail = state.contactEmail,
+                    contactPhone = state.contactPhone,
+                    color = state.color
                 )
-                if (nameExists) {
-                    _uiState.value = state.copy(
-                        isLoading = false,
-                        error = "A branch with this name already exists. Please choose a different name."
-                    )
-                    return@launch
-                }
 
-                if (isNewBranch) {
-                    // Create new branch
-                    val newBranchId = branchRepository.createBranch(
-                        name = state.name,
-                        location = state.location,
-                        code = state.code,
-                        contactPerson = state.contactPerson,
-                        contactEmail = state.contactEmail,
-                        contactPhone = state.contactPhone,
-                        color = state.color
-                    )
-                    _uiState.value = state.copy(isLoading = false)
-                    onSuccess(newBranchId)
-                } else {
-                    // Update existing branch
-                    branchRepository.getBranchById(branchId!!).collect { branchWithAreas ->
-                        branchWithAreas?.let { existing ->
-                            val updatedBranch = existing.branch.copy(
-                                name = state.name,
-                                location = state.location,
-                                code = state.code,
-                                contactPerson = state.contactPerson,
-                                contactEmail = state.contactEmail,
-                                contactPhone = state.contactPhone,
-                                color = state.color,
-                                updatedAt = System.currentTimeMillis()
+                when (result) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(isLoading = false) }
+                        onSuccess(result.data)
+                    }
+                    is Result.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = result.error.toUserMessage()
                             )
-                            branchRepository.updateBranch(updatedBranch)
-                            _uiState.value = state.copy(isLoading = false)
-                            onSuccess(branchId)
                         }
                     }
                 }
-            } catch (e: Exception) {
-                _uiState.value = state.copy(
-                    isLoading = false,
-                    error = e.message ?: "Failed to save branch"
-                )
+            } else {
+                // Update existing branch
+                branchRepository.getBranchById(branchId!!).collect { branchWithAreas ->
+                    branchWithAreas?.let { existing ->
+                        val updatedBranch = existing.branch.copy(
+                            name = state.name,
+                            location = state.location,
+                            code = state.code,
+                            contactPerson = state.contactPerson,
+                            contactEmail = state.contactEmail,
+                            contactPhone = state.contactPhone,
+                            color = state.color,
+                            updatedAt = System.currentTimeMillis()
+                        )
+
+                        val result = branchRepository.updateBranch(updatedBranch)
+                        when (result) {
+                            is Result.Success -> {
+                                _uiState.update { it.copy(isLoading = false) }
+                                onSuccess(branchId)
+                            }
+                            is Result.Error -> {
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        error = result.error.toUserMessage()
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
