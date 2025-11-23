@@ -339,6 +339,13 @@ fun AreaCountCard(
     onDecrement: () -> Unit,
     onSetCount: (Int) -> Unit
 ) {
+    var previousCount by remember { mutableStateOf(areaCount.count) }
+    val isIncrementing = areaCount.count > previousCount
+
+    LaunchedEffect(areaCount.count) {
+        previousCount = areaCount.count
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -374,13 +381,41 @@ fun AreaCountCard(
                     }
                 }
 
-                // Count display - large and prominent
-                Text(
-                    text = areaCount.count.toString(),
-                    style = MaterialTheme.typography.displayLarge.copy(fontSize = 56.sp),
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                // Count display with flip animation
+                AnimatedContent(
+                    targetState = areaCount.count,
+                    transitionSpec = {
+                        if (targetState > initialState) {
+                            // Incrementing: slide up
+                            slideInVertically(
+                                initialOffsetY = { it },
+                                animationSpec = tween(200)
+                            ) + fadeIn(animationSpec = tween(200)) togetherWith
+                            slideOutVertically(
+                                targetOffsetY = { -it },
+                                animationSpec = tween(200)
+                            ) + fadeOut(animationSpec = tween(200))
+                        } else {
+                            // Decrementing: slide down
+                            slideInVertically(
+                                initialOffsetY = { -it },
+                                animationSpec = tween(200)
+                            ) + fadeIn(animationSpec = tween(200)) togetherWith
+                            slideOutVertically(
+                                targetOffsetY = { it },
+                                animationSpec = tween(200)
+                            ) + fadeOut(animationSpec = tween(200))
+                        }
+                    },
+                    label = "countAnimation"
+                ) { count ->
+                    Text(
+                        text = count.toString(),
+                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 56.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
 
             // Progress bar - inline
