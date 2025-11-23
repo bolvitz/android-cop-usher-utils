@@ -26,5 +26,9 @@ data class BranchEntity(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val isSyncedToCloud: Boolean = false,
-    val cloudId: String = "" // Firebase document ID
+    val cloudId: String = "", // Firebase document ID
+    // Feature toggles
+    val isHeadCountEnabled: Boolean = true,
+    val isLostAndFoundEnabled: Boolean = false,
+    val isIncidentReportingEnabled: Boolean = false
 )

@@ -49,6 +49,9 @@ fun NavGraph(
                 onBranchIncidents = { branchId ->
                     navController.navigate(Screen.IncidentList.createRoute(branchId))
                 },
+                onBranchLostAndFound = { branchId ->
+                    navController.navigate(Screen.LostAndFound.createRoute(branchId))
+                },
                 onNavigateToReports = {
                     navController.navigate(Screen.Reports.route)
                 },

@@ -20,7 +20,10 @@ interface BranchRepository {
         contactPerson: String = "",
         contactEmail: String = "",
         contactPhone: String = "",
-        color: String = "#1976D2"
+        color: String = "#1976D2",
+        isHeadCountEnabled: Boolean = true,
+        isLostAndFoundEnabled: Boolean = false,
+        isIncidentReportingEnabled: Boolean = false
     ): Result<String>
 
     suspend fun updateBranch(branch: BranchEntity): Result<Unit>

@@ -28,6 +28,7 @@ fun BranchListScreen(
     onEditBranch: (String) -> Unit = {},
     onBranchHistory: (String) -> Unit = {},
     onBranchIncidents: (String) -> Unit = {},
+    onBranchLostAndFound: (String) -> Unit = {},
     onNavigateToReports: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
@@ -228,16 +229,55 @@ fun BranchListScreen(
 
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                Button(
-                                    onClick = {
-                                        haptic.medium()
-                                        onBranchClick(branchWithAreas.branch.id)
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
+                                // Feature buttons row
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Icon(Icons.Default.PlayArrow, contentDescription = null)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Start Counting")
+                                    // Head Count button
+                                    if (branchWithAreas.branch.isHeadCountEnabled) {
+                                        Button(
+                                            onClick = {
+                                                haptic.medium()
+                                                onBranchClick(branchWithAreas.branch.id)
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Head Count", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+
+                                    // Lost and Found button
+                                    if (branchWithAreas.branch.isLostAndFoundEnabled) {
+                                        Button(
+                                            onClick = {
+                                                haptic.medium()
+                                                onBranchLostAndFound(branchWithAreas.branch.id)
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Lost & Found", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+
+                                    // Incident Reporting button
+                                    if (branchWithAreas.branch.isIncidentReportingEnabled) {
+                                        Button(
+                                            onClick = {
+                                                haptic.medium()
+                                                onBranchIncidents(branchWithAreas.branch.id)
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Incidents", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
                                 }
                             }
                         }

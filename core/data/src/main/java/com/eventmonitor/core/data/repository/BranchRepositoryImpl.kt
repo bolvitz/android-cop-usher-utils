@@ -60,7 +60,10 @@ class BranchRepositoryImpl @Inject constructor(
         contactPerson: String,
         contactEmail: String,
         contactPhone: String,
-        color: String
+        color: String,
+        isHeadCountEnabled: Boolean,
+        isLostAndFoundEnabled: Boolean,
+        isIncidentReportingEnabled: Boolean
     ): Result<String> {
         // Validate input
         val validationResult = DomainValidators.validateBranchInput(
@@ -100,7 +103,10 @@ class BranchRepositoryImpl @Inject constructor(
                 contactPerson = contactPerson,
                 contactEmail = contactEmail,
                 contactPhone = contactPhone,
-                color = color
+                color = color,
+                isHeadCountEnabled = isHeadCountEnabled,
+                isLostAndFoundEnabled = isLostAndFoundEnabled,
+                isIncidentReportingEnabled = isIncidentReportingEnabled
             )
 
             branchDao.insertBranch(branch)

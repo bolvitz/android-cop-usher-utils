@@ -113,6 +113,49 @@ fun BranchSetupScreen(
                 singleLine = true
             )
 
+            // Feature toggles section
+            Text(
+                text = "Enabled Features",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Text("Head Count")
+                Switch(
+                    checked = uiState.isHeadCountEnabled,
+                    onCheckedChange = viewModel::updateHeadCountEnabled
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Text("Lost and Found")
+                Switch(
+                    checked = uiState.isLostAndFoundEnabled,
+                    onCheckedChange = viewModel::updateLostAndFoundEnabled
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Text("Incident Reporting")
+                Switch(
+                    checked = uiState.isIncidentReportingEnabled,
+                    onCheckedChange = viewModel::updateIncidentReportingEnabled
+                )
+            }
+
             uiState.error?.let { error ->
                 Text(
                     text = error,

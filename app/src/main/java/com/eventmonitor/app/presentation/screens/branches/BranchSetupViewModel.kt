@@ -43,6 +43,9 @@ class BranchSetupViewModel @Inject constructor(
                         contactEmail = it.branch.contactEmail,
                         contactPhone = it.branch.contactPhone,
                         color = it.branch.color,
+                        isHeadCountEnabled = it.branch.isHeadCountEnabled,
+                        isLostAndFoundEnabled = it.branch.isLostAndFoundEnabled,
+                        isIncidentReportingEnabled = it.branch.isIncidentReportingEnabled,
                         isLoading = false
                     )
                 }
@@ -74,6 +77,18 @@ class BranchSetupViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(contactPhone = contactPhone)
     }
 
+    fun updateHeadCountEnabled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isHeadCountEnabled = enabled)
+    }
+
+    fun updateLostAndFoundEnabled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isLostAndFoundEnabled = enabled)
+    }
+
+    fun updateIncidentReportingEnabled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isIncidentReportingEnabled = enabled)
+    }
+
     fun saveBranch(onSuccess: (String) -> Unit) {
         val state = _uiState.value
 
@@ -89,7 +104,10 @@ class BranchSetupViewModel @Inject constructor(
                     contactPerson = state.contactPerson,
                     contactEmail = state.contactEmail,
                     contactPhone = state.contactPhone,
-                    color = state.color
+                    color = state.color,
+                    isHeadCountEnabled = state.isHeadCountEnabled,
+                    isLostAndFoundEnabled = state.isLostAndFoundEnabled,
+                    isIncidentReportingEnabled = state.isIncidentReportingEnabled
                 )
 
                 when (result) {
@@ -118,6 +136,9 @@ class BranchSetupViewModel @Inject constructor(
                             contactEmail = state.contactEmail,
                             contactPhone = state.contactPhone,
                             color = state.color,
+                            isHeadCountEnabled = state.isHeadCountEnabled,
+                            isLostAndFoundEnabled = state.isLostAndFoundEnabled,
+                            isIncidentReportingEnabled = state.isIncidentReportingEnabled,
                             updatedAt = System.currentTimeMillis()
                         )
 
@@ -155,6 +176,9 @@ data class BranchSetupUiState(
     val contactEmail: String = "",
     val contactPhone: String = "",
     val color: String = "#1976D2",
+    val isHeadCountEnabled: Boolean = true,
+    val isLostAndFoundEnabled: Boolean = false,
+    val isIncidentReportingEnabled: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null
 )
