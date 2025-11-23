@@ -33,22 +33,21 @@ class BranchSetupViewModel @Inject constructor(
 
     private fun loadBranch(id: String) {
         viewModelScope.launch {
-            branchRepository.getBranchById(id).collect { branchWithAreas ->
-                branchWithAreas?.let {
-                    _uiState.value = _uiState.value.copy(
-                        name = it.branch.name,
-                        location = it.branch.location,
-                        code = it.branch.code,
-                        contactPerson = it.branch.contactPerson,
-                        contactEmail = it.branch.contactEmail,
-                        contactPhone = it.branch.contactPhone,
-                        color = it.branch.color,
-                        isHeadCountEnabled = it.branch.isHeadCountEnabled,
-                        isLostAndFoundEnabled = it.branch.isLostAndFoundEnabled,
-                        isIncidentReportingEnabled = it.branch.isIncidentReportingEnabled,
-                        isLoading = false
-                    )
-                }
+            val branchWithAreas = branchRepository.getBranchById(id).first()
+            branchWithAreas?.let {
+                _uiState.value = _uiState.value.copy(
+                    name = it.branch.name,
+                    location = it.branch.location,
+                    code = it.branch.code,
+                    contactPerson = it.branch.contactPerson,
+                    contactEmail = it.branch.contactEmail,
+                    contactPhone = it.branch.contactPhone,
+                    color = it.branch.color,
+                    isHeadCountEnabled = it.branch.isHeadCountEnabled,
+                    isLostAndFoundEnabled = it.branch.isLostAndFoundEnabled,
+                    isIncidentReportingEnabled = it.branch.isIncidentReportingEnabled,
+                    isLoading = false
+                )
             }
         }
     }
@@ -126,37 +125,43 @@ class BranchSetupViewModel @Inject constructor(
                 }
             } else {
                 // Update existing branch
-                branchRepository.getBranchById(branchId!!).collect { branchWithAreas ->
-                    branchWithAreas?.let { existing ->
-                        val updatedBranch = existing.branch.copy(
-                            name = state.name,
-                            location = state.location,
-                            code = state.code,
-                            contactPerson = state.contactPerson,
-                            contactEmail = state.contactEmail,
-                            contactPhone = state.contactPhone,
-                            color = state.color,
-                            isHeadCountEnabled = state.isHeadCountEnabled,
-                            isLostAndFoundEnabled = state.isLostAndFoundEnabled,
-                            isIncidentReportingEnabled = state.isIncidentReportingEnabled,
-                            updatedAt = System.currentTimeMillis()
-                        )
+                val branchWithAreas = branchRepository.getBranchById(branchId!!).first()
+                if (branchWithAreas != null) {
+                    val updatedBranch = branchWithAreas.branch.copy(
+                        name = state.name,
+                        location = state.location,
+                        code = state.code,
+                        contactPerson = state.contactPerson,
+                        contactEmail = state.contactEmail,
+                        contactPhone = state.contactPhone,
+                        color = state.color,
+                        isHeadCountEnabled = state.isHeadCountEnabled,
+                        isLostAndFoundEnabled = state.isLostAndFoundEnabled,
+                        isIncidentReportingEnabled = state.isIncidentReportingEnabled,
+                        updatedAt = System.currentTimeMillis()
+                    )
 
-                        val result = branchRepository.updateBranch(updatedBranch)
-                        when (result) {
-                            is Result.Success -> {
-                                _uiState.update { it.copy(isLoading = false) }
-                                onSuccess(branchId)
-                            }
-                            is Result.Error -> {
-                                _uiState.update {
-                                    it.copy(
-                                        isLoading = false,
-                                        error = result.error.toUserMessage()
-                                    )
-                                }
+                    val result = branchRepository.updateBranch(updatedBranch)
+                    when (result) {
+                        is Result.Success -> {
+                            _uiState.update { it.copy(isLoading = false) }
+                            onSuccess(branchId)
+                        }
+                        is Result.Error -> {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    error = result.error.toUserMessage()
+                                )
                             }
                         }
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Branch not found"
+                        )
                     }
                 }
             }
