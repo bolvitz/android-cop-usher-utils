@@ -122,3 +122,52 @@ fun slideDownAnimation() = slideOutVertically(
     targetOffsetY = { it / 2 },
     animationSpec = tween(200, easing = FastOutLinearInEasing)
 ) + fadeOut(animationSpec = tween(200))
+
+/**
+ * Flip up animation for incrementing counters
+ * Creates a 3D flip effect rotating upward
+ */
+fun flipUpEnter() = EnterTransition.None
+
+fun flipUpExit() = ExitTransition.None
+
+/**
+ * Flip down animation for decrementing counters
+ * Creates a 3D flip effect rotating downward
+ */
+fun flipDownEnter() = EnterTransition.None
+
+fun flipDownExit() = ExitTransition.None
+
+/**
+ * Custom content transform for flip animations
+ */
+@OptIn(ExperimentalAnimationApi::class)
+fun flipUpTransform(): ContentTransform {
+    val enter = slideInVertically(
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        initialOffsetY = { it }
+    ) + fadeIn(animationSpec = tween(300))
+
+    val exit = slideOutVertically(
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        targetOffsetY = { -it }
+    ) + fadeOut(animationSpec = tween(300))
+
+    return enter togetherWith exit
+}
+
+@OptIn(ExperimentalAnimationApi::class)
+fun flipDownTransform(): ContentTransform {
+    val enter = slideInVertically(
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        initialOffsetY = { -it }
+    ) + fadeIn(animationSpec = tween(300))
+
+    val exit = slideOutVertically(
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        targetOffsetY = { it }
+    ) + fadeOut(animationSpec = tween(300))
+
+    return enter togetherWith exit
+}
