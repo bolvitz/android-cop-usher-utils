@@ -8,14 +8,8 @@ class BranchViewModel : ViewModel() {
     private val _branches = mutableStateListOf<Branch>()
     val branches: List<Branch> = _branches
 
-    fun addBranch(name: String, location: String = "", description: String = "") {
-        _branches.add(
-            Branch(
-                name = name,
-                location = location,
-                description = description
-            )
-        )
+    fun addBranch(branch: Branch) {
+        _branches.add(branch)
     }
 
     fun updateBranch(updatedBranch: Branch) {

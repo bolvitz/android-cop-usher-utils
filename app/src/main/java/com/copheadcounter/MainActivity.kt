@@ -15,7 +15,6 @@ import com.copheadcounter.ui.theme.CopHeadCounterTheme
 import com.copheadcounter.viewmodel.BranchViewModel
 import com.copheadcounter.viewmodel.CounterViewModel
 import com.copheadcounter.viewmodel.LostFoundViewModel
-import com.copheadcounter.viewmodel.SettingsViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,14 +30,15 @@ class MainActivity : ComponentActivity() {
                     val branchViewModel: BranchViewModel = viewModel()
                     val counterViewModel: CounterViewModel = viewModel()
                     val lostFoundViewModel: LostFoundViewModel = viewModel()
-                    val settingsViewModel: SettingsViewModel = viewModel()
 
                     NavGraph(
                         navController = navController,
                         branches = branchViewModel.branches,
-                        settings = settingsViewModel.settings,
-                        onAddBranch = { name, location, description ->
-                            branchViewModel.addBranch(name, location, description)
+                        onAddBranch = { branch ->
+                            branchViewModel.addBranch(branch)
+                        },
+                        onUpdateBranch = { branch ->
+                            branchViewModel.updateBranch(branch)
                         },
                         getBranchById = { id -> branchViewModel.getBranchById(id) },
                         getCountersForBranch = { branchId ->
@@ -71,13 +71,7 @@ class MainActivity : ComponentActivity() {
                         onUpdateStatus = { id, status ->
                             lostFoundViewModel.updateStatus(id, status)
                         },
-                        getItemById = { id -> lostFoundViewModel.getItemById(id) },
-                        onCounterEnabledChange = { enabled ->
-                            settingsViewModel.updateCounterEnabled(enabled)
-                        },
-                        onLostFoundEnabledChange = { enabled ->
-                            settingsViewModel.updateLostFoundEnabled(enabled)
-                        }
+                        getItemById = { id -> lostFoundViewModel.getItemById(id) }
                     )
                 }
             }

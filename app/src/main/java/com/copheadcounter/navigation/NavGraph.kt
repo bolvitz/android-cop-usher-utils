@@ -6,13 +6,12 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.copheadcounter.model.AppSettings
 import com.copheadcounter.model.Branch
 import com.copheadcounter.model.CounterItem
 import com.copheadcounter.model.LostFoundItem
+import com.copheadcounter.ui.AddEditBranchScreen
 import com.copheadcounter.ui.BranchListScreen
 import com.copheadcounter.ui.CountingScreen
-import com.copheadcounter.ui.SettingsScreen
 import com.copheadcounter.ui.lostfound.AddEditItemScreen
 import com.copheadcounter.ui.lostfound.ItemDetailsScreen
 import com.copheadcounter.ui.lostfound.LostFoundListScreen
@@ -21,8 +20,8 @@ import com.copheadcounter.ui.lostfound.LostFoundListScreen
 fun NavGraph(
     navController: NavHostController,
     branches: List<Branch>,
-    settings: AppSettings,
-    onAddBranch: (String, String, String) -> Unit,
+    onAddBranch: (Branch) -> Unit,
+    onUpdateBranch: (Branch) -> Unit,
     getBranchById: (String) -> Branch?,
     getCountersForBranch: (String) -> List<CounterItem>,
     onIncrementCount: (String) -> Unit,
@@ -34,9 +33,7 @@ fun NavGraph(
     onDeleteItem: (String) -> Unit,
     onClaimItem: (String, String, String) -> Unit,
     onUpdateStatus: (String, com.copheadcounter.model.ItemStatus) -> Unit,
-    getItemById: (String) -> LostFoundItem?,
-    onCounterEnabledChange: (Boolean) -> Unit,
-    onLostFoundEnabledChange: (Boolean) -> Unit
+    getItemById: (String) -> LostFoundItem?
 ) {
     NavHost(
         navController = navController,
@@ -46,30 +43,55 @@ fun NavGraph(
         composable(Screen.BranchList.route) {
             BranchListScreen(
                 branches = branches,
-                settings = settings,
                 onBranchCounterClick = { branchId ->
                     navController.navigate(Screen.Counter.createRoute(branchId))
                 },
                 onBranchLostFoundClick = { branchId ->
                     navController.navigate(Screen.LostFoundList.createRoute(branchId))
                 },
-                onAddBranch = onAddBranch,
-                onNavigateToSettings = {
-                    navController.navigate(Screen.Settings.route)
+                onAddBranch = {
+                    navController.navigate(Screen.AddBranch.route)
+                },
+                onEditBranch = { branchId ->
+                    navController.navigate(Screen.EditBranch.createRoute(branchId))
                 }
             )
         }
 
-        // Settings Screen
-        composable(Screen.Settings.route) {
-            SettingsScreen(
-                settings = settings,
-                onCounterEnabledChange = onCounterEnabledChange,
-                onLostFoundEnabledChange = onLostFoundEnabledChange,
-                onNavigateBack = {
+        // Add Branch Screen
+        composable(Screen.AddBranch.route) {
+            AddEditBranchScreen(
+                branch = null,
+                onSave = { branch ->
+                    onAddBranch(branch)
+                    navController.popBackStack()
+                },
+                onCancel = {
                     navController.popBackStack()
                 }
             )
+        }
+
+        // Edit Branch Screen
+        composable(
+            route = Screen.EditBranch.route,
+            arguments = listOf(navArgument("branchId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val branchId = backStackEntry.arguments?.getString("branchId") ?: ""
+            val branch = getBranchById(branchId)
+
+            if (branch != null) {
+                AddEditBranchScreen(
+                    branch = branch,
+                    onSave = { updatedBranch ->
+                        onUpdateBranch(updatedBranch)
+                        navController.popBackStack()
+                    },
+                    onCancel = {
+                        navController.popBackStack()
+                    }
+                )
+            }
         }
 
         // Counter Screen

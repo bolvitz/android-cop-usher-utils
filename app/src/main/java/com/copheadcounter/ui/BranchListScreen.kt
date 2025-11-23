@@ -12,41 +12,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.copheadcounter.model.AppSettings
 import com.copheadcounter.model.Branch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BranchListScreen(
     branches: List<Branch>,
-    settings: AppSettings,
     onBranchCounterClick: (String) -> Unit,
     onBranchLostFoundClick: (String) -> Unit,
     onAddBranch: () -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onEditBranch: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showAddDialog by remember { mutableStateOf(false) }
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("COP Branches") },
-                actions = {
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = onAddBranch,
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Branch")
@@ -78,32 +68,22 @@ fun BranchListScreen(
                 items(branches, key = { it.id }) { branch ->
                     BranchCard(
                         branch = branch,
-                        settings = settings,
                         onCounterClick = { onBranchCounterClick(branch.id) },
-                        onLostFoundClick = { onBranchLostFoundClick(branch.id) }
+                        onLostFoundClick = { onBranchLostFoundClick(branch.id) },
+                        onEditClick = { onEditBranch(branch.id) }
                     )
                 }
             }
         }
-    }
-
-    if (showAddDialog) {
-        AddBranchDialog(
-            onDismiss = { showAddDialog = false },
-            onConfirm = { name, location, description ->
-                onAddBranch(name, location, description)
-                showAddDialog = false
-            }
-        )
     }
 }
 
 @Composable
 fun BranchCard(
     branch: Branch,
-    settings: AppSettings,
     onCounterClick: () -> Unit,
     onLostFoundClick: () -> Unit,
+    onEditClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -114,12 +94,27 @@ fun BranchCard(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Branch Info
-            Text(
-                text = branch.name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
+            // Branch Info with Edit Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = branch.name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+
+                IconButton(onClick = onEditClick) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Branch",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             if (branch.location.isNotEmpty()) {
                 Row(
@@ -156,7 +151,7 @@ fun BranchCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Counter Button
-                if (settings.isCounterEnabled) {
+                if (branch.isCounterEnabled) {
                     Button(
                         onClick = onCounterClick,
                         modifier = Modifier.weight(1f),
@@ -176,7 +171,7 @@ fun BranchCard(
                 }
 
                 // Lost & Found Button
-                if (settings.isLostFoundEnabled) {
+                if (branch.isLostFoundEnabled) {
                     Button(
                         onClick = onLostFoundClick,
                         modifier = Modifier.weight(1f),
@@ -197,65 +192,4 @@ fun BranchCard(
             }
         }
     }
-}
-
-@Composable
-fun AddBranchDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String, String, String) -> Unit
-) {
-    var branchName by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add New Branch") },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedTextField(
-                    value = branchName,
-                    onValueChange = { branchName = it },
-                    label = { Text("Branch Name *") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    label = { Text("Location") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description") },
-                    maxLines = 3,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (branchName.isNotBlank()) {
-                        onConfirm(branchName, location, description)
-                    }
-                },
-                enabled = branchName.isNotBlank()
-            ) {
-                Text("Add")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
 }

@@ -2,7 +2,10 @@ package com.copheadcounter.navigation
 
 sealed class Screen(val route: String) {
     object BranchList : Screen("branch_list")
-    object Settings : Screen("settings")
+    object AddBranch : Screen("add_branch")
+    object EditBranch : Screen("edit_branch/{branchId}") {
+        fun createRoute(branchId: String) = "edit_branch/$branchId"
+    }
     object Counter : Screen("counter/{branchId}") {
         fun createRoute(branchId: String) = "counter/$branchId"
     }
