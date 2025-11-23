@@ -377,6 +377,7 @@ fun StatusBadge(status: IncidentStatus) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FilterDialog(
     selectedStatus: String?,

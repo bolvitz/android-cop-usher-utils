@@ -4,6 +4,7 @@ import com.cop.app.headcounter.data.local.dao.IncidentDao
 import com.cop.app.headcounter.data.local.entities.IncidentEntity
 import com.cop.app.headcounter.domain.common.AppError
 import com.cop.app.headcounter.domain.common.Result
+import com.cop.app.headcounter.domain.common.ValidationFailure
 import com.cop.app.headcounter.domain.common.resultOf
 import com.cop.app.headcounter.domain.models.IncidentStatus
 import com.cop.app.headcounter.domain.repository.IncidentRepository
@@ -75,13 +76,13 @@ class IncidentRepositoryImpl @Inject constructor(
         // Validate input
         if (title.isBlank()) {
             return Result.Error(
-                AppError.ValidationError("Title cannot be empty")
+                AppError.ValidationError(ValidationFailure.EmptyString("Title"))
             )
         }
 
         if (description.isBlank()) {
             return Result.Error(
-                AppError.ValidationError("Description cannot be empty")
+                AppError.ValidationError(ValidationFailure.EmptyString("Description"))
             )
         }
 
@@ -110,13 +111,13 @@ class IncidentRepositoryImpl @Inject constructor(
     override suspend fun updateIncident(incident: IncidentEntity): Result<Unit> {
         if (incident.title.isBlank()) {
             return Result.Error(
-                AppError.ValidationError("Title cannot be empty")
+                AppError.ValidationError(ValidationFailure.EmptyString("Title"))
             )
         }
 
         if (incident.description.isBlank()) {
             return Result.Error(
-                AppError.ValidationError("Description cannot be empty")
+                AppError.ValidationError(ValidationFailure.EmptyString("Description"))
             )
         }
 
@@ -157,7 +158,7 @@ class IncidentRepositoryImpl @Inject constructor(
 
         if (assignedTo.isBlank()) {
             return Result.Error(
-                AppError.ValidationError("Assignee name is required")
+                AppError.ValidationError(ValidationFailure.RequiredField("Assignee name"))
             )
         }
 
