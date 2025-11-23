@@ -190,17 +190,6 @@ fun BranchListScreen(
                                                 onDismissRequest = { expanded = false }
                                             ) {
                                                 DropdownMenuItem(
-                                                    text = { Text("Incidents") },
-                                                    onClick = {
-                                                        haptic.light()
-                                                        expanded = false
-                                                        onBranchIncidents(branchWithAreas.branch.id)
-                                                    },
-                                                    leadingIcon = {
-                                                        Icon(Icons.Default.Warning, null)
-                                                    }
-                                                )
-                                                DropdownMenuItem(
                                                     text = { Text("Edit") },
                                                     onClick = {
                                                         haptic.light()
