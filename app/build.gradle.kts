@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-    namespace = "com.cop.app.headcounter"
+    namespace = "com.eventmonitor.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.cop.app.headcounter"
+        applicationId = "com.eventmonitor.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -26,10 +26,7 @@ android {
             useSupportLibrary = true
         }
 
-        // Room schema export
-        ksp {
-            arg("room.schemaLocation", "$projectDir/schemas")
-        }
+        // Room schema export - now handled in core:data module
     }
 
     buildTypes {
@@ -67,15 +64,19 @@ android {
         }
     }
 
-    sourceSets {
-        // Add the schema location to androidTest assets
-        getByName("androidTest") {
-            assets.srcDirs("$projectDir/schemas")
-        }
-    }
 }
 
 dependencies {
+    // Core modules
+    implementation(project(":core:common"))
+    implementation(project(":core:data"))
+    implementation(project(":core:domain"))
+
+    // Feature modules
+    implementation(project(":feature:headcounter"))
+    implementation(project(":feature:lostandfound"))
+    implementation(project(":feature:incidents"))
+
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.0.21")
 
@@ -103,11 +104,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
-    // Room
-    val roomVersion = "2.6.1"
-    implementation("androidx.room:room-runtime:$roomVersion")
-    implementation("androidx.room:room-ktx:$roomVersion")
-    ksp("androidx.room:room-compiler:$roomVersion")
+    // Room - provided by core:data module
 
     // Hilt
     implementation("com.google.dagger:hilt-android:2.51.1")
@@ -162,5 +159,4 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation("androidx.room:room-testing:$roomVersion")
 }
