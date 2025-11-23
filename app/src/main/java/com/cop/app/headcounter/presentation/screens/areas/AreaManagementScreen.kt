@@ -227,7 +227,7 @@ fun AddAreaDialog(
     onAdd: (String, AreaType, Int) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf(AreaType.BAY) }
+    var selectedType by remember { mutableStateOf<AreaType>(AreaType.SEATING) }
     var capacity by remember { mutableStateOf("100") }
     var typeExpanded by remember { mutableStateOf(false) }
 
@@ -315,7 +315,7 @@ fun QuickAddAreasDialog(
     onDismiss: () -> Unit,
     onAdd: (AreaType, Int, Int) -> Unit
 ) {
-    var selectedType by remember { mutableStateOf(AreaType.BAY) }
+    var selectedType by remember { mutableStateOf<AreaType>(AreaType.SEATING) }
     var count by remember { mutableStateOf("6") }
     var startNumber by remember { mutableStateOf("1") }
     var typeExpanded by remember { mutableStateOf(false) }
@@ -390,13 +390,21 @@ fun QuickAddAreasDialog(
                         val examples = (0 until minOf(3, countInt)).map { index ->
                             val number = startInt + index
                             when (selectedType) {
-                                AreaType.BAY -> "Bay $number"
-                                AreaType.BABY_ROOM -> "Baby Room $number"
-                                AreaType.PARKING -> "Parking $number"
-                                AreaType.BALCONY -> "Balcony $number"
+                                AreaType.SEATING -> "Seating $number"
+                                AreaType.STANDING -> "Standing $number"
+                                AreaType.VIP -> "VIP $number"
+                                AreaType.GENERAL_ADMISSION -> "General Admission $number"
                                 AreaType.OVERFLOW -> "Overflow $number"
+                                AreaType.PARKING -> "Parking $number"
+                                AreaType.REGISTRATION -> "Registration $number"
                                 AreaType.LOBBY -> "Lobby $number"
                                 AreaType.OUTDOOR -> "Outdoor $number"
+                                AreaType.STAGE -> "Stage $number"
+                                AreaType.BACKSTAGE -> "Backstage $number"
+                                AreaType.CARE_ROOM -> "Care Room $number"
+                                AreaType.FOOD_AREA -> "Food Area $number"
+                                AreaType.RESTROOMS -> "Restrooms $number"
+                                AreaType.EMERGENCY_EXIT -> "Emergency Exit $number"
                                 AreaType.OTHER -> "Area $number"
                             }
                         }

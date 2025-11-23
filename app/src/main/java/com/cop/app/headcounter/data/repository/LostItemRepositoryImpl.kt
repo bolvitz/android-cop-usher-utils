@@ -4,6 +4,7 @@ import com.cop.app.headcounter.data.local.dao.LostItemDao
 import com.cop.app.headcounter.data.local.entities.LostItemEntity
 import com.cop.app.headcounter.domain.common.AppError
 import com.cop.app.headcounter.domain.common.Result
+import com.cop.app.headcounter.domain.common.ValidationFailure
 import com.cop.app.headcounter.domain.common.resultOf
 import com.cop.app.headcounter.domain.models.ItemStatus
 import com.cop.app.headcounter.domain.repository.LostItemRepository
@@ -61,13 +62,13 @@ class LostItemRepositoryImpl @Inject constructor(
         // Validate input
         if (description.isBlank()) {
             return Result.Error(
-                AppError.ValidationError("Description cannot be empty")
+                AppError.ValidationError(ValidationFailure.EmptyString("Description"))
             )
         }
 
         if (foundZone.isBlank()) {
             return Result.Error(
-                AppError.ValidationError("Found zone/location is required")
+                AppError.ValidationError(ValidationFailure.RequiredField("Found zone/location"))
             )
         }
 
@@ -97,7 +98,7 @@ class LostItemRepositoryImpl @Inject constructor(
     override suspend fun updateItem(item: LostItemEntity): Result<Unit> {
         if (item.description.isBlank()) {
             return Result.Error(
-                AppError.ValidationError("Description cannot be empty")
+                AppError.ValidationError(ValidationFailure.EmptyString("Description"))
             )
         }
 
@@ -139,7 +140,7 @@ class LostItemRepositoryImpl @Inject constructor(
 
         if (claimedBy.isBlank()) {
             return Result.Error(
-                AppError.ValidationError("Claimer name is required")
+                AppError.ValidationError(ValidationFailure.RequiredField("Claimer name"))
             )
         }
 

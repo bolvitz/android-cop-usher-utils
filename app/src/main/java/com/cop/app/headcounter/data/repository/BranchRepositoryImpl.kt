@@ -174,10 +174,10 @@ class BranchRepositoryImpl @Inject constructor(
                 AreaTemplateEntity(
                     branchId = branchId,
                     name = "Bay ${index + 1}",
-                    type = AreaType.BAY.name,
+                    type = AreaType.SEATING.name,
                     capacity = 100,
                     displayOrder = index,
-                    icon = AreaType.BAY.defaultIcon,
+                    icon = AreaType.SEATING.defaultIcon,
                     color = "#4CAF50"
                 )
             )
@@ -188,10 +188,10 @@ class BranchRepositoryImpl @Inject constructor(
             AreaTemplateEntity(
                 branchId = branchId,
                 name = "Baby Room 1",
-                type = AreaType.BABY_ROOM.name,
+                type = AreaType.CARE_ROOM.name,
                 capacity = 100,
                 displayOrder = areaCount,
-                icon = AreaType.BABY_ROOM.defaultIcon,
+                icon = AreaType.CARE_ROOM.defaultIcon,
                 color = "#FFC107"
             )
         )
@@ -200,10 +200,10 @@ class BranchRepositoryImpl @Inject constructor(
             AreaTemplateEntity(
                 branchId = branchId,
                 name = "Baby Room 2",
-                type = AreaType.BABY_ROOM.name,
+                type = AreaType.CARE_ROOM.name,
                 capacity = 100,
                 displayOrder = areaCount + 1,
-                icon = AreaType.BABY_ROOM.defaultIcon,
+                icon = AreaType.CARE_ROOM.defaultIcon,
                 color = "#FFC107"
             )
         )
@@ -213,10 +213,10 @@ class BranchRepositoryImpl @Inject constructor(
             AreaTemplateEntity(
                 branchId = branchId,
                 name = "Balcony",
-                type = AreaType.BALCONY.name,
+                type = AreaType.OVERFLOW.name,
                 capacity = 100,
                 displayOrder = areaCount + 2,
-                icon = AreaType.BALCONY.defaultIcon,
+                icon = AreaType.OVERFLOW.defaultIcon,
                 color = "#2196F3"
             )
         )

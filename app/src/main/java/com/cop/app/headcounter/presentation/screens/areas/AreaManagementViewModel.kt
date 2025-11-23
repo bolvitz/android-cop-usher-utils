@@ -151,13 +151,21 @@ class AreaManagementViewModel @Inject constructor(
                 repeat(count) { index ->
                     val number = startNumber + index
                     val name = when (areaType) {
-                        AreaType.BAY -> "Bay $number"
-                        AreaType.BABY_ROOM -> "Baby Room $number"
-                        AreaType.PARKING -> "Parking $number"
-                        AreaType.BALCONY -> "Balcony $number"
+                        AreaType.SEATING -> "Seating $number"
+                        AreaType.STANDING -> "Standing $number"
+                        AreaType.VIP -> "VIP $number"
+                        AreaType.GENERAL_ADMISSION -> "General Admission $number"
                         AreaType.OVERFLOW -> "Overflow $number"
+                        AreaType.PARKING -> "Parking $number"
+                        AreaType.REGISTRATION -> "Registration $number"
                         AreaType.LOBBY -> "Lobby $number"
                         AreaType.OUTDOOR -> "Outdoor $number"
+                        AreaType.STAGE -> "Stage $number"
+                        AreaType.BACKSTAGE -> "Backstage $number"
+                        AreaType.CARE_ROOM -> "Care Room $number"
+                        AreaType.FOOD_AREA -> "Food Area $number"
+                        AreaType.RESTROOMS -> "Restrooms $number"
+                        AreaType.EMERGENCY_EXIT -> "Emergency Exit $number"
                         AreaType.OTHER -> "Area $number"
                     }
 

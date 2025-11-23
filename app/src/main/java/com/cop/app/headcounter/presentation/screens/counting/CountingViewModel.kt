@@ -83,7 +83,7 @@ class CountingViewModel @Inject constructor(
 
                 val serviceId = serviceRepository.createNewService(
                     branchId = branchId,
-                    serviceType = ServiceType.SUNDAY_AM, // Deprecated, kept for compatibility
+                    serviceType = ServiceType.GENERAL, // Default event type
                     date = date,
                     countedBy = countedBy,
                     serviceName = serviceTypeName,
@@ -93,7 +93,7 @@ class CountingViewModel @Inject constructor(
                 _uiState.update { currentState ->
                     currentState.copy(
                         serviceId = serviceId,
-                        serviceType = ServiceType.SUNDAY_AM, // Deprecated
+                        serviceType = ServiceType.GENERAL,
                         serviceDate = date,
                         serviceName = serviceTypeName,
                         counterName = countedBy,
@@ -284,7 +284,7 @@ data class CountingUiState(
     val branchName: String = "",
     val branchCode: String = "",
     val serviceId: String? = null,
-    val serviceType: ServiceType = ServiceType.SUNDAY_AM,
+    val serviceType: ServiceType = ServiceType.GENERAL,
     val serviceDate: Long = System.currentTimeMillis(),
     val serviceName: String = "",
     val counterName: String = "",
