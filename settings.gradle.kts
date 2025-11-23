@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CopHeadCounter"
+rootProject.name = "Church Attendance Counter"
 include(":app")

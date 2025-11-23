@@ -1,4 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Head Counter</string>
+
+    <!-- Branch Management -->
+    <string name="branch_selection">Select Branch</string>
+    <string name="add_branch">Add Branch</string>
+    <string name="edit_branch">Edit Branch</string>
+    <string name="branch_name">Branch Name</string>
+    <string name="branch_code">Branch Code</string>
+    <string name="branch_location">Location</string>
+
+    <!-- Counting -->
+    <string name="start_counting">Start Counting</string>
+    <string name="total_attendance">Total Attendance</string>
+    <string name="capacity">Capacity</string>
+    <string name="service_type">Service Type</string>
+    <string name="counted_by">Counted By</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_history">History</string>
+    <string name="nav_reports">Reports</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Actions -->
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="share">Share</string>
+    <string name="export">Export</string>
+
+    <!-- Common -->
+    <string name="loading">Loading…</string>
+    <string name="error">Error</string>
+    <string name="success">Success</string>
 </resources>
