@@ -1,5 +1,6 @@
 package com.eventmonitor.feature.lostandfound.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +23,7 @@ import java.util.*
 fun LostAndFoundScreen(
     locationId: String?,
     onNavigateToAddItem: (String) -> Unit,
+    onNavigateToItemDetail: (String) -> Unit = {},
     onNavigateBack: () -> Unit,
     viewModel: LostAndFoundViewModel = hiltViewModel()
 ) {
@@ -67,6 +69,7 @@ fun LostAndFoundScreen(
                 is LostAndFoundUiState.Success -> {
                     ItemList(
                         items = state.items,
+                        onItemClick = onNavigateToItemDetail,
                         onClaimItem = { showClaimDialog = it },
                         onUpdateStatus = viewModel::updateItemStatus,
                         onDeleteItem = viewModel::deleteItem
@@ -107,6 +110,7 @@ fun LostAndFoundScreen(
 @Composable
 fun ItemList(
     items: List<LostItemEntity>,
+    onItemClick: (String) -> Unit,
     onClaimItem: (String) -> Unit,
     onUpdateStatus: (String, String) -> Unit,
     onDeleteItem: (String) -> Unit
@@ -119,6 +123,7 @@ fun ItemList(
         items(items, key = { it.id }) { item ->
             LostItemCard(
                 item = item,
+                onClick = { onItemClick(item.id) },
                 onClaim = { onClaimItem(item.id) },
                 onUpdateStatus = { status -> onUpdateStatus(item.id, status) },
                 onDelete = { onDeleteItem(item.id) }
@@ -131,6 +136,7 @@ fun ItemList(
 @Composable
 fun LostItemCard(
     item: LostItemEntity,
+    onClick: () -> Unit,
     onClaim: () -> Unit,
     onUpdateStatus: (String) -> Unit,
     onDelete: () -> Unit
@@ -152,7 +158,9 @@ fun LostItemCard(
     val donationProgress = (daysElapsed.toFloat() / totalDays).coerceIn(0f, 1f)
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),

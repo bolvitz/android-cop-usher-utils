@@ -34,6 +34,9 @@ sealed class Screen(val route: String) {
             if (itemId != null) "add_edit_lost_item/$locationId?itemId=$itemId"
             else "add_edit_lost_item/$locationId"
     }
+    object LostItemDetail : Screen("lost_item/{itemId}") {
+        fun createRoute(itemId: String) = "lost_item/$itemId"
+    }
     object IncidentList : Screen("incidents?branchId={branchId}") {
         fun createRoute(branchId: String? = null) =
             if (branchId != null) "incidents?branchId=$branchId"

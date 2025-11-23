@@ -156,6 +156,9 @@ fun NavGraph(
                 onNavigateToAddItem = { locId ->
                     navController.navigate(Screen.AddEditLostItem.createRoute(locId))
                 },
+                onNavigateToItemDetail = { itemId ->
+                    navController.navigate(Screen.LostItemDetail.createRoute(itemId))
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -177,6 +180,22 @@ fun NavGraph(
                 locationId = locationId,
                 itemId = itemId,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.LostItemDetail.route,
+            arguments = listOf(
+                navArgument("itemId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val itemId = backStackEntry.arguments?.getString("itemId") ?: ""
+            com.eventmonitor.feature.lostandfound.screens.LostItemDetailScreen(
+                itemId = itemId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEdit = { locId, itmId ->
+                    navController.navigate(Screen.AddEditLostItem.createRoute(locId, itmId))
+                }
             )
         }
 
