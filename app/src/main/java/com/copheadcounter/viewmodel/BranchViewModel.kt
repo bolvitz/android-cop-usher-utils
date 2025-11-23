@@ -8,13 +8,6 @@ class BranchViewModel : ViewModel() {
     private val _branches = mutableStateListOf<Branch>()
     val branches: List<Branch> = _branches
 
-    init {
-        // Add default branches for demonstration
-        addBranch("Main Office", "123 Main St", "Headquarters")
-        addBranch("North Branch", "456 North Ave", "Northern location")
-        addBranch("South Branch", "789 South Blvd", "Southern location")
-    }
-
     fun addBranch(name: String, location: String = "", description: String = "") {
         _branches.add(
             Branch(
