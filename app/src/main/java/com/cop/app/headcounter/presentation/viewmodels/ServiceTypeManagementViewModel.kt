@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cop.app.headcounter.data.local.entities.ServiceTypeEntity
+import com.cop.app.headcounter.domain.common.Result
 import com.cop.app.headcounter.domain.repository.ServiceTypeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -32,84 +33,70 @@ class ServiceTypeManagementViewModel @Inject constructor(
         description: String = ""
     ) {
         viewModelScope.launch {
-            try {
-                // Check if service type name already exists
-                val nameExists = serviceTypeRepository.serviceTypeNameExists(
-                    name = name,
-                    excludeServiceTypeId = null
-                )
-                if (nameExists) {
-                    _uiState.value = _uiState.value.copy(
-                        error = "A service type with this name already exists. Please choose a different name."
-                    )
-                    return@launch
-                }
+            _uiState.update { it.copy(error = null, message = null) }
 
-                val displayOrder = serviceTypes.value.size
-                serviceTypeRepository.createServiceType(
-                    name = name,
-                    dayType = dayType,
-                    time = time,
-                    description = description,
-                    displayOrder = displayOrder
-                )
-                _uiState.value = _uiState.value.copy(
-                    message = "Service type created successfully"
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = "Failed to create service type: ${e.message}"
-                )
+            val displayOrder = serviceTypes.value.size
+            val result = serviceTypeRepository.createServiceType(
+                name = name,
+                dayType = dayType,
+                time = time,
+                description = description,
+                displayOrder = displayOrder
+            )
+
+            when (result) {
+                is Result.Success -> {
+                    _uiState.update {
+                        it.copy(message = "Service type created successfully")
+                    }
+                }
+                is Result.Error -> {
+                    _uiState.update {
+                        it.copy(error = result.error.toUserMessage())
+                    }
+                }
             }
         }
     }
 
     fun updateServiceType(serviceType: ServiceTypeEntity) {
         viewModelScope.launch {
-            try {
-                // Check if service type name already exists (excluding current service type)
-                val nameExists = serviceTypeRepository.serviceTypeNameExists(
-                    name = serviceType.name,
-                    excludeServiceTypeId = serviceType.id
-                )
-                if (nameExists) {
-                    _uiState.value = _uiState.value.copy(
-                        error = "A service type with this name already exists. Please choose a different name."
-                    )
-                    return@launch
-                }
+            _uiState.update { it.copy(error = null, message = null) }
 
-                serviceTypeRepository.updateServiceType(serviceType)
-                _uiState.value = _uiState.value.copy(
-                    message = "Service type updated successfully"
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = "Failed to update service type: ${e.message}"
-                )
+            val result = serviceTypeRepository.updateServiceType(serviceType)
+
+            when (result) {
+                is Result.Success -> {
+                    _uiState.update {
+                        it.copy(message = "Service type updated successfully")
+                    }
+                }
+                is Result.Error -> {
+                    _uiState.update {
+                        it.copy(error = result.error.toUserMessage())
+                    }
+                }
             }
         }
     }
 
     fun deleteServiceType(id: String) {
         viewModelScope.launch {
-            try {
-                // Check if service type is being used in any service
-                if (serviceTypeRepository.hasServices(id)) {
-                    _uiState.value = _uiState.value.copy(
-                        error = "Cannot delete service type: It is being used in one or more services. Delete those services first."
-                    )
-                    return@launch
-                }
+            _uiState.update { it.copy(error = null, message = null) }
 
-                serviceTypeRepository.deleteServiceType(id)
-                _uiState.value = _uiState.value.copy(
-                    message = "Service type deleted successfully"
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = "Failed to delete service type: ${e.message}"
-                )
+            val result = serviceTypeRepository.deleteServiceType(id)
+
+            when (result) {
+                is Result.Success -> {
+                    _uiState.update {
+                        it.copy(message = "Service type deleted successfully")
+                    }
+                }
+                is Result.Error -> {
+                    _uiState.update {
+                        it.copy(error = result.error.toUserMessage())
+                    }
+                }
             }
         }
     }

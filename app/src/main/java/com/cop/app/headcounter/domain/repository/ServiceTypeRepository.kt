@@ -1,6 +1,7 @@
 package com.cop.app.headcounter.domain.repository
 
 import com.cop.app.headcounter.data.local.entities.ServiceTypeEntity
+import com.cop.app.headcounter.domain.common.Result
 import kotlinx.coroutines.flow.Flow
 
 interface ServiceTypeRepository {
@@ -18,11 +19,11 @@ interface ServiceTypeRepository {
         time: String,
         description: String = "",
         displayOrder: Int = 0
-    ): String
+    ): Result<String>
 
-    suspend fun updateServiceType(serviceType: ServiceTypeEntity)
+    suspend fun updateServiceType(serviceType: ServiceTypeEntity): Result<Unit>
 
-    suspend fun deleteServiceType(id: String)
+    suspend fun deleteServiceType(id: String): Result<Unit>
 
     suspend fun getServiceTypeCount(): Int
 
