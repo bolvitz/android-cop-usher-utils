@@ -24,4 +24,14 @@ sealed class Screen(val route: String) {
         fun createRoute(branchId: String) = "area_management/$branchId"
     }
     object ServiceTypeManagement : Screen("service_type_management")
+    object LostAndFound : Screen("lost_and_found?locationId={locationId}") {
+        fun createRoute(locationId: String? = null) =
+            if (locationId != null) "lost_and_found?locationId=$locationId"
+            else "lost_and_found"
+    }
+    object AddEditLostItem : Screen("add_edit_lost_item/{locationId}?itemId={itemId}") {
+        fun createRoute(locationId: String, itemId: String? = null) =
+            if (itemId != null) "add_edit_lost_item/$locationId?itemId=$itemId"
+            else "add_edit_lost_item/$locationId"
+    }
 }

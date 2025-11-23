@@ -1,21 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Head Counter</string>
+    <string name="app_name">Event Monitor</string>
 
-    <!-- Branch Management -->
-    <string name="branch_selection">Select Branch</string>
-    <string name="add_branch">Add Branch</string>
-    <string name="edit_branch">Edit Branch</string>
-    <string name="branch_name">Branch Name</string>
-    <string name="branch_code">Branch Code</string>
-    <string name="branch_location">Location</string>
+    <!-- Location Management -->
+    <string name="location_selection">Select Location</string>
+    <string name="add_location">Add Location</string>
+    <string name="edit_location">Edit Location</string>
+    <string name="location_name">Location Name</string>
+    <string name="location_code">Location Code</string>
+    <string name="location_address">Address</string>
 
-    <!-- Counting -->
+    <!-- Head Counting -->
     <string name="start_counting">Start Counting</string>
-    <string name="total_attendance">Total Attendance</string>
+    <string name="total_attendance">Total Head Count</string>
     <string name="capacity">Capacity</string>
-    <string name="service_type">Service Type</string>
+    <string name="event_type">Event Type</string>
     <string name="counted_by">Counted By</string>
+
+    <!-- Lost & Found -->
+    <string name="lost_and_found">Lost &amp; Found</string>
+    <string name="add_item">Add Item</string>
+    <string name="item_description">Item Description</string>
+    <string name="found_location">Found Location</string>
+    <string name="item_status">Status</string>
+    <string name="claim_item">Claim Item</string>
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>

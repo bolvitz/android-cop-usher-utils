@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.cop.app.headcounter.data.local.dao.*
 import com.cop.app.headcounter.data.local.database.AppDatabase
 import com.cop.app.headcounter.data.local.database.MIGRATION_3_4
+import com.cop.app.headcounter.data.local.database.MIGRATION_4_5
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,7 +25,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             AppDatabase.DATABASE_NAME
         )
-            .addMigrations(MIGRATION_3_4)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
             .build()
     }
 
@@ -62,5 +63,11 @@ object DatabaseModule {
     @Singleton
     fun provideUserDao(database: AppDatabase): UserDao {
         return database.userDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideLostItemDao(database: AppDatabase): LostItemDao {
+        return database.lostItemDao()
     }
 }

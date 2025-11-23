@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-    namespace = "com.cop.app.headcounter"
+    namespace = "com.eventmonitor.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.cop.app.headcounter"
+        applicationId = "com.eventmonitor.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

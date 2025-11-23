@@ -92,3 +92,46 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         db.execSQL("ALTER TABLE service_types_new RENAME TO service_types")
     }
 }
+
+/**
+ * Migration from version 4 to version 5
+ * Adds:
+ * - Lost & Found feature: lost_items table
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Create lost_items table
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS lost_items (
+                id TEXT PRIMARY KEY NOT NULL,
+                locationId TEXT NOT NULL,
+                description TEXT NOT NULL,
+                category TEXT NOT NULL,
+                foundZone TEXT NOT NULL,
+                foundDate INTEGER NOT NULL,
+                photoUri TEXT NOT NULL,
+                color TEXT NOT NULL,
+                brand TEXT NOT NULL,
+                identifyingMarks TEXT NOT NULL,
+                status TEXT NOT NULL,
+                claimedBy TEXT NOT NULL,
+                claimedDate INTEGER NOT NULL,
+                claimerContact TEXT NOT NULL,
+                verificationNotes TEXT NOT NULL,
+                reportedBy TEXT NOT NULL,
+                notes TEXT NOT NULL,
+                createdAt INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                isSyncedToCloud INTEGER NOT NULL,
+                cloudId TEXT NOT NULL,
+                FOREIGN KEY(locationId) REFERENCES branches(id) ON DELETE CASCADE
+            )
+        """.trimIndent())
+
+        // Create indices for better query performance
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_lost_items_locationId ON lost_items(locationId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_lost_items_status ON lost_items(status)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_lost_items_category ON lost_items(category)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_lost_items_foundDate ON lost_items(foundDate)")
+    }
+}
