@@ -339,15 +339,6 @@ fun AreaCountCard(
     onDecrement: () -> Unit,
     onSetCount: (Int) -> Unit
 ) {
-    val animatedCount by animateIntAsState(
-        targetValue = areaCount.count,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "areaCountAnimation"
-    )
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -385,7 +376,7 @@ fun AreaCountCard(
 
                 // Count display - large and prominent
                 Text(
-                    text = animatedCount.toString(),
+                    text = areaCount.count.toString(),
                     style = MaterialTheme.typography.displayLarge.copy(fontSize = 56.sp),
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
