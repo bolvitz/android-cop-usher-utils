@@ -27,6 +27,7 @@ fun BranchListScreen(
     onManageAreas: (String) -> Unit = {},
     onEditBranch: (String) -> Unit = {},
     onBranchHistory: (String) -> Unit = {},
+    onBranchIncidents: (String) -> Unit = {},
     onNavigateToReports: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
@@ -187,6 +188,17 @@ fun BranchListScreen(
                                                 expanded = expanded,
                                                 onDismissRequest = { expanded = false }
                                             ) {
+                                                DropdownMenuItem(
+                                                    text = { Text("Incidents") },
+                                                    onClick = {
+                                                        haptic.light()
+                                                        expanded = false
+                                                        onBranchIncidents(branchWithAreas.branch.id)
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(Icons.Default.Warning, null)
+                                                    }
+                                                )
                                                 DropdownMenuItem(
                                                     text = { Text("Edit") },
                                                     onClick = {

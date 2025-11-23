@@ -14,9 +14,10 @@ import com.cop.app.headcounter.data.local.entities.*
         ServiceTypeEntity::class,
         AreaCountEntity::class,
         UserEntity::class,
-        LostItemEntity::class
+        LostItemEntity::class,
+        IncidentEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -28,6 +29,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun areaCountDao(): AreaCountDao
     abstract fun userDao(): UserDao
     abstract fun lostItemDao(): LostItemDao
+    abstract fun incidentDao(): IncidentDao
 
     companion object {
         const val DATABASE_NAME = "event_monitor_db"
