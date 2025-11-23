@@ -12,6 +12,8 @@ import com.cop.app.headcounter.presentation.screens.branches.BranchListScreen
 import com.cop.app.headcounter.presentation.screens.branches.BranchSetupScreen
 import com.cop.app.headcounter.presentation.screens.counting.CountingScreen
 import com.cop.app.headcounter.presentation.screens.history.HistoryScreen
+import com.cop.app.headcounter.presentation.screens.lostandfound.AddEditLostItemScreen
+import com.cop.app.headcounter.presentation.screens.lostandfound.LostAndFoundScreen
 import com.cop.app.headcounter.presentation.screens.reports.ReportsScreen
 import com.cop.app.headcounter.presentation.screens.servicetypes.ServiceTypeManagementScreen
 import com.cop.app.headcounter.presentation.screens.settings.SettingsScreen
@@ -126,6 +128,46 @@ fun NavGraph(
                 onAddBranch = {
                     navController.navigate(Screen.BranchSetup.createRoute())
                 }
+            )
+        }
+
+        composable(
+            route = Screen.LostAndFound.route,
+            arguments = listOf(
+                navArgument("locationId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val locationId = backStackEntry.arguments?.getString("locationId")
+            LostAndFoundScreen(
+                locationId = locationId,
+                onNavigateToAddItem = { locId ->
+                    navController.navigate(Screen.AddEditLostItem.createRoute(locId))
+                },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.AddEditLostItem.route,
+            arguments = listOf(
+                navArgument("locationId") { type = NavType.StringType },
+                navArgument("itemId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val locationId = backStackEntry.arguments?.getString("locationId") ?: ""
+            val itemId = backStackEntry.arguments?.getString("itemId")
+            AddEditLostItemScreen(
+                locationId = locationId,
+                itemId = itemId,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

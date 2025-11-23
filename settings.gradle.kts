@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Church Attendance Counter"
+rootProject.name = "Event Monitor"
 include(":app")

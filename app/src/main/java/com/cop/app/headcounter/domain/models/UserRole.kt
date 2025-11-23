@@ -6,7 +6,7 @@ enum class UserRole(val displayName: String) {
     VIEWER("Viewer");
 
     fun canEdit() = this == ADMIN || this == COUNTER
-    fun canManageBranches() = this == ADMIN
+    fun canManageLocations() = this == ADMIN
 
     companion object {
         fun fromString(value: String): UserRole {
