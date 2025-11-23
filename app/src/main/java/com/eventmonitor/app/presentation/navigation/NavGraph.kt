@@ -199,6 +199,9 @@ fun NavGraph(
                 onNavigateToIncidentDetail = { incidentId ->
                     navController.navigate(Screen.IncidentDetail.createRoute(incidentId))
                 },
+                onNavigateToEditIncident = { brId, incidentId ->
+                    navController.navigate(Screen.AddEditIncident.createRoute(brId, incidentId))
+                },
                 branchId = branchId
             )
         }

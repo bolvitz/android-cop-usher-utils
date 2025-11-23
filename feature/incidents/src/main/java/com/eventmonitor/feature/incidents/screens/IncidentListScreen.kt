@@ -30,6 +30,7 @@ fun IncidentListScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAddIncident: (String) -> Unit,
     onNavigateToIncidentDetail: (String) -> Unit,
+    onNavigateToEditIncident: (String, String) -> Unit = { _, _ -> },
     branchId: String? = null,
     viewModel: IncidentListViewModel = hiltViewModel()
 ) {
@@ -168,7 +169,10 @@ fun IncidentListScreen(
                         items(state.incidents) { incident ->
                             IncidentCard(
                                 incident = incident,
-                                onClick = { onNavigateToIncidentDetail(incident.id) }
+                                onClick = { onNavigateToIncidentDetail(incident.id) },
+                                onEdit = {
+                                    branchId?.let { onNavigateToEditIncident(it, incident.id) }
+                                }
                             )
                         }
                     }
@@ -223,7 +227,8 @@ fun IncidentListScreen(
 @Composable
 fun IncidentCard(
     incident: IncidentEntity,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onEdit: () -> Unit = {}
 ) {
     val severity = IncidentSeverity.fromString(incident.severity)
     val status = IncidentStatus.fromString(incident.status)
@@ -231,6 +236,9 @@ fun IncidentCard(
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val severityColor = Color(android.graphics.Color.parseColor(severity.color))
     val statusColor = Color(android.graphics.Color.parseColor(status.color))
+
+    // Can only edit if not resolved or closed
+    val canEdit = status != IncidentStatus.RESOLVED && status != IncidentStatus.CLOSED
 
     Card(
         modifier = Modifier
@@ -443,24 +451,39 @@ fun IncidentCard(
                 ) {
                     StatusBadge(status)
 
-                    // Resolved time if applicable
-                    incident.resolvedAt?.let { resolvedAt ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    // Edit button or resolved time
+                    if (canEdit) {
+                        IconButton(
+                            onClick = onEdit,
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = statusColor
+                                Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
                             )
-                            Text(
-                                text = "Resolved ${dateFormat.format(Date(resolvedAt))}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = statusColor,
-                                fontWeight = FontWeight.Medium
-                            )
+                        }
+                    } else {
+                        // Resolved time if applicable
+                        incident.resolvedAt?.let { resolvedAt ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = statusColor
+                                )
+                                Text(
+                                    text = "Resolved ${dateFormat.format(Date(resolvedAt))}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = statusColor,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
                 }
