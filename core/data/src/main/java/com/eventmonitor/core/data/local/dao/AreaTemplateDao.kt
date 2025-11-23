@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AreaTemplateDao {
-    @Query("SELECT * FROM area_templates WHERE branchId = :branchId AND isActive = 1 ORDER BY displayOrder ASC, name ASC")
+    @Query("SELECT * FROM area_templates WHERE branchId = :branchId AND isActive = 1 ORDER BY name ASC")
     fun getAreasByBranch(branchId: String): Flow<List<AreaTemplateEntity>>
 
     @Query("SELECT * FROM area_templates WHERE id = :areaId")

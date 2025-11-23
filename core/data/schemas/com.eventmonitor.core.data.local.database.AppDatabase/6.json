@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "e124ee4f7359cdad39f5dafd6fb61307",
+    "identityHash": "0d382320e80dd3cf095902061c643f3f",
     "entities": [
       {
         "tableName": "branches",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `location` TEXT NOT NULL, `code` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `logoUrl` TEXT NOT NULL, `color` TEXT NOT NULL, `contactPerson` TEXT NOT NULL, `contactPhone` TEXT NOT NULL, `contactEmail` TEXT NOT NULL, `timezone` TEXT NOT NULL, `notes` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `isSyncedToCloud` INTEGER NOT NULL, `cloudId` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `location` TEXT NOT NULL, `code` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `logoUrl` TEXT NOT NULL, `color` TEXT NOT NULL, `contactPerson` TEXT NOT NULL, `contactPhone` TEXT NOT NULL, `contactEmail` TEXT NOT NULL, `timezone` TEXT NOT NULL, `notes` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `isSyncedToCloud` INTEGER NOT NULL, `cloudId` TEXT NOT NULL, `isHeadCountEnabled` INTEGER NOT NULL, `isLostAndFoundEnabled` INTEGER NOT NULL, `isIncidentReportingEnabled` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -102,6 +102,24 @@
             "fieldPath": "cloudId",
             "columnName": "cloudId",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isHeadCountEnabled",
+            "columnName": "isHeadCountEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isLostAndFoundEnabled",
+            "columnName": "isLostAndFoundEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isIncidentReportingEnabled",
+            "columnName": "isIncidentReportingEnabled",
+            "affinity": "INTEGER",
             "notNull": true
           }
         ],
@@ -1100,7 +1118,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e124ee4f7359cdad39f5dafd6fb61307')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0d382320e80dd3cf095902061c643f3f')"
     ]
   }
 }

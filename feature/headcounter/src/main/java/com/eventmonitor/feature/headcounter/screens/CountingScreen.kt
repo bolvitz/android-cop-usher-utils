@@ -114,15 +114,6 @@ fun CountingScreen(
             }
 
             uiState.eventId != null -> {
-                val animatedAttendance by animateIntAsState(
-                    targetValue = uiState.totalAttendance,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    ),
-                    label = "attendanceAnimation"
-                )
-
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -160,12 +151,28 @@ fun CountingScreen(
                                     )
                                 }
                             }
-                            Text(
-                                text = animatedAttendance.toString(),
-                                style = MaterialTheme.typography.displayMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+
+                            // Total attendance with flip animation matching area counts
+                            AnimatedContent(
+                                targetState = uiState.totalAttendance,
+                                transitionSpec = {
+                                    if (targetState > initialState) {
+                                        // Incrementing: flip up
+                                        flipUpTransform()
+                                    } else {
+                                        // Decrementing: flip down
+                                        flipDownTransform()
+                                    }
+                                },
+                                label = "totalAttendanceAnimation"
+                            ) { attendance ->
+                                Text(
+                                    text = attendance.toString(),
+                                    style = MaterialTheme.typography.displayMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
                         }
                     }
 
