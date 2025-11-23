@@ -34,4 +34,17 @@ sealed class Screen(val route: String) {
             if (itemId != null) "add_edit_lost_item/$locationId?itemId=$itemId"
             else "add_edit_lost_item/$locationId"
     }
+    object IncidentList : Screen("incidents?branchId={branchId}") {
+        fun createRoute(branchId: String? = null) =
+            if (branchId != null) "incidents?branchId=$branchId"
+            else "incidents"
+    }
+    object AddEditIncident : Screen("add_edit_incident/{branchId}?incidentId={incidentId}") {
+        fun createRoute(branchId: String, incidentId: String? = null) =
+            if (incidentId != null) "add_edit_incident/$branchId?incidentId=$incidentId"
+            else "add_edit_incident/$branchId"
+    }
+    object IncidentDetail : Screen("incident/{incidentId}") {
+        fun createRoute(incidentId: String) = "incident/$incidentId"
+    }
 }

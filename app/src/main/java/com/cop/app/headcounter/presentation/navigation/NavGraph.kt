@@ -14,6 +14,9 @@ import com.cop.app.headcounter.presentation.screens.counting.CountingScreen
 import com.cop.app.headcounter.presentation.screens.history.HistoryScreen
 import com.cop.app.headcounter.presentation.screens.lostandfound.AddEditLostItemScreen
 import com.cop.app.headcounter.presentation.screens.lostandfound.LostAndFoundScreen
+import com.cop.app.headcounter.presentation.screens.incidents.AddEditIncidentScreen
+import com.cop.app.headcounter.presentation.screens.incidents.IncidentDetailScreen
+import com.cop.app.headcounter.presentation.screens.incidents.IncidentListScreen
 import com.cop.app.headcounter.presentation.screens.reports.ReportsScreen
 import com.cop.app.headcounter.presentation.screens.servicetypes.ServiceTypeManagementScreen
 import com.cop.app.headcounter.presentation.screens.settings.SettingsScreen
@@ -42,6 +45,9 @@ fun NavGraph(
                 },
                 onBranchHistory = { branchId ->
                     navController.navigate(Screen.History.createRoute(branchId))
+                },
+                onBranchIncidents = { branchId ->
+                    navController.navigate(Screen.IncidentList.createRoute(branchId))
                 },
                 onNavigateToReports = {
                     navController.navigate(Screen.Reports.route)
@@ -168,6 +174,66 @@ fun NavGraph(
                 locationId = locationId,
                 itemId = itemId,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.IncidentList.route,
+            arguments = listOf(
+                navArgument("branchId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val branchId = backStackEntry.arguments?.getString("branchId")
+            IncidentListScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToAddIncident = { brId ->
+                    navController.navigate(Screen.AddEditIncident.createRoute(brId))
+                },
+                onNavigateToIncidentDetail = { incidentId ->
+                    navController.navigate(Screen.IncidentDetail.createRoute(incidentId))
+                },
+                branchId = branchId
+            )
+        }
+
+        composable(
+            route = Screen.AddEditIncident.route,
+            arguments = listOf(
+                navArgument("branchId") { type = NavType.StringType },
+                navArgument("incidentId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val branchId = backStackEntry.arguments?.getString("branchId") ?: ""
+            val incidentId = backStackEntry.arguments?.getString("incidentId")
+            AddEditIncidentScreen(
+                branchId = branchId,
+                incidentId = incidentId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.IncidentDetail.route,
+            arguments = listOf(
+                navArgument("incidentId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val incidentId = backStackEntry.arguments?.getString("incidentId") ?: ""
+            IncidentDetailScreen(
+                incidentId = incidentId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEdit = { incId ->
+                    // We need to get the branchId from the incident, for now navigate back
+                    navController.popBackStack()
+                }
             )
         }
     }

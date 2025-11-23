@@ -135,3 +135,45 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         db.execSQL("CREATE INDEX IF NOT EXISTS index_lost_items_foundDate ON lost_items(foundDate)")
     }
 }
+
+/**
+ * Migration from version 5 to version 6
+ * Adds:
+ * - Incident Reporting feature: incidents table
+ */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Create incidents table
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS incidents (
+                id TEXT PRIMARY KEY NOT NULL,
+                branchId TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                severity TEXT NOT NULL,
+                status TEXT NOT NULL,
+                category TEXT NOT NULL,
+                location TEXT NOT NULL,
+                photoUri TEXT NOT NULL,
+                reportedBy TEXT NOT NULL,
+                assignedTo TEXT NOT NULL,
+                reportedAt INTEGER NOT NULL,
+                resolvedAt INTEGER,
+                notes TEXT NOT NULL,
+                actionsTaken TEXT NOT NULL,
+                createdAt INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                isSyncedToCloud INTEGER NOT NULL,
+                cloudId TEXT NOT NULL,
+                FOREIGN KEY(branchId) REFERENCES branches(id) ON DELETE CASCADE
+            )
+        """.trimIndent())
+
+        // Create indices for better query performance
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_incidents_branchId ON incidents(branchId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_incidents_severity ON incidents(severity)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_incidents_status ON incidents(status)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_incidents_reportedAt ON incidents(reportedAt)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_incidents_resolvedAt ON incidents(resolvedAt)")
+    }
+}
