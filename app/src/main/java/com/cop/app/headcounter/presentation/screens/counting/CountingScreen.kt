@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.cop.app.headcounter.data.local.entities.ServiceTypeEntity
 import com.cop.app.headcounter.domain.models.ServiceType
@@ -338,14 +339,12 @@ fun AreaCountCard(
     onDecrement: () -> Unit,
     onSetCount: (Int) -> Unit
 ) {
-    val animatedCount by animateIntAsState(
-        targetValue = areaCount.count,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "areaCountAnimation"
-    )
+    var previousCount by remember { mutableStateOf(areaCount.count) }
+    val isIncrementing = areaCount.count > previousCount
+
+    LaunchedEffect(areaCount.count) {
+        previousCount = areaCount.count
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -357,7 +356,8 @@ fun AreaCountCard(
         )
     ) {
         Column(
-            modifier = Modifier.padding(10.dp)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Area name and count
             Row(
@@ -368,29 +368,55 @@ fun AreaCountCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = areaCount.template.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
                     )
                     if (areaCount.capacity > 0) {
                         val percentage = (areaCount.count.toFloat() / areaCount.capacity * 100).toInt()
                         Text(
                             text = "$percentage% · ${areaCount.capacity} capacity",
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                // Count display - smaller
-                Text(
-                    text = animatedCount.toString(),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                // Count display with flip animation
+                AnimatedContent(
+                    targetState = areaCount.count,
+                    transitionSpec = {
+                        if (targetState > initialState) {
+                            // Incrementing: slide up
+                            slideInVertically(
+                                initialOffsetY = { it },
+                                animationSpec = tween(200)
+                            ) + fadeIn(animationSpec = tween(200)) togetherWith
+                            slideOutVertically(
+                                targetOffsetY = { -it },
+                                animationSpec = tween(200)
+                            ) + fadeOut(animationSpec = tween(200))
+                        } else {
+                            // Decrementing: slide down
+                            slideInVertically(
+                                initialOffsetY = { -it },
+                                animationSpec = tween(200)
+                            ) + fadeIn(animationSpec = tween(200)) togetherWith
+                            slideOutVertically(
+                                targetOffsetY = { it },
+                                animationSpec = tween(200)
+                            ) + fadeOut(animationSpec = tween(200))
+                        }
+                    },
+                    label = "countAnimation"
+                ) { count ->
+                    Text(
+                        text = count.toString(),
+                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 56.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
 
             // Progress bar - inline
             if (areaCount.capacity > 0) {
@@ -399,75 +425,85 @@ fun AreaCountCard(
                     progress = progress,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(4.dp),
+                        .height(6.dp),
                     color = when {
                         progress < 0.5f -> MaterialTheme.colorScheme.tertiary
                         progress < 0.8f -> MaterialTheme.colorScheme.primary
                         else -> MaterialTheme.colorScheme.error
                     }
                 )
-                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Increment/Decrement buttons - compact
+            // Large, emphasized plus and minus buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Decrement button
+                // Minus button - Large and emphasized
                 FilledTonalButton(
                     onClick = onDecrement,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(80.dp),
                     enabled = !isLocked && areaCount.count > 0,
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    ),
-                    contentPadding = PaddingValues(vertical = 8.dp, horizontal = 12.dp)
+                    )
                 ) {
-                    Icon(Icons.Default.Remove, "Decrease", modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("1", style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Remove,
+                            contentDescription = "Decrease",
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "−",
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
 
-                // Increment button
+                // Plus button - Large and emphasized
                 FilledTonalButton(
                     onClick = onIncrement,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(80.dp),
                     enabled = !isLocked,
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    ),
-                    contentPadding = PaddingValues(vertical = 8.dp, horizontal = 12.dp)
+                    )
                 ) {
-                    Icon(Icons.Default.Add, "Increase", modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("1", style = MaterialTheme.typography.labelLarge)
-                }
-
-                // Quick add buttons in same row
-                if (!isLocked) {
-                    OutlinedButton(
-                        onClick = { onSetCount(areaCount.count + 5) },
-                        modifier = Modifier.weight(0.6f),
-                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 6.dp)
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        Text("+5", style = MaterialTheme.typography.labelMedium)
-                    }
-                    OutlinedButton(
-                        onClick = { onSetCount(areaCount.count + 10) },
-                        modifier = Modifier.weight(0.6f),
-                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 6.dp)
-                    ) {
-                        Text("+10", style = MaterialTheme.typography.labelMedium)
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Increase",
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "+",
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
 
             // Lock indicator
             if (isLocked) {
-                Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
