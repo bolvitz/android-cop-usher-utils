@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.cop.app.headcounter.data.local.entities.ServiceTypeEntity
 import com.cop.app.headcounter.domain.models.ServiceType
+import com.cop.app.headcounter.presentation.utils.flipDownTransform
+import com.cop.app.headcounter.presentation.utils.flipUpTransform
 import com.cop.app.headcounter.presentation.utils.rememberHapticFeedback
 import java.text.SimpleDateFormat
 import java.util.*
@@ -386,25 +388,11 @@ fun AreaCountCard(
                     targetState = areaCount.count,
                     transitionSpec = {
                         if (targetState > initialState) {
-                            // Incrementing: slide up
-                            slideInVertically(
-                                initialOffsetY = { it },
-                                animationSpec = tween(200)
-                            ) + fadeIn(animationSpec = tween(200)) togetherWith
-                            slideOutVertically(
-                                targetOffsetY = { -it },
-                                animationSpec = tween(200)
-                            ) + fadeOut(animationSpec = tween(200))
+                            // Incrementing: flip up
+                            flipUpTransform()
                         } else {
-                            // Decrementing: slide down
-                            slideInVertically(
-                                initialOffsetY = { -it },
-                                animationSpec = tween(200)
-                            ) + fadeIn(animationSpec = tween(200)) togetherWith
-                            slideOutVertically(
-                                targetOffsetY = { it },
-                                animationSpec = tween(200)
-                            ) + fadeOut(animationSpec = tween(200))
+                            // Decrementing: flip down
+                            flipDownTransform()
                         }
                     },
                     label = "countAnimation"
