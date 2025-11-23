@@ -138,6 +138,15 @@ fun LostItemCard(
     val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
     val status = ItemStatus.fromString(item.status)
 
+    // Calculate if 6 months have passed since item was found
+    val currentTime = System.currentTimeMillis()
+    val sixMonthsInMillis = 6L * 30L * 24L * 60L * 60L * 1000L // Approximately 6 months
+    val timeSinceFound = currentTime - item.foundDate
+    val canDonate = timeSinceFound >= sixMonthsInMillis
+
+    // Calculate days remaining until donation is allowed
+    val daysRemaining = ((sixMonthsInMillis - timeSinceFound) / (24L * 60L * 60L * 1000L)).toInt()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -172,11 +181,44 @@ fun LostItemCard(
 
             if (item.status == ItemStatus.PENDING.name) {
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // Show donation eligibility message if not yet eligible
+                if (!canDonate) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Can donate in $daysRemaining days (6 months holding period)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onClaim) {
                         Text("Claim")
                     }
-                    OutlinedButton(onClick = { onUpdateStatus(ItemStatus.DONATED.name) }) {
+                    OutlinedButton(
+                        onClick = { onUpdateStatus(ItemStatus.DONATED.name) },
+                        enabled = canDonate
+                    ) {
                         Text("Mark as Donated")
                     }
                 }
