@@ -71,7 +71,8 @@ class IncidentRepositoryImpl @Inject constructor(
         location: String,
         photoUri: String,
         reportedBy: String,
-        notes: String
+        notes: String,
+        eventId: String?
     ): Result<String> {
         // Validate input
         if (title.isBlank()) {
@@ -91,6 +92,7 @@ class IncidentRepositoryImpl @Inject constructor(
             val incident = IncidentEntity(
                 id = incidentId,
                 branchId = branchId,
+                eventId = eventId,
                 title = title,
                 description = description,
                 severity = severity,

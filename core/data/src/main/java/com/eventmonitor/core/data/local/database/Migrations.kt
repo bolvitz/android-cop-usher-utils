@@ -177,3 +177,21 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
         db.execSQL("CREATE INDEX IF NOT EXISTS index_incidents_resolvedAt ON incidents(resolvedAt)")
     }
 }
+
+/**
+ * Migration from version 6 to version 7
+ * Adds:
+ * - eventId column to lost_items table (optional link to event/service)
+ * - eventId column to incidents table (optional link to event/service)
+ */
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Add eventId column to lost_items table
+        db.execSQL("ALTER TABLE lost_items ADD COLUMN eventId TEXT DEFAULT NULL")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_lost_items_eventId ON lost_items(eventId)")
+
+        // Add eventId column to incidents table
+        db.execSQL("ALTER TABLE incidents ADD COLUMN eventId TEXT DEFAULT NULL")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_incidents_eventId ON incidents(eventId)")
+    }
+}

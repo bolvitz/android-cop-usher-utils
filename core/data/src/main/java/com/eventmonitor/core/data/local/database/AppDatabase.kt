@@ -17,7 +17,7 @@ import com.eventmonitor.core.data.local.entities.*
         LostItemEntity::class,
         IncidentEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

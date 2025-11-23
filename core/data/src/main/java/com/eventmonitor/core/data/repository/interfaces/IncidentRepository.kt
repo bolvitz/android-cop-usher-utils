@@ -28,7 +28,8 @@ interface IncidentRepository {
         location: String = "",
         photoUri: String = "",
         reportedBy: String = "",
-        notes: String = ""
+        notes: String = "",
+        eventId: String? = null
     ): Result<String>
 
     suspend fun updateIncident(incident: IncidentEntity): Result<Unit>
