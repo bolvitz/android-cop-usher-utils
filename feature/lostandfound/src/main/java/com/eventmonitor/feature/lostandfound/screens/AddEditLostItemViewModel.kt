@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eventmonitor.core.domain.common.Result
 import com.eventmonitor.core.domain.models.ItemCategory
+import com.eventmonitor.core.data.local.dao.EventDao
+import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.data.repository.interfaces.LostItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,11 +18,18 @@ import javax.inject.Inject
 @HiltViewModel
 class AddEditLostItemViewModel @Inject constructor(
     private val lostItemRepository: LostItemRepository,
+    private val eventDao: EventDao,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val locationId: String = savedStateHandle.get<String>("locationId") ?: ""
     private val itemId: String? = savedStateHandle.get<String>("itemId")
+
+    private val _events = MutableStateFlow<List<EventWithDetails>>(emptyList())
+    val events: StateFlow<List<EventWithDetails>> = _events.asStateFlow()
+
+    private val _selectedEventId = MutableStateFlow<String?>(null)
+    val selectedEventId: StateFlow<String?> = _selectedEventId.asStateFlow()
 
     private val _description = MutableStateFlow("")
     val description: StateFlow<String> = _description.asStateFlow()
@@ -59,8 +68,17 @@ class AddEditLostItemViewModel @Inject constructor(
     val saveSuccess: StateFlow<Boolean> = _saveSuccess.asStateFlow()
 
     init {
+        loadEvents()
         if (itemId != null) {
             loadItem(itemId)
+        }
+    }
+
+    private fun loadEvents() {
+        viewModelScope.launch {
+            eventDao.getRecentServicesByBranch(locationId, limit = 20).collect { eventsList ->
+                _events.value = eventsList
+            }
         }
     }
 
@@ -77,6 +95,7 @@ class AddEditLostItemViewModel @Inject constructor(
                     _identifyingMarks.value = it.identifyingMarks
                     _reportedBy.value = it.reportedBy
                     _notes.value = it.notes
+                    _selectedEventId.value = it.eventId
                 }
             }
         }
@@ -118,6 +137,10 @@ class AddEditLostItemViewModel @Inject constructor(
         _notes.value = value
     }
 
+    fun updateSelectedEvent(eventId: String?) {
+        _selectedEventId.value = eventId
+    }
+
     fun saveItem() {
         if (_isSaving.value) return
 
@@ -139,7 +162,8 @@ class AddEditLostItemViewModel @Inject constructor(
                                 brand = _brand.value,
                                 identifyingMarks = _identifyingMarks.value,
                                 reportedBy = _reportedBy.value,
-                                notes = _notes.value
+                                notes = _notes.value,
+                                eventId = _selectedEventId.value
                             )
                         )
                     }
@@ -157,7 +181,8 @@ class AddEditLostItemViewModel @Inject constructor(
                     brand = _brand.value,
                     identifyingMarks = _identifyingMarks.value,
                     reportedBy = _reportedBy.value,
-                    notes = _notes.value
+                    notes = _notes.value,
+                    eventId = _selectedEventId.value
                 )
             }
 
