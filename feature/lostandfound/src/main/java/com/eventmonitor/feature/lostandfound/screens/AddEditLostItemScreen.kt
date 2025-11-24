@@ -170,7 +170,7 @@ fun AddEditLostItemScreen(
                 OutlinedTextField(
                     value = selectedEventId?.let { id ->
                         events.find { it.event.id == id }?.let { event ->
-                            "${event.eventType.name} - ${java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(java.util.Date(event.event.date))}"
+                            "${event.eventType?.name ?: "Event"} - ${java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(java.util.Date(event.event.date))}"
                         }
                     } ?: "None",
                     onValueChange = {},
@@ -209,7 +209,7 @@ fun AddEditLostItemScreen(
                             text = {
                                 Column {
                                     Text(
-                                        text = eventWithDetails.eventType.name,
+                                        text = eventWithDetails.eventType?.name ?: "Event",
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                     Text(

@@ -20,8 +20,8 @@ class IncidentRepositoryImpl @Inject constructor(
     override fun getAllIncidents(): Flow<List<IncidentEntity>> =
         incidentDao.getAllIncidents()
 
-    override fun getIncidentsByBranch(branchId: String): Flow<List<IncidentEntity>> =
-        incidentDao.getIncidentsByBranch(branchId)
+    override fun getIncidentsByVenue(branchId: String): Flow<List<IncidentEntity>> =
+        incidentDao.getIncidentsByVenue(branchId)
 
     override fun getIncidentsByStatus(status: String): Flow<List<IncidentEntity>> =
         incidentDao.getIncidentsByStatus(status)
@@ -32,17 +32,17 @@ class IncidentRepositoryImpl @Inject constructor(
     override fun getIncidentById(incidentId: String): Flow<IncidentEntity?> =
         incidentDao.getIncidentById(incidentId)
 
-    override fun getIncidentsByBranchAndStatus(
+    override fun getIncidentsByVenueAndStatus(
         branchId: String,
         status: String
     ): Flow<List<IncidentEntity>> =
-        incidentDao.getIncidentsByBranchAndStatus(branchId, status)
+        incidentDao.getIncidentsByVenueAndStatus(branchId, status)
 
-    override fun getIncidentsByBranchAndSeverity(
+    override fun getIncidentsByVenueAndSeverity(
         branchId: String,
         severity: String
     ): Flow<List<IncidentEntity>> =
-        incidentDao.getIncidentsByBranchAndSeverity(branchId, severity)
+        incidentDao.getIncidentsByVenueAndSeverity(branchId, severity)
 
     override fun searchIncidents(query: String): Flow<List<IncidentEntity>> =
         incidentDao.searchIncidents(query)
@@ -56,14 +56,14 @@ class IncidentRepositoryImpl @Inject constructor(
     override fun getActiveIncidentCountBySeverity(severity: String): Flow<Int> =
         incidentDao.getActiveIncidentCountBySeverity(severity)
 
-    override fun getActiveIncidentCountByBranch(branchId: String): Flow<Int> =
-        incidentDao.getActiveIncidentCountByBranch(branchId)
+    override fun getActiveIncidentCountByVenue(venueId: String): Flow<Int> =
+        incidentDao.getActiveIncidentCountByVenue(venueId)
 
     override fun getIncidentsByDateRange(startDate: Long, endDate: Long): Flow<List<IncidentEntity>> =
         incidentDao.getIncidentsByDateRange(startDate, endDate)
 
     override suspend fun createIncident(
-        branchId: String,
+        venueId: String,
         title: String,
         description: String,
         severity: String,
@@ -91,7 +91,7 @@ class IncidentRepositoryImpl @Inject constructor(
             val incidentId = UUID.randomUUID().toString()
             val incident = IncidentEntity(
                 id = incidentId,
-                branchId = branchId,
+                venueId = venueId,
                 eventId = eventId,
                 title = title,
                 description = description,

@@ -2,10 +2,10 @@ package com.eventmonitor.app.presentation.screens.reports
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.eventmonitor.core.data.local.entities.BranchEntity
+import com.eventmonitor.core.data.local.entities.VenueEntity
 import com.eventmonitor.core.data.local.entities.EventTypeEntity
 import com.eventmonitor.core.data.local.entities.EventWithAreaCounts
-import com.eventmonitor.core.data.repository.interfaces.BranchRepository
+import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import com.eventmonitor.core.data.repository.interfaces.EventRepository
 import com.eventmonitor.core.data.repository.interfaces.EventTypeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,22 +17,22 @@ import javax.inject.Inject
 @HiltViewModel
 class ReportsViewModel @Inject constructor(
     private val eventRepository: EventRepository,
-    private val branchRepository: BranchRepository,
+    private val venueRepository: VenueRepository,
     private val eventTypeRepository: EventTypeRepository
 ) : ViewModel() {
 
     private val _selectedPeriod = MutableStateFlow(ReportPeriod.LAST_30_DAYS)
     val selectedPeriod: StateFlow<ReportPeriod> = _selectedPeriod.asStateFlow()
 
-    private val _selectedBranch = MutableStateFlow<String?>(null) // null = All Branches
-    val selectedBranch: StateFlow<String?> = _selectedBranch.asStateFlow()
+    private val _selectedVenue = MutableStateFlow<String?>(null) // null = All Venues
+    val selectedVenue: StateFlow<String?> = _selectedVenue.asStateFlow()
 
     private val _selectedServiceType = MutableStateFlow<String?>(null) // null = All Services
     val selectedServiceType: StateFlow<String?> = _selectedServiceType.asStateFlow()
 
-    // Get all branches for filter dropdown
-    val branches: StateFlow<List<BranchEntity>> = branchRepository.getAllBranches()
-        .map { branchesWithAreas -> branchesWithAreas.map { it.branch } }
+    // Get all venues for filter dropdown
+    val venues: StateFlow<List<VenueEntity>> = venueRepository.getAllVenues()
+        .map { venuesWithAreas -> venuesWithAreas.map { it.venue } }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -55,27 +55,27 @@ class ReportsViewModel @Inject constructor(
         initialValue = ReportPeriod.LAST_30_DAYS.getDateRange()
     )
 
-    val servicesWithAreaCounts: StateFlow<List<EventWithAreaCounts>> = combine(
+    val eventsWithAreaCounts: StateFlow<List<EventWithAreaCounts>> = combine(
         dateRange,
-        _selectedBranch,
+        _selectedVenue,
         _selectedServiceType
-    ) { (startDate, endDate), branchId, eventTypeId ->
-        Triple(startDate to endDate, branchId, eventTypeId)
-    }.flatMapLatest { (dateRange, branchId, eventTypeId) ->
-        eventRepository.getServicesWithAreaCountsByDateRange(dateRange.first, dateRange.second)
-            .map { services ->
-                // Filter by branch if selected
-                val branchFiltered = if (branchId != null) {
-                    services.filter { it.event.branchId == branchId }
+    ) { (startDate, endDate), venueId, eventTypeId ->
+        Triple(startDate to endDate, venueId, eventTypeId)
+    }.flatMapLatest { (dateRange, venueId, eventTypeId) ->
+        eventRepository.getEventsWithAreaCountsByDateRange(dateRange.first, dateRange.second)
+            .map { events ->
+                // Filter by venue if selected
+                val venueFiltered = if (venueId != null) {
+                    events.filter { it.event.venueId == venueId }
                 } else {
-                    services
+                    events
                 }
 
-                // Filter by service type if selected
+                // Filter by event type if selected
                 val eventTypeFiltered = if (eventTypeId != null) {
-                    branchFiltered.filter { it.event.eventTypeId == eventTypeId }
+                    venueFiltered.filter { it.event.eventTypeId == eventTypeId }
                 } else {
-                    branchFiltered
+                    venueFiltered
                 }
 
                 eventTypeFiltered
@@ -86,8 +86,8 @@ class ReportsViewModel @Inject constructor(
         initialValue = emptyList()
     )
 
-    val reportData: StateFlow<ReportData> = servicesWithAreaCounts.map { services ->
-        calculateReportData(services)
+    val reportData: StateFlow<ReportData> = eventsWithAreaCounts.map { events ->
+        calculateReportData(events)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -98,28 +98,28 @@ class ReportsViewModel @Inject constructor(
         _selectedPeriod.value = period
     }
 
-    fun selectBranch(branchId: String?) {
-        _selectedBranch.value = branchId
+    fun selectVenue(venueId: String?) {
+        _selectedVenue.value = venueId
     }
 
     fun selectServiceType(eventTypeId: String?) {
         _selectedServiceType.value = eventTypeId
     }
 
-    private fun calculateReportData(services: List<EventWithAreaCounts>): ReportData {
-        if (services.isEmpty()) {
+    private fun calculateReportData(events: List<EventWithAreaCounts>): ReportData {
+        if (events.isEmpty()) {
             return ReportData()
         }
 
-        val totalServices = services.size
-        val totalAttendance = services.sumOf { it.event.totalAttendance }
-        val averageAttendance = totalAttendance / totalServices
+        val totalEvents = events.size
+        val totalAttendance = events.sumOf { it.event.totalAttendance }
+        val averageAttendance = totalAttendance / totalEvents
 
         // Calculate area statistics
         val areaStats = mutableMapOf<String, AreaStatistics>()
 
-        services.forEach { serviceWithAreas ->
-            serviceWithAreas.areaCounts.forEach { areaCount ->
+        events.forEach { eventWithAreas ->
+            eventWithAreas.areaCounts.forEach { areaCount ->
                 val areaName = areaCount.template.name
                 val currentStats = areaStats[areaName] ?: AreaStatistics(
                     areaName = areaName,
@@ -128,14 +128,14 @@ class ReportsViewModel @Inject constructor(
                     maxCount = 0,
                     minCount = Int.MAX_VALUE,
                     capacity = areaCount.areaCount.capacity,
-                    servicesCount = 0
+                    eventsCount = 0
                 )
 
                 areaStats[areaName] = currentStats.copy(
                     totalCount = currentStats.totalCount + areaCount.areaCount.count,
                     maxCount = maxOf(currentStats.maxCount, areaCount.areaCount.count),
                     minCount = minOf(currentStats.minCount, areaCount.areaCount.count),
-                    servicesCount = currentStats.servicesCount + 1
+                    eventsCount = currentStats.eventsCount + 1
                 )
             }
         }
@@ -143,13 +143,13 @@ class ReportsViewModel @Inject constructor(
         // Calculate averages for areas
         val finalAreaStats = areaStats.values.map { stats ->
             stats.copy(
-                averageCount = stats.totalCount / stats.servicesCount,
+                averageCount = stats.totalCount / stats.eventsCount,
                 minCount = if (stats.minCount == Int.MAX_VALUE) 0 else stats.minCount
             )
         }.sortedBy { it.areaName }
 
         return ReportData(
-            totalServices = totalServices,
+            totalEvents = totalEvents,
             totalAttendance = totalAttendance,
             averageAttendance = averageAttendance,
             areaStatistics = finalAreaStats
@@ -158,7 +158,7 @@ class ReportsViewModel @Inject constructor(
 }
 
 data class ReportData(
-    val totalServices: Int = 0,
+    val totalEvents: Int = 0,
     val totalAttendance: Int = 0,
     val averageAttendance: Int = 0,
     val areaStatistics: List<AreaStatistics> = emptyList()
@@ -171,7 +171,7 @@ data class AreaStatistics(
     val maxCount: Int,
     val minCount: Int,
     val capacity: Int,
-    val servicesCount: Int
+    val eventsCount: Int
 )
 
 enum class ReportPeriod(val displayName: String) {

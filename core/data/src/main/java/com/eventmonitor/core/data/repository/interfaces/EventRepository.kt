@@ -6,32 +6,32 @@ import com.eventmonitor.core.domain.models.ServiceType
 import kotlinx.coroutines.flow.Flow
 
 interface EventRepository {
-    fun getRecentServices(limit: Int): Flow<List<EventWithDetails>>
-    fun getRecentServicesByBranch(branchId: String, limit: Int): Flow<List<EventWithDetails>>
-    fun getServiceById(id: String): Flow<EventWithDetails?>
-    fun getServicesByBranchAndDateRange(
-        branchId: String,
+    fun getRecentEvents(limit: Int): Flow<List<EventWithDetails>>
+    fun getRecentEventsByVenue(venueId: String, limit: Int): Flow<List<EventWithDetails>>
+    fun getEventById(id: String): Flow<EventWithDetails?>
+    fun getEventsByVenueAndDateRange(
+        venueId: String,
         startDate: Long,
         endDate: Long
     ): Flow<List<EventWithDetails>>
-    fun getServicesAcrossBranches(
+    fun getEventsAcrossVenues(
         startDate: Long,
         endDate: Long
     ): Flow<List<EventWithDetails>>
     fun getAverageAttendance(
-        branchId: String,
+        venueId: String,
         startDate: Long,
         endDate: Long
     ): Flow<Double?>
 
-    fun getRecentServicesWithAreaCounts(limit: Int): Flow<List<EventWithAreaCounts>>
-    fun getServicesWithAreaCountsByDateRange(
+    fun getRecentEventsWithAreaCounts(limit: Int): Flow<List<EventWithAreaCounts>>
+    fun getEventsWithAreaCountsByDateRange(
         startDate: Long,
         endDate: Long
     ): Flow<List<EventWithAreaCounts>>
 
-    suspend fun createNewService(
-        branchId: String,
+    suspend fun createNewEvent(
+        venueId: String,
         eventType: ServiceType,
         date: Long,
         countedBy: String,
@@ -39,7 +39,7 @@ interface EventRepository {
         eventTypeId: String? = null
     ): String
 
-    suspend fun updateServiceCount(
+    suspend fun updateEventCount(
         eventId: String,
         areaCountId: String,
         newCount: Int,
@@ -49,13 +49,13 @@ interface EventRepository {
     suspend fun incrementAreaCount(eventId: String, areaCountId: String, amount: Int = 1)
     suspend fun decrementAreaCount(eventId: String, areaCountId: String, amount: Int = 1)
     suspend fun resetAreaCount(eventId: String, areaCountId: String)
-    suspend fun updateServiceNotes(eventId: String, notes: String)
-    suspend fun lockService(eventId: String)
-    suspend fun unlockService(eventId: String)
-    suspend fun deleteService(eventId: String)
-    suspend fun exportServiceReport(eventId: String): String
-    suspend fun exportBranchComparisonReport(
-        branchIds: List<String>,
+    suspend fun updateEventNotes(eventId: String, notes: String)
+    suspend fun lockEvent(eventId: String)
+    suspend fun unlockEvent(eventId: String)
+    suspend fun deleteEvent(eventId: String)
+    suspend fun exportEventReport(eventId: String): String
+    suspend fun exportVenueComparisonReport(
+        venueIds: List<String>,
         startDate: Long,
         endDate: Long
     ): String

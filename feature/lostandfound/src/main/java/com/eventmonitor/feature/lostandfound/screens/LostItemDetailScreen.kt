@@ -179,13 +179,13 @@ fun LostItemDetailScreen(
                 }
 
                 // Claimed Info
-                itm.claimedDate?.let { claimedDate ->
+                if (itm.claimedDate > 0) {
                     DetailSection(
                         title = "Claimed",
                         content = buildString {
-                            append(dateFormat.format(Date(claimedDate)))
-                            if (itm.claimerName.isNotBlank()) {
-                                append("\nBy: ${itm.claimerName}")
+                            append(dateFormat.format(Date(itm.claimedDate)))
+                            if (itm.claimedBy.isNotBlank()) {
+                                append("\nBy: ${itm.claimedBy}")
                             }
                             if (itm.claimerContact.isNotBlank()) {
                                 append("\nContact: ${itm.claimerContact}")

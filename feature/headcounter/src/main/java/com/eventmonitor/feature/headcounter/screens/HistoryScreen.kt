@@ -105,7 +105,7 @@ fun HistoryScreen(
                                 service = serviceWithDetails,
                                 onResumeEdit = {
                                     haptic.medium()
-                                    onServiceClick(serviceWithDetails.event.branchId, serviceWithDetails.event.id)
+                                    onServiceClick(serviceWithDetails.event.venueId, serviceWithDetails.event.id)
                                 },
                                 onViewReport = {
                                     haptic.light()
@@ -152,7 +152,7 @@ fun HistoryScreen(
                 Button(
                     onClick = {
                         haptic.strong()
-                        viewModel.deleteService(serviceId)
+                        viewModel.deleteEvent(serviceId)
                         showDeleteDialog = null
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -183,7 +183,7 @@ fun HistoryScreen(
                 Button(
                     onClick = {
                         haptic.medium()
-                        viewModel.unlockService(serviceId)
+                        viewModel.unlockEvent(serviceId)
                         showUnlockDialog = null
                     }
                 ) {
@@ -245,7 +245,7 @@ fun ServiceHistoryCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = service.branch.name,
+                        text = service.venue.name,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )

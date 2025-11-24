@@ -76,7 +76,7 @@ class AddEditLostItemViewModel @Inject constructor(
 
     private fun loadEvents() {
         viewModelScope.launch {
-            eventDao.getRecentServicesByBranch(locationId, limit = 20).collect { eventsList ->
+            eventDao.getRecentEventsByVenue(locationId, limit = 20).collect { eventsList ->
                 _events.value = eventsList
             }
         }

@@ -1,16 +1,16 @@
 package com.eventmonitor.core.data.repository
 
 import com.eventmonitor.core.data.local.dao.AreaTemplateDao
-import com.eventmonitor.core.data.local.dao.BranchDao
+import com.eventmonitor.core.data.local.dao.VenueDao
 import com.eventmonitor.core.data.local.dao.EventDao
 import com.eventmonitor.core.data.local.entities.AreaTemplateEntity
-import com.eventmonitor.core.data.local.entities.BranchEntity
-import com.eventmonitor.core.data.local.entities.BranchWithAreas
+import com.eventmonitor.core.data.local.entities.VenueEntity
+import com.eventmonitor.core.data.local.entities.VenueWithAreas
 import com.eventmonitor.core.domain.common.AppError
 import com.eventmonitor.core.domain.common.Result
 import com.eventmonitor.core.domain.common.resultOf
 import com.eventmonitor.core.domain.models.AreaType
-import com.eventmonitor.core.data.repository.interfaces.BranchRepository
+import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import com.eventmonitor.core.domain.validation.DomainValidators
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -18,42 +18,42 @@ import kotlinx.coroutines.flow.map
 import java.util.UUID
 import javax.inject.Inject
 
-class BranchRepositoryImpl @Inject constructor(
-    private val branchDao: BranchDao,
+class VenueRepositoryImpl @Inject constructor(
+    private val venueDao: VenueDao,
     private val areaTemplateDao: AreaTemplateDao,
     private val eventDao: EventDao
-) : BranchRepository {
+) : VenueRepository {
 
-    override fun getAllActiveBranches(): Flow<List<BranchWithAreas>> =
-        branchDao.getAllBranchesWithAreas()
-            .map { list -> list.filter { it.branch.isActive } }
+    override fun getAllActiveVenues(): Flow<List<VenueWithAreas>> =
+        venueDao.getAllVenuesWithAreas()
+            .map { list -> list.filter { it.venue.isActive } }
 
-    override fun getAllBranches(): Flow<List<BranchWithAreas>> =
-        branchDao.getAllBranchesWithAreas()
+    override fun getAllVenues(): Flow<List<VenueWithAreas>> =
+        venueDao.getAllVenuesWithAreas()
 
-    override fun getBranchById(id: String): Flow<BranchWithAreas?> =
-        branchDao.getBranchWithAreas(id)
+    override fun getVenueById(id: String): Flow<VenueWithAreas?> =
+        venueDao.getVenueWithAreas(id)
 
-    override fun getActiveBranchCount(): Flow<Int> =
-        branchDao.getActiveBranchCount()
+    override fun getActiveVenueCount(): Flow<Int> =
+        venueDao.getActiveVenueCount()
 
-    override suspend fun branchNameExists(name: String, excludeBranchId: String?): Boolean {
-        val allBranches = branchDao.getAllBranchesWithAreas().first()
-        return allBranches.any { branchWithAreas ->
-            branchWithAreas.branch.name.equals(name, ignoreCase = true) &&
-            branchWithAreas.branch.id != excludeBranchId
+    override suspend fun venueNameExists(name: String, excludeVenueId: String?): Boolean {
+        val allVenues = venueDao.getAllVenuesWithAreas().first()
+        return allVenues.any { venueWithAreas ->
+            venueWithAreas.venue.name.equals(name, ignoreCase = true) &&
+            venueWithAreas.venue.id != excludeVenueId
         }
     }
 
-    override suspend fun branchCodeExists(code: String, excludeBranchId: String?): Boolean {
-        val allBranches = branchDao.getAllBranchesWithAreas().first()
-        return allBranches.any { branchWithAreas ->
-            branchWithAreas.branch.code.equals(code, ignoreCase = true) &&
-            branchWithAreas.branch.id != excludeBranchId
+    override suspend fun venueCodeExists(code: String, excludeVenueId: String?): Boolean {
+        val allVenues = venueDao.getAllVenuesWithAreas().first()
+        return allVenues.any { venueWithAreas ->
+            venueWithAreas.venue.code.equals(code, ignoreCase = true) &&
+            venueWithAreas.venue.id != excludeVenueId
         }
     }
 
-    override suspend fun createBranch(
+    override suspend fun createVenue(
         name: String,
         location: String,
         code: String,
@@ -66,7 +66,7 @@ class BranchRepositoryImpl @Inject constructor(
         isIncidentReportingEnabled: Boolean
     ): Result<String> {
         // Validate input
-        val validationResult = DomainValidators.validateBranchInput(
+        val validationResult = DomainValidators.validateVenueInput(
             name = name,
             location = location,
             code = code,
@@ -79,24 +79,24 @@ class BranchRepositoryImpl @Inject constructor(
         }
 
         // Check for duplicate name
-        if (branchNameExists(name)) {
+        if (venueNameExists(name)) {
             return Result.Error(
-                AppError.AlreadyExists("Branch", "name", name)
+                AppError.AlreadyExists("Venue", "name", name)
             )
         }
 
         // Check for duplicate code
-        if (branchCodeExists(code)) {
+        if (venueCodeExists(code)) {
             return Result.Error(
-                AppError.AlreadyExists("Branch", "code", code)
+                AppError.AlreadyExists("Venue", "code", code)
             )
         }
 
-        // Create branch
+        // Create venue
         return resultOf {
-            val branchId = UUID.randomUUID().toString()
-            val branch = BranchEntity(
-                id = branchId,
+            val venueId = UUID.randomUUID().toString()
+            val venue = VenueEntity(
+                id = venueId,
                 name = name,
                 location = location,
                 code = code.uppercase(),
@@ -109,19 +109,19 @@ class BranchRepositoryImpl @Inject constructor(
                 isIncidentReportingEnabled = isIncidentReportingEnabled
             )
 
-            branchDao.insertBranch(branch)
-            branchId
+            venueDao.insertVenue(venue)
+            venueId
         }
     }
 
-    override suspend fun updateBranch(branch: BranchEntity): Result<Unit> {
+    override suspend fun updateVenue(venue: VenueEntity): Result<Unit> {
         // Validate input
-        val validationResult = DomainValidators.validateBranchInput(
-            name = branch.name,
-            location = branch.location,
-            code = branch.code,
-            contactEmail = branch.contactEmail.takeIf { it.isNotBlank() },
-            contactPhone = branch.contactPhone.takeIf { it.isNotBlank() }
+        val validationResult = DomainValidators.validateVenueInput(
+            name = venue.name,
+            location = venue.location,
+            code = venue.code,
+            contactEmail = venue.contactEmail.takeIf { it.isNotBlank() },
+            contactPhone = venue.contactPhone.takeIf { it.isNotBlank() }
         )
 
         if (validationResult is Result.Error) {
@@ -129,56 +129,56 @@ class BranchRepositoryImpl @Inject constructor(
         }
 
         // Check for duplicate name
-        if (branchNameExists(branch.name, excludeBranchId = branch.id)) {
+        if (venueNameExists(venue.name, excludeVenueId = venue.id)) {
             return Result.Error(
-                AppError.AlreadyExists("Branch", "name", branch.name)
+                AppError.AlreadyExists("Venue", "name", venue.name)
             )
         }
 
         // Check for duplicate code
-        if (branchCodeExists(branch.code, excludeBranchId = branch.id)) {
+        if (venueCodeExists(venue.code, excludeVenueId = venue.id)) {
             return Result.Error(
-                AppError.AlreadyExists("Branch", "code", branch.code)
+                AppError.AlreadyExists("Venue", "code", venue.code)
             )
         }
 
         return resultOf {
-            branchDao.updateBranch(branch.copy(updatedAt = System.currentTimeMillis()))
+            venueDao.updateVenue(venue.copy(updatedAt = System.currentTimeMillis()))
         }
     }
 
-    override suspend fun deleteBranch(branchId: String): Result<Unit> {
-        // Check if branch has services
-        if (hasServices(branchId)) {
+    override suspend fun deleteVenue(venueId: String): Result<Unit> {
+        // Check if venue has events
+        if (hasEvents(venueId)) {
             return Result.Error(
                 AppError.HasDependencies(
-                    resource = "Branch",
-                    dependencyCount = eventDao.getRecentServicesByBranch(branchId, 999).first().size,
+                    resource = "Venue",
+                    dependencyCount = eventDao.getRecentEventsByVenue(venueId, 999).first().size,
                     dependencyType = "events"
                 )
             )
         }
 
-        val branch = branchDao.getBranchById(branchId).first()
-            ?: return Result.Error(AppError.NotFound("Branch", branchId))
+        val venue = venueDao.getVenueById(venueId).first()
+            ?: return Result.Error(AppError.NotFound("Venue", venueId))
 
         return resultOf {
-            branchDao.deleteBranch(branch)
+            venueDao.deleteVenue(venue)
         }
     }
 
-    override suspend fun setBranchActive(branchId: String, isActive: Boolean) {
-        branchDao.setBranchActive(branchId, isActive)
+    override suspend fun setVenueActive(venueId: String, isActive: Boolean) {
+        venueDao.setVenueActive(venueId, isActive)
     }
 
-    override suspend fun createDefaultAreasForBranch(branchId: String, areaCount: Int) {
+    override suspend fun createDefaultAreasForVenue(venueId: String, areaCount: Int) {
         val defaultAreas = mutableListOf<AreaTemplateEntity>()
 
         // Create bays
         repeat(areaCount) { index ->
             defaultAreas.add(
                 AreaTemplateEntity(
-                    branchId = branchId,
+                    venueId = venueId,
                     name = "Bay ${index + 1}",
                     type = AreaType.SEATING.name,
                     capacity = 100,
@@ -192,7 +192,7 @@ class BranchRepositoryImpl @Inject constructor(
         // Add baby rooms
         defaultAreas.add(
             AreaTemplateEntity(
-                branchId = branchId,
+                venueId = venueId,
                 name = "Baby Room 1",
                 type = AreaType.CARE_ROOM.name,
                 capacity = 100,
@@ -204,7 +204,7 @@ class BranchRepositoryImpl @Inject constructor(
 
         defaultAreas.add(
             AreaTemplateEntity(
-                branchId = branchId,
+                venueId = venueId,
                 name = "Baby Room 2",
                 type = AreaType.CARE_ROOM.name,
                 capacity = 100,
@@ -217,7 +217,7 @@ class BranchRepositoryImpl @Inject constructor(
         // Add balcony
         defaultAreas.add(
             AreaTemplateEntity(
-                branchId = branchId,
+                venueId = venueId,
                 name = "Balcony",
                 type = AreaType.OVERFLOW.name,
                 capacity = 100,
@@ -230,8 +230,8 @@ class BranchRepositoryImpl @Inject constructor(
         areaTemplateDao.insertAreas(defaultAreas)
     }
 
-    override suspend fun hasServices(branchId: String): Boolean {
-        val services = eventDao.getRecentServicesByBranch(branchId, 1).first()
-        return services.isNotEmpty()
+    override suspend fun hasEvents(venueId: String): Boolean {
+        val events = eventDao.getRecentEventsByVenue(venueId, 1).first()
+        return events.isNotEmpty()
     }
 }

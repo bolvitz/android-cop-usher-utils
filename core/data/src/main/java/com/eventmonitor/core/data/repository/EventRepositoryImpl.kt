@@ -3,7 +3,7 @@ package com.eventmonitor.core.data.repository
 import androidx.room.withTransaction
 import com.eventmonitor.core.data.local.dao.AreaCountDao
 import com.eventmonitor.core.data.local.dao.AreaTemplateDao
-import com.eventmonitor.core.data.local.dao.BranchDao
+import com.eventmonitor.core.data.local.dao.VenueDao
 import com.eventmonitor.core.data.local.dao.EventDao
 import com.eventmonitor.core.data.local.database.AppDatabase
 import com.eventmonitor.core.data.local.entities.AreaCountEntity
@@ -26,51 +26,51 @@ class EventRepositoryImpl @Inject constructor(
     private val eventDao: EventDao,
     private val areaCountDao: AreaCountDao,
     private val areaTemplateDao: AreaTemplateDao,
-    private val branchDao: BranchDao
+    private val venueDao: VenueDao
 ) : EventRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    override fun getRecentServices(limit: Int): Flow<List<EventWithDetails>> =
-        eventDao.getRecentServices(limit)
+    override fun getRecentEvents(limit: Int): Flow<List<EventWithDetails>> =
+        eventDao.getRecentEvents(limit)
 
-    override fun getRecentServicesByBranch(branchId: String, limit: Int): Flow<List<EventWithDetails>> =
-        eventDao.getRecentServicesByBranch(branchId, limit)
+    override fun getRecentEventsByVenue(venueId: String, limit: Int): Flow<List<EventWithDetails>> =
+        eventDao.getRecentEventsByVenue(venueId, limit)
 
-    override fun getServiceById(id: String): Flow<EventWithDetails?> =
-        eventDao.getServiceById(id)
+    override fun getEventById(id: String): Flow<EventWithDetails?> =
+        eventDao.getEventById(id)
 
-    override fun getServicesByBranchAndDateRange(
-        branchId: String,
+    override fun getEventsByVenueAndDateRange(
+        venueId: String,
         startDate: Long,
         endDate: Long
     ): Flow<List<EventWithDetails>> =
-        eventDao.getServicesByBranchAndDateRange(branchId, startDate, endDate)
+        eventDao.getEventsByVenueAndDateRange(venueId, startDate, endDate)
 
-    override fun getServicesAcrossBranches(
+    override fun getEventsAcrossVenues(
         startDate: Long,
         endDate: Long
     ): Flow<List<EventWithDetails>> =
-        eventDao.getServicesAcrossBranchesByDateRange(startDate, endDate)
+        eventDao.getEventsAcrossVenuesByDateRange(startDate, endDate)
 
     override fun getAverageAttendance(
-        branchId: String,
+        venueId: String,
         startDate: Long,
         endDate: Long
     ): Flow<Double?> =
-        eventDao.getAverageAttendance(branchId, startDate, endDate)
+        eventDao.getAverageAttendance(venueId, startDate, endDate)
 
-    override fun getRecentServicesWithAreaCounts(limit: Int): Flow<List<EventWithAreaCounts>> =
-        eventDao.getRecentServicesWithAreaCounts(limit)
+    override fun getRecentEventsWithAreaCounts(limit: Int): Flow<List<EventWithAreaCounts>> =
+        eventDao.getRecentEventsWithAreaCounts(limit)
 
-    override fun getServicesWithAreaCountsByDateRange(
+    override fun getEventsWithAreaCountsByDateRange(
         startDate: Long,
         endDate: Long
     ): Flow<List<EventWithAreaCounts>> =
-        eventDao.getServicesWithAreaCountsByDateRange(startDate, endDate)
+        eventDao.getEventsWithAreaCountsByDateRange(startDate, endDate)
 
-    override suspend fun createNewService(
-        branchId: String,
+    override suspend fun createNewEvent(
+        venueId: String,
         eventType: ServiceType,
         date: Long,
         countedBy: String,
@@ -79,13 +79,13 @@ class EventRepositoryImpl @Inject constructor(
     ): String {
         val eventId = UUID.randomUUID().toString()
 
-        // Get all active areas for this branch
-        val areas = areaTemplateDao.getAreasByBranch(branchId).first()
+        // Get all active areas for this venue
+        val areas = areaTemplateDao.getAreasByVenue(venueId).first()
         val totalCapacity = areas.sumOf { it.capacity }
 
-        val service = EventEntity(
+        val event = EventEntity(
             id = eventId,
-            branchId = branchId,
+            venueId = venueId,
             eventTypeId = eventTypeId,
             date = date,
             eventType = eventType.name,
@@ -94,7 +94,7 @@ class EventRepositoryImpl @Inject constructor(
             countedBy = countedBy
         )
 
-        eventDao.insertService(service)
+        eventDao.insertEvent(event)
 
         // Create area counts for all areas
         val areaCounts = areas.map { area ->
@@ -112,7 +112,7 @@ class EventRepositoryImpl @Inject constructor(
         return eventId
     }
 
-    override suspend fun updateServiceCount(
+    override suspend fun updateEventCount(
         eventId: String,
         areaCountId: String,
         newCount: Int,
@@ -144,14 +144,14 @@ class EventRepositoryImpl @Inject constructor(
                 )
             )
 
-            updateServiceTotal(eventId)
+            updateEventTotal(eventId)
         }
     }
 
     override suspend fun incrementAreaCount(eventId: String, areaCountId: String, amount: Int) {
         val areaCount = areaCountDao.getAreaCountById(areaCountId).first() ?: return
         val newCount = (areaCount.count + amount).coerceAtLeast(0)
-        updateServiceCount(eventId, areaCountId, newCount, if (amount > 0) "INCREMENT" else "DECREMENT")
+        updateEventCount(eventId, areaCountId, newCount, if (amount > 0) "INCREMENT" else "DECREMENT")
     }
 
     override suspend fun decrementAreaCount(eventId: String, areaCountId: String, amount: Int) {
@@ -159,18 +159,18 @@ class EventRepositoryImpl @Inject constructor(
     }
 
     override suspend fun resetAreaCount(eventId: String, areaCountId: String) {
-        updateServiceCount(eventId, areaCountId, 0, "RESET")
+        updateEventCount(eventId, areaCountId, 0, "RESET")
     }
 
-    override suspend fun updateServiceNotes(eventId: String, notes: String) {
-        val service = eventDao.getServiceById(eventId).first()?.event ?: return
-        eventDao.updateService(service.copy(notes = notes, updatedAt = System.currentTimeMillis()))
+    override suspend fun updateEventNotes(eventId: String, notes: String) {
+        val event = eventDao.getEventById(eventId).first()?.event ?: return
+        eventDao.updateEvent(event.copy(notes = notes, updatedAt = System.currentTimeMillis()))
     }
 
-    override suspend fun lockService(eventId: String) {
-        val service = eventDao.getServiceById(eventId).first()?.event ?: return
-        eventDao.updateService(
-            service.copy(
+    override suspend fun lockEvent(eventId: String) {
+        val event = eventDao.getEventById(eventId).first()?.event ?: return
+        eventDao.updateEvent(
+            event.copy(
                 isLocked = true,
                 completedAt = System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis()
@@ -178,41 +178,41 @@ class EventRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun unlockService(eventId: String) {
-        val service = eventDao.getServiceById(eventId).first()?.event ?: return
-        eventDao.updateService(
-            service.copy(
+    override suspend fun unlockEvent(eventId: String) {
+        val event = eventDao.getEventById(eventId).first()?.event ?: return
+        eventDao.updateEvent(
+            event.copy(
                 isLocked = false,
                 updatedAt = System.currentTimeMillis()
             )
         )
     }
 
-    override suspend fun deleteService(eventId: String) {
-        eventDao.deleteServiceById(eventId)
+    override suspend fun deleteEvent(eventId: String) {
+        eventDao.deleteEventById(eventId)
     }
 
-    override suspend fun exportServiceReport(eventId: String): String {
-        val serviceWithDetails = eventDao.getServiceById(eventId).first() ?: return ""
+    override suspend fun exportEventReport(eventId: String): String {
+        val eventWithDetails = eventDao.getEventById(eventId).first() ?: return ""
 
-        val service = serviceWithDetails.event
-        val branch = serviceWithDetails.branch
+        val event = eventWithDetails.event
+        val venue = eventWithDetails.venue
         val areaCounts = areaCountDao.getAreaCountsByService(eventId).first()
 
         val dateFormat = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
         val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
-        val eventTypeName = ServiceType.fromString(service.eventType).displayName
+        val eventTypeName = ServiceType.fromString(event.eventType).displayName
 
         return buildString {
             appendLine("ATTENDANCE REPORT")
             appendLine("=".repeat(40))
-            appendLine("Branch: ${branch.name}")
-            appendLine("Date: ${dateFormat.format(Date(service.date))}")
+            appendLine("Venue: ${venue.name}")
+            appendLine("Date: ${dateFormat.format(Date(event.date))}")
             appendLine("Service: $eventTypeName")
-            if (service.eventName.isNotEmpty()) {
-                appendLine("Event: ${service.eventName}")
+            if (event.eventName.isNotEmpty()) {
+                appendLine("Event: ${event.eventName}")
             }
-            appendLine("Counted by: ${service.countedBy}")
+            appendLine("Counted by: ${event.countedBy}")
             appendLine()
 
             appendLine("AREA BREAKDOWN")
@@ -243,17 +243,17 @@ class EventRepositoryImpl @Inject constructor(
                 }
 
             appendLine("-".repeat(40))
-            appendLine("TOTAL${" ".repeat(19)}${service.totalAttendance.toString().padStart(3, ' ')}")
+            appendLine("TOTAL${" ".repeat(19)}${event.totalAttendance.toString().padStart(3, ' ')}")
 
-            if (service.notes.isNotEmpty()) {
+            if (event.notes.isNotEmpty()) {
                 appendLine()
-                appendLine("SERVICE NOTES:")
-                appendLine(service.notes)
+                appendLine("EVENT NOTES:")
+                appendLine(event.notes)
             }
 
-            if (service.weather.isNotEmpty()) {
+            if (event.weather.isNotEmpty()) {
                 appendLine()
-                appendLine("Weather: ${service.weather}")
+                appendLine("Weather: ${event.weather}")
             }
 
             appendLine()
@@ -261,18 +261,18 @@ class EventRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun exportBranchComparisonReport(
-        branchIds: List<String>,
+    override suspend fun exportVenueComparisonReport(
+        venueIds: List<String>,
         startDate: Long,
         endDate: Long
     ): String {
-        val branches = branchIds.mapNotNull { branchId ->
-            branchDao.getBranchById(branchId).first()
+        val venues = venueIds.mapNotNull { venueId ->
+            venueDao.getVenueById(venueId).first()
         }
 
-        val servicesPerBranch = branches.associate { branch ->
-            branch.id to eventDao.getServicesByBranchAndDateRange(
-                branch.id,
+        val eventsPerVenue = venues.associate { venue ->
+            venue.id to eventDao.getEventsByVenueAndDateRange(
+                venue.id,
                 startDate,
                 endDate
             ).first()
@@ -281,29 +281,29 @@ class EventRepositoryImpl @Inject constructor(
         val dateFormat = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
 
         return buildString {
-            appendLine("MULTI-BRANCH ATTENDANCE COMPARISON")
+            appendLine("MULTI-VENUE ATTENDANCE COMPARISON")
             appendLine("=".repeat(60))
             appendLine("Period: ${dateFormat.format(Date(startDate))} - ${dateFormat.format(Date(endDate))}")
             appendLine()
 
-            branches.forEach { branch ->
-                val services = servicesPerBranch[branch.id] ?: emptyList()
-                val totalAttendance = services.sumOf { it.event.totalAttendance }
-                val avgAttendance = if (services.isNotEmpty()) {
-                    totalAttendance / services.size
+            venues.forEach { venue ->
+                val events = eventsPerVenue[venue.id] ?: emptyList()
+                val totalAttendance = events.sumOf { it.event.totalAttendance }
+                val avgAttendance = if (events.isNotEmpty()) {
+                    totalAttendance / events.size
                 } else 0
 
-                appendLine("${branch.name} (${branch.code})")
+                appendLine("${venue.name} (${venue.code})")
                 appendLine("-".repeat(60))
-                appendLine("  Total Services: ${services.size}")
+                appendLine("  Total Events: ${events.size}")
                 appendLine("  Total Attendance: $totalAttendance")
                 appendLine("  Average Attendance: $avgAttendance")
-                appendLine("  Location: ${branch.location}")
+                appendLine("  Location: ${venue.location}")
                 appendLine()
             }
 
             appendLine("=".repeat(60))
-            val grandTotal = servicesPerBranch.values.flatten()
+            val grandTotal = eventsPerVenue.values.flatten()
                 .sumOf { it.event.totalAttendance }
             appendLine("GRAND TOTAL ATTENDANCE: $grandTotal")
             appendLine()
@@ -311,14 +311,14 @@ class EventRepositoryImpl @Inject constructor(
         }
     }
 
-    private suspend fun updateServiceTotal(eventId: String) {
+    private suspend fun updateEventTotal(eventId: String) {
         val areaCounts = areaCountDao.getAreaCountsByService(eventId).first()
         val total = areaCounts.sumOf { it.areaCount.count }
 
-        val service = eventDao.getServiceById(eventId).first()?.event ?: return
+        val event = eventDao.getEventById(eventId).first()?.event ?: return
 
-        eventDao.updateService(
-            service.copy(
+        eventDao.updateEvent(
+            event.copy(
                 totalAttendance = total,
                 updatedAt = System.currentTimeMillis()
             )

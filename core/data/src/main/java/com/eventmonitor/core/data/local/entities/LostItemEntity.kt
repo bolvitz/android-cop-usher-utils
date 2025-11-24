@@ -10,7 +10,7 @@ import java.util.UUID
     tableName = "lost_items",
     foreignKeys = [
         ForeignKey(
-            entity = BranchEntity::class,
+            entity = VenueEntity::class,
             parentColumns = ["id"],
             childColumns = ["locationId"],
             onDelete = ForeignKey.CASCADE

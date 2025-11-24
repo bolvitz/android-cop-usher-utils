@@ -1,10 +1,10 @@
-package com.eventmonitor.app.presentation.screens.branches
+package com.eventmonitor.app.presentation.screens.venues
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eventmonitor.core.domain.common.Result
-import com.eventmonitor.core.data.repository.interfaces.BranchRepository
+import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,38 +15,38 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class BranchSetupViewModel @Inject constructor(
-    private val branchRepository: BranchRepository,
+class VenueSetupViewModel @Inject constructor(
+    private val venueRepository: VenueRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val branchId: String? = savedStateHandle.get<String>("branchId")
-    private val isNewBranch = branchId == null || branchId == "new"
+    private val venueId: String? = savedStateHandle.get<String>("venueId")
+    private val isNewVenue = venueId == null || venueId == "new"
 
-    private val _uiState = MutableStateFlow(BranchSetupUiState())
-    val uiState: StateFlow<BranchSetupUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(VenueSetupUiState())
+    val uiState: StateFlow<VenueSetupUiState> = _uiState.asStateFlow()
 
     init {
-        if (!isNewBranch && branchId != null) {
-            loadBranch(branchId)
+        if (!isNewVenue && venueId != null) {
+            loadVenue(venueId)
         }
     }
 
-    private fun loadBranch(id: String) {
+    private fun loadVenue(id: String) {
         viewModelScope.launch {
-            val branchWithAreas = branchRepository.getBranchById(id).first()
-            branchWithAreas?.let {
+            val venueWithAreas = venueRepository.getVenueById(id).first()
+            venueWithAreas?.let {
                 _uiState.value = _uiState.value.copy(
-                    name = it.branch.name,
-                    location = it.branch.location,
-                    code = it.branch.code,
-                    contactPerson = it.branch.contactPerson,
-                    contactEmail = it.branch.contactEmail,
-                    contactPhone = it.branch.contactPhone,
-                    color = it.branch.color,
-                    isHeadCountEnabled = it.branch.isHeadCountEnabled,
-                    isLostAndFoundEnabled = it.branch.isLostAndFoundEnabled,
-                    isIncidentReportingEnabled = it.branch.isIncidentReportingEnabled,
+                    name = it.venue.name,
+                    location = it.venue.location,
+                    code = it.venue.code,
+                    contactPerson = it.venue.contactPerson,
+                    contactEmail = it.venue.contactEmail,
+                    contactPhone = it.venue.contactPhone,
+                    color = it.venue.color,
+                    isHeadCountEnabled = it.venue.isHeadCountEnabled,
+                    isLostAndFoundEnabled = it.venue.isLostAndFoundEnabled,
+                    isIncidentReportingEnabled = it.venue.isIncidentReportingEnabled,
                     isLoading = false
                 )
             }
@@ -95,9 +95,9 @@ class BranchSetupViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            if (isNewBranch) {
+            if (isNewVenue) {
                 // Create new branch
-                val result = branchRepository.createBranch(
+                val result = venueRepository.createVenue(
                     name = state.name,
                     location = state.location,
                     code = state.code,
@@ -126,9 +126,9 @@ class BranchSetupViewModel @Inject constructor(
                 }
             } else {
                 // Update existing branch
-                val branchWithAreas = branchRepository.getBranchById(branchId!!).first()
-                if (branchWithAreas != null) {
-                    val updatedBranch = branchWithAreas.branch.copy(
+                val venueWithAreas = venueRepository.getVenueById(venueId!!).first()
+                if (venueWithAreas != null) {
+                    val updatedBranch = venueWithAreas.venue.copy(
                         name = state.name,
                         location = state.location,
                         code = state.code,
@@ -142,11 +142,11 @@ class BranchSetupViewModel @Inject constructor(
                         updatedAt = System.currentTimeMillis()
                     )
 
-                    val result = branchRepository.updateBranch(updatedBranch)
+                    val result = venueRepository.updateVenue(updatedBranch)
                     when (result) {
                         is Result.Success -> {
                             _uiState.update { it.copy(isLoading = false) }
-                            onSuccess(branchId)
+                            onSuccess(venueId)
                         }
                         is Result.Error -> {
                             _uiState.update {
@@ -169,12 +169,12 @@ class BranchSetupViewModel @Inject constructor(
         }
     }
 
-    fun isEditMode(): Boolean = !isNewBranch
+    fun isEditMode(): Boolean = !isNewVenue
 
-    fun getBranchId(): String? = if (isNewBranch) null else branchId
+    fun getBranchId(): String? = if (isNewVenue) null else venueId
 }
 
-data class BranchSetupUiState(
+data class VenueSetupUiState(
     val name: String = "",
     val location: String = "",
     val code: String = "",

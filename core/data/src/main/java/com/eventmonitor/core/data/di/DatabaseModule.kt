@@ -8,6 +8,7 @@ import com.eventmonitor.core.data.local.database.MIGRATION_3_4
 import com.eventmonitor.core.data.local.database.MIGRATION_4_5
 import com.eventmonitor.core.data.local.database.MIGRATION_5_6
 import com.eventmonitor.core.data.local.database.MIGRATION_6_7
+import com.eventmonitor.core.data.local.database.MIGRATION_7_8
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,14 +28,14 @@ object DatabaseModule {
             AppDatabase::class.java,
             AppDatabase.DATABASE_NAME
         )
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .build()
     }
 
     @Provides
     @Singleton
-    fun provideBranchDao(database: AppDatabase): BranchDao {
-        return database.branchDao()
+    fun provideVenueDao(database: AppDatabase): VenueDao {
+        return database.venueDao()
     }
 
     @Provides

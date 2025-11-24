@@ -10,9 +10,9 @@ import com.eventmonitor.core.domain.common.ValidationFailure
 object DomainValidators {
 
     /**
-     * Validates branch creation input
+     * Validates venue creation input
      */
-    fun validateBranchInput(
+    fun validateVenueInput(
         name: String,
         location: String,
         code: String,
@@ -20,12 +20,12 @@ object DomainValidators {
         contactPhone: String? = null
     ): Result<Unit> {
         val errors = Validators.collectErrors(
-            Validators.validateNotEmpty(name, "Branch name"),
-            Validators.validateLength(name, "Branch name", maxLength = 100),
+            Validators.validateNotEmpty(name, "Venue name"),
+            Validators.validateLength(name, "Venue name", maxLength = 100),
             Validators.validateNotEmpty(location, "Location"),
             Validators.validateLength(location, "Location", maxLength = 200),
-            Validators.validateNotEmpty(code, "Branch code"),
-            Validators.validateLength(code, "Branch code", minLength = 2, maxLength = 10),
+            Validators.validateNotEmpty(code, "Venue code"),
+            Validators.validateLength(code, "Venue code", minLength = 2, maxLength = 10),
             contactEmail?.let { Validators.validateEmail(it, "Contact email") },
             contactPhone?.let { Validators.validatePhone(it, "Contact phone") }
         )
@@ -87,10 +87,10 @@ object DomainValidators {
     }
 
     /**
-     * Validates service creation input
+     * Validates event creation input
      */
-    fun validateServiceInput(
-        branchId: String,
+    fun validateEventInput(
+        venueId: String,
         eventTypeId: String?,
         date: Long,
         countedBy: String,
@@ -98,12 +98,12 @@ object DomainValidators {
         notes: String? = null
     ): Result<Unit> {
         val errors = Validators.collectErrors(
-            Validators.validateNotEmpty(branchId, "Branch"),
-            if (eventTypeId != null) Validators.validateNotEmpty(eventTypeId, "Service type") else null,
-            Validators.validateNotFuture(date, "Service date"),
+            Validators.validateNotEmpty(venueId, "Venue"),
+            if (eventTypeId != null) Validators.validateNotEmpty(eventTypeId, "Event type") else null,
+            Validators.validateNotFuture(date, "Event date"),
             Validators.validateNotEmpty(countedBy, "Counter name"),
             Validators.validateLength(countedBy, "Counter name", maxLength = 100),
-            eventName?.let { Validators.validateLength(it, "Service name", maxLength = 100) },
+            eventName?.let { Validators.validateLength(it, "Event name", maxLength = 100) },
             notes?.let { Validators.validateLength(it, "Notes", maxLength = 1000) }
         )
 
@@ -180,18 +180,18 @@ object DomainValidators {
     }
 
     /**
-     * Validates branch code format (alphanumeric, no spaces)
+     * Validates venue code format (alphanumeric, no spaces)
      */
-    fun validateBranchCode(code: String): ValidationFailure? {
+    fun validateVenueCode(code: String): ValidationFailure? {
         if (code.isBlank()) {
-            return ValidationFailure.EmptyString("Branch code")
+            return ValidationFailure.EmptyString("Venue code")
         }
 
         val codeRegex = "^[A-Z0-9]{2,10}$".toRegex()
         return if (!code.matches(codeRegex)) {
             ValidationFailure.InvalidFormat(
-                "Branch code",
-                "2-10 uppercase letters or numbers (e.g., MC, NB, DT)"
+                "Venue code",
+                "2-10 uppercase letters or numbers (e.g., MC, NV, DT)"
             )
         } else null
     }

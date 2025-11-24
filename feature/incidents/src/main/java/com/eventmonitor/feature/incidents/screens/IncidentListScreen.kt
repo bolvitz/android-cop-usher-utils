@@ -31,7 +31,7 @@ fun IncidentListScreen(
     onNavigateToAddIncident: (String) -> Unit,
     onNavigateToIncidentDetail: (String) -> Unit,
     onNavigateToEditIncident: (String, String) -> Unit = { _, _ -> },
-    branchId: String? = null,
+    venueId: String? = null,
     viewModel: IncidentListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -63,9 +63,9 @@ fun IncidentListScreen(
             )
         },
         floatingActionButton = {
-            if (branchId != null) {
+            if (venueId != null) {
                 FloatingActionButton(
-                    onClick = { onNavigateToAddIncident(branchId) }
+                    onClick = { onNavigateToAddIncident(venueId) }
                 ) {
                     Icon(Icons.Default.Add, "Report Incident")
                 }
@@ -171,7 +171,7 @@ fun IncidentListScreen(
                                 incident = incident,
                                 onClick = { onNavigateToIncidentDetail(incident.id) },
                                 onEdit = {
-                                    branchId?.let { onNavigateToEditIncident(it, incident.id) }
+                                    venueId?.let { onNavigateToEditIncident(it, incident.id) }
                                 }
                             )
                         }

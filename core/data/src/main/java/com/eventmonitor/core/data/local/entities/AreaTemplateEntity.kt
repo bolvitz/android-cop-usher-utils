@@ -10,18 +10,18 @@ import java.util.UUID
     tableName = "area_templates",
     foreignKeys = [
         ForeignKey(
-            entity = BranchEntity::class,
+            entity = VenueEntity::class,
             parentColumns = ["id"],
-            childColumns = ["branchId"],
+            childColumns = ["venueId"],
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("branchId"), Index("displayOrder")]
+    indices = [Index("venueId"), Index("displayOrder")]
 )
 data class AreaTemplateEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
-    val branchId: String,
+    val venueId: String,
     val name: String, // e.g., "Bay 1", "Baby Room", "Balcony"
     val type: String, // BAY, BABY_ROOM, BALCONY, OVERFLOW, PARKING, OTHER
     val capacity: Int = 100,

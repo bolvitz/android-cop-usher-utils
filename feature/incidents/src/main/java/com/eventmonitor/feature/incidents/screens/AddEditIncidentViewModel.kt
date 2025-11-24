@@ -26,7 +26,7 @@ class AddEditIncidentViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val branchId: String = savedStateHandle.get<String>("branchId") ?: ""
+    private val venueId: String = savedStateHandle.get<String>("venueId") ?: ""
     private val incidentId: String? = savedStateHandle.get<String>("incidentId")
 
     private val _events = MutableStateFlow<List<EventWithDetails>>(emptyList())
@@ -77,7 +77,7 @@ class AddEditIncidentViewModel @Inject constructor(
 
     private fun loadEvents() {
         viewModelScope.launch {
-            eventDao.getRecentServicesByBranch(branchId, limit = 20).collect { eventsList ->
+            eventDao.getRecentEventsByVenue(venueId, limit = 20).collect { eventsList ->
                 _events.value = eventsList
             }
         }
@@ -165,7 +165,7 @@ class AddEditIncidentViewModel @Inject constructor(
             } else {
                 // Create new incident
                 val createResult = incidentRepository.createIncident(
-                    branchId = branchId,
+                    venueId = venueId,
                     title = _title.value,
                     description = _description.value,
                     severity = _severity.value,

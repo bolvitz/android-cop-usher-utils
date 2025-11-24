@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.eventmonitor.core.data.local.entities.LostItemEntity
 import com.eventmonitor.core.domain.common.Result
 import com.eventmonitor.core.domain.models.ItemStatus
-import com.eventmonitor.core.data.repository.interfaces.LostAndFoundRepository
+import com.eventmonitor.core.data.repository.interfaces.LostItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -14,20 +14,20 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LostItemDetailViewModel @Inject constructor(
-    private val lostAndFoundRepository: LostAndFoundRepository,
+    private val lostItemRepository: LostItemRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val itemId: String = savedStateHandle.get<String>("itemId") ?: ""
 
-    val item: Flow<LostItemEntity?> = lostAndFoundRepository.getItemById(itemId)
+    val item: Flow<LostItemEntity?> = lostItemRepository.getItemById(itemId)
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     fun updateItemStatus(status: String) {
         viewModelScope.launch {
-            when (lostAndFoundRepository.updateItemStatus(itemId, status)) {
+            when (lostItemRepository.updateItemStatus(itemId, status)) {
                 is Result.Success -> {
                     // Successfully updated
                 }
@@ -40,7 +40,7 @@ class LostItemDetailViewModel @Inject constructor(
 
     fun claimItem(claimerName: String, contact: String, notes: String) {
         viewModelScope.launch {
-            when (lostAndFoundRepository.claimItem(itemId, claimerName, contact, notes)) {
+            when (lostItemRepository.claimItem(itemId, claimerName, contact, notes)) {
                 is Result.Success -> {
                     // Successfully claimed
                 }
@@ -53,7 +53,7 @@ class LostItemDetailViewModel @Inject constructor(
 
     fun deleteItem() {
         viewModelScope.launch {
-            when (lostAndFoundRepository.deleteItem(itemId)) {
+            when (lostItemRepository.deleteItem(itemId)) {
                 is Result.Success -> {
                     // Successfully deleted
                 }

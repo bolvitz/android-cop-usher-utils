@@ -1,4 +1,4 @@
-package com.eventmonitor.app.presentation.screens.branches
+package com.eventmonitor.app.presentation.screens.venues
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -21,14 +21,14 @@ import com.eventmonitor.core.common.utils.rememberHapticFeedback
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun BranchListScreen(
-    viewModel: BranchListViewModel = hiltViewModel(),
-    onBranchClick: (String) -> Unit,
+fun VenueListScreen(
+    viewModel: VenueListViewModel = hiltViewModel(),
+    onVenueClick: (String) -> Unit,
     onManageAreas: (String) -> Unit = {},
-    onEditBranch: (String) -> Unit = {},
-    onBranchHistory: (String) -> Unit = {},
-    onBranchIncidents: (String) -> Unit = {},
-    onBranchLostAndFound: (String) -> Unit = {},
+    onEditVenue: (String) -> Unit = {},
+    onVenueHistory: (String) -> Unit = {},
+    onVenueIncidents: (String) -> Unit = {},
+    onVenueLostAndFound: (String) -> Unit = {},
     onNavigateToReports: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
@@ -59,7 +59,7 @@ fun BranchListScreen(
         }
     ) { paddingValues ->
         when (val state = uiState) {
-            is BranchListUiState.Loading -> {
+            is VenueListUiState.Loading -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -70,7 +70,7 @@ fun BranchListScreen(
                 }
             }
 
-            is BranchListUiState.Empty -> {
+            is VenueListUiState.Empty -> {
                 val infiniteTransition = rememberInfiniteTransition(label = "pulse")
                 val pulseScale by infiniteTransition.animateFloat(
                     initialValue = 1f,
@@ -102,14 +102,14 @@ fun BranchListScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("No branches yet")
+                        Text("No venues yet")
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("Tap + to add your first branch", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
 
-            is BranchListUiState.Success -> {
+            is VenueListUiState.Success -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -118,8 +118,8 @@ fun BranchListScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(
-                        items = state.branches,
-                        key = { it.branch.id }
+                        items = state.venues,
+                        key = { it.venue.id }
                     ) { branchWithAreas ->
                         Card(
                             modifier = Modifier
@@ -141,12 +141,12 @@ fun BranchListScreen(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = branchWithAreas.branch.name,
+                                            text = branchWithAreas.venue.name,
                                             style = MaterialTheme.typography.titleLarge
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = branchWithAreas.branch.location,
+                                            text = branchWithAreas.venue.location,
                                             style = MaterialTheme.typography.bodyMedium
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
@@ -159,7 +159,7 @@ fun BranchListScreen(
                                     Row {
                                         IconButton(onClick = {
                                             haptic.light()
-                                            onBranchHistory(branchWithAreas.branch.id)
+                                            onVenueHistory(branchWithAreas.venue.id)
                                         }) {
                                             Icon(
                                                 Icons.Default.History,
@@ -169,7 +169,7 @@ fun BranchListScreen(
                                         }
                                         IconButton(onClick = {
                                             haptic.light()
-                                            onManageAreas(branchWithAreas.branch.id)
+                                            onManageAreas(branchWithAreas.venue.id)
                                         }) {
                                             Icon(
                                                 Icons.Default.Settings,
@@ -194,7 +194,7 @@ fun BranchListScreen(
                                                     onClick = {
                                                         haptic.light()
                                                         expanded = false
-                                                        onEditBranch(branchWithAreas.branch.id)
+                                                        onEditVenue(branchWithAreas.venue.id)
                                                     },
                                                     leadingIcon = {
                                                         Icon(Icons.Default.Edit, null)
@@ -205,7 +205,7 @@ fun BranchListScreen(
                                                     onClick = {
                                                         haptic.medium()
                                                         expanded = false
-                                                        showDeleteDialog = branchWithAreas.branch.id
+                                                        showDeleteDialog = branchWithAreas.venue.id
                                                     },
                                                     leadingIcon = {
                                                         Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
@@ -224,11 +224,11 @@ fun BranchListScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     // Head Count button
-                                    if (branchWithAreas.branch.isHeadCountEnabled) {
+                                    if (branchWithAreas.venue.isHeadCountEnabled) {
                                         Button(
                                             onClick = {
                                                 haptic.medium()
-                                                onBranchClick(branchWithAreas.branch.id)
+                                                onVenueClick(branchWithAreas.venue.id)
                                             },
                                             modifier = Modifier.weight(1f)
                                         ) {
@@ -239,11 +239,11 @@ fun BranchListScreen(
                                     }
 
                                     // Lost and Found button
-                                    if (branchWithAreas.branch.isLostAndFoundEnabled) {
+                                    if (branchWithAreas.venue.isLostAndFoundEnabled) {
                                         Button(
                                             onClick = {
                                                 haptic.medium()
-                                                onBranchLostAndFound(branchWithAreas.branch.id)
+                                                onVenueLostAndFound(branchWithAreas.venue.id)
                                             },
                                             modifier = Modifier.weight(1f)
                                         ) {
@@ -254,11 +254,11 @@ fun BranchListScreen(
                                     }
 
                                     // Incident Reporting button
-                                    if (branchWithAreas.branch.isIncidentReportingEnabled) {
+                                    if (branchWithAreas.venue.isIncidentReportingEnabled) {
                                         Button(
                                             onClick = {
                                                 haptic.medium()
-                                                onBranchIncidents(branchWithAreas.branch.id)
+                                                onVenueIncidents(branchWithAreas.venue.id)
                                             },
                                             modifier = Modifier.weight(1f)
                                         ) {
@@ -274,7 +274,7 @@ fun BranchListScreen(
                 }
             }
 
-            is BranchListUiState.Error -> {
+            is VenueListUiState.Error -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -301,7 +301,7 @@ fun BranchListScreen(
                         TextButton(
                             onClick = {
                                 haptic.strong()
-                                viewModel.deleteBranch(branchId) { error ->
+                                viewModel.deleteVenue(branchId) { error ->
                                     errorMessage = error
                                 }
                                 showDeleteDialog = null

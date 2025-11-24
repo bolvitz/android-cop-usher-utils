@@ -7,7 +7,7 @@ import com.eventmonitor.core.data.local.entities.AreaTemplateEntity
 import com.eventmonitor.core.data.local.entities.EventTypeEntity
 import com.eventmonitor.core.domain.models.ServiceType
 import com.eventmonitor.core.data.repository.interfaces.AreaCountRepository
-import com.eventmonitor.core.data.repository.interfaces.BranchRepository
+import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import com.eventmonitor.core.data.repository.interfaces.EventRepository
 import com.eventmonitor.core.data.repository.interfaces.EventTypeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,14 +17,14 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CountingViewModel @Inject constructor(
-    private val branchRepository: BranchRepository,
+    private val venueRepository: VenueRepository,
     private val eventRepository: EventRepository,
     private val eventTypeRepository: EventTypeRepository,
     private val areaCountRepository: AreaCountRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val branchId: String = checkNotNull(savedStateHandle.get<String>("branchId"))
+    private val venueId: String = checkNotNull(savedStateHandle.get<String>("venueId"))
     private val existingServiceId: String? = savedStateHandle.get<String>("serviceId")
 
     val eventTypes = eventTypeRepository.getAllServiceTypes()
@@ -57,12 +57,12 @@ class CountingViewModel @Inject constructor(
 
     private fun loadBranch() {
         viewModelScope.launch {
-            branchRepository.getBranchById(branchId).collect { branchWithAreas ->
-                branchWithAreas?.let {
+            venueRepository.getVenueById(venueId).collect { venueWithAreas ->
+                venueWithAreas?.let {
                     _uiState.update { currentState ->
                         currentState.copy(
-                            branchName = it.branch.name,
-                            branchCode = it.branch.code,
+                            branchName = it.venue.name,
+                            branchCode = it.venue.code,
                             isLoading = false
                         )
                     }
@@ -81,8 +81,8 @@ class CountingViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true) }
 
-                val serviceId = eventRepository.createNewService(
-                    branchId = branchId,
+                val serviceId = eventRepository.createNewEvent(
+                    venueId = venueId,
                     eventType = ServiceType.GENERAL, // Default event type
                     date = date,
                     countedBy = countedBy,
@@ -117,7 +117,7 @@ class CountingViewModel @Inject constructor(
         // Combine both flows to avoid flickering from separate updates
         viewModelScope.launch {
             combine(
-                eventRepository.getServiceById(serviceId),
+                eventRepository.getEventById(serviceId),
                 areaCountRepository.getAreaCountsByService(serviceId)
             ) { serviceWithDetails, areaCounts ->
                 Pair(serviceWithDetails, areaCounts)
@@ -184,7 +184,7 @@ class CountingViewModel @Inject constructor(
         viewModelScope.launch {
             val oldCount = getCurrentCount(areaCountId)
 
-            eventRepository.updateServiceCount(
+            eventRepository.updateEventCount(
                 eventId = eventId,
                 areaCountId = areaCountId,
                 newCount = newCount,
@@ -208,7 +208,7 @@ class CountingViewModel @Inject constructor(
         viewModelScope.launch {
             when (action) {
                 is CountAction.UpdateCount -> {
-                    eventRepository.updateServiceCount(
+                    eventRepository.updateEventCount(
                         eventId = action.eventId,
                         areaCountId = action.areaCountId,
                         newCount = action.oldCount,
@@ -228,7 +228,7 @@ class CountingViewModel @Inject constructor(
         viewModelScope.launch {
             when (action) {
                 is CountAction.UpdateCount -> {
-                    eventRepository.updateServiceCount(
+                    eventRepository.updateEventCount(
                         eventId = action.eventId,
                         areaCountId = action.areaCountId,
                         newCount = action.newCount,
@@ -242,24 +242,24 @@ class CountingViewModel @Inject constructor(
         }
     }
 
-    fun lockService() {
+    fun lockEvent() {
         val eventId = _uiState.value.eventId ?: return
         viewModelScope.launch {
-            eventRepository.lockService(eventId)
+            eventRepository.lockEvent(eventId)
         }
     }
 
-    fun unlockService() {
+    fun unlockEvent() {
         val eventId = _uiState.value.eventId ?: return
         viewModelScope.launch {
-            eventRepository.unlockService(eventId)
+            eventRepository.unlockEvent(eventId)
         }
     }
 
     fun updateNotes(notes: String) {
         val eventId = _uiState.value.eventId ?: return
         viewModelScope.launch {
-            eventRepository.updateServiceNotes(eventId, notes)
+            eventRepository.updateEventNotes(eventId, notes)
         }
     }
 
@@ -267,7 +267,7 @@ class CountingViewModel @Inject constructor(
         val eventId = _uiState.value.eventId ?: return
         viewModelScope.launch {
             try {
-                val report = eventRepository.exportServiceReport(eventId)
+                val report = eventRepository.exportEventReport(eventId)
                 _uiState.update { it.copy(shareableReport = report) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message) }

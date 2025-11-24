@@ -10,9 +10,9 @@ import java.util.UUID
     tableName = "incidents",
     foreignKeys = [
         ForeignKey(
-            entity = BranchEntity::class,
+            entity = VenueEntity::class,
             parentColumns = ["id"],
-            childColumns = ["branchId"],
+            childColumns = ["venueId"],
             onDelete = ForeignKey.CASCADE
         ),
         ForeignKey(
@@ -23,7 +23,7 @@ import java.util.UUID
         )
     ],
     indices = [
-        Index(value = ["branchId"]),
+        Index(value = ["venueId"]),
         Index(value = ["eventId"]),
         Index(value = ["severity"]),
         Index(value = ["status"]),
@@ -34,7 +34,7 @@ import java.util.UUID
 data class IncidentEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
-    val branchId: String, // Location where incident occurred
+    val venueId: String, // Location where incident occurred
     val eventId: String? = null, // Optional link to specific event/service
     val title: String, // Brief title of the incident
     val description: String, // Detailed description

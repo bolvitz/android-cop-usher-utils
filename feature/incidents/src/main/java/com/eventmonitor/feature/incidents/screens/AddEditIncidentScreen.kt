@@ -28,7 +28,7 @@ import com.eventmonitor.core.domain.models.IncidentSeverity
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditIncidentScreen(
-    branchId: String,
+    venueId: String,
     incidentId: String?,
     onNavigateBack: () -> Unit,
     viewModel: AddEditIncidentViewModel = hiltViewModel()
@@ -155,7 +155,7 @@ fun AddEditIncidentScreen(
                 OutlinedTextField(
                     value = selectedEventId?.let { id ->
                         events.find { it.event.id == id }?.let { event ->
-                            "${event.eventType.name} - ${java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(java.util.Date(event.event.date))}"
+                            "${event.eventType?.name ?: "Event"} - ${java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(java.util.Date(event.event.date))}"
                         }
                     } ?: "None",
                     onValueChange = {},
@@ -194,7 +194,7 @@ fun AddEditIncidentScreen(
                             text = {
                                 Column {
                                     Text(
-                                        text = eventWithDetails.eventType.name,
+                                        text = eventWithDetails.eventType?.name ?: "Event",
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                     Text(

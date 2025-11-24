@@ -1,4 +1,4 @@
-package com.eventmonitor.app.presentation.screens.branches
+package com.eventmonitor.app.presentation.screens.venues
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,8 +16,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BranchSetupScreen(
-    viewModel: BranchSetupViewModel = hiltViewModel(),
+fun VenueSetupScreen(
+    viewModel: VenueSetupViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
     onManageAreas: (String) -> Unit = {}
 ) {

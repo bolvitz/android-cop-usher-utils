@@ -31,9 +31,9 @@ class HistoryViewModel @Inject constructor(
     private fun loadServices() {
         viewModelScope.launch {
             val servicesFlow = if (branchId != null) {
-                eventRepository.getRecentServicesByBranch(branchId, 100)
+                eventRepository.getRecentEventsByVenue(branchId, 100)
             } else {
-                eventRepository.getRecentServices(100)
+                eventRepository.getRecentEvents(100)
             }
 
             servicesFlow.collect { services ->
@@ -49,7 +49,7 @@ class HistoryViewModel @Inject constructor(
     fun generateReport(eventId: String) {
         viewModelScope.launch {
             try {
-                val report = eventRepository.exportServiceReport(eventId)
+                val report = eventRepository.exportEventReport(eventId)
                 _selectedServiceReport.value = report
             } catch (e: Exception) {
                 // Handle error
@@ -62,15 +62,15 @@ class HistoryViewModel @Inject constructor(
         _selectedServiceReport.value = null
     }
 
-    fun unlockService(eventId: String) {
+    fun unlockEvent(eventId: String) {
         viewModelScope.launch {
-            eventRepository.unlockService(eventId)
+            eventRepository.unlockEvent(eventId)
         }
     }
 
-    fun deleteService(eventId: String) {
+    fun deleteEvent(eventId: String) {
         viewModelScope.launch {
-            eventRepository.deleteService(eventId)
+            eventRepository.deleteEvent(eventId)
         }
     }
 }

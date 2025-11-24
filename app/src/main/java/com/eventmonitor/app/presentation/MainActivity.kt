@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     NavGraph(
                         navController = navController,
-                        startDestination = com.eventmonitor.app.presentation.navigation.Screen.BranchList.route,
+                        startDestination = com.eventmonitor.app.presentation.navigation.Screen.VenueList.route,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
