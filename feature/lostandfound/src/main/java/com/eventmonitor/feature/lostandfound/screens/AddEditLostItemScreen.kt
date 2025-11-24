@@ -47,8 +47,11 @@ fun AddEditLostItemScreen(
     val isSaving by viewModel.isSaving.collectAsState()
     val saveSuccess by viewModel.saveSuccess.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val events by viewModel.events.collectAsState()
+    val selectedEventId by viewModel.selectedEventId.collectAsState()
 
     var showCategoryDialog by remember { mutableStateOf(false) }
+    var showEventDropdown by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
     val context = LocalContext.current
@@ -158,6 +161,73 @@ fun AddEditLostItemScreen(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary
             )
+
+            // Event Selection (Optional)
+            ExposedDropdownMenuBox(
+                expanded = showEventDropdown,
+                onExpandedChange = { showEventDropdown = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedEventId?.let { id ->
+                        events.find { it.event.id == id }?.let { event ->
+                            "${event.eventType.name} - ${java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(java.util.Date(event.event.date))}"
+                        }
+                    } ?: "None",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Event (Optional)") },
+                    supportingText = { Text("Link this item to a specific event") },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = showEventDropdown)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = showEventDropdown,
+                    onDismissRequest = { showEventDropdown = false }
+                ) {
+                    // None option
+                    DropdownMenuItem(
+                        text = { Text("None") },
+                        onClick = {
+                            viewModel.updateSelectedEvent(null)
+                            showEventDropdown = false
+                        }
+                    )
+
+                    if (events.isNotEmpty()) {
+                        HorizontalDivider()
+                    }
+
+                    // Event options
+                    events.forEach { eventWithDetails ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(
+                                        text = eventWithDetails.eventType.name,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        text = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+                                            .format(java.util.Date(eventWithDetails.event.date)),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            onClick = {
+                                viewModel.updateSelectedEvent(eventWithDetails.event.id)
+                                showEventDropdown = false
+                            }
+                        )
+                    }
+                }
+            }
 
             // Description (Required)
             OutlinedTextField(
