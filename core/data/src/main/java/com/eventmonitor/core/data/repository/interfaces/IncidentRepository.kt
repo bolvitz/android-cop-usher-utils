@@ -6,21 +6,21 @@ import kotlinx.coroutines.flow.Flow
 
 interface IncidentRepository {
     fun getAllIncidents(): Flow<List<IncidentEntity>>
-    fun getIncidentsByBranch(branchId: String): Flow<List<IncidentEntity>>
+    fun getIncidentsByVenue(venueId: String): Flow<List<IncidentEntity>>
     fun getIncidentsByStatus(status: String): Flow<List<IncidentEntity>>
     fun getIncidentsBySeverity(severity: String): Flow<List<IncidentEntity>>
     fun getIncidentById(incidentId: String): Flow<IncidentEntity?>
-    fun getIncidentsByBranchAndStatus(branchId: String, status: String): Flow<List<IncidentEntity>>
-    fun getIncidentsByBranchAndSeverity(branchId: String, severity: String): Flow<List<IncidentEntity>>
+    fun getIncidentsByVenueAndStatus(venueId: String, status: String): Flow<List<IncidentEntity>>
+    fun getIncidentsByVenueAndSeverity(venueId: String, severity: String): Flow<List<IncidentEntity>>
     fun searchIncidents(query: String): Flow<List<IncidentEntity>>
     fun getActiveIncidentsBySeverity(): Flow<List<IncidentEntity>>
     fun getIncidentCountByStatus(status: String): Flow<Int>
     fun getActiveIncidentCountBySeverity(severity: String): Flow<Int>
-    fun getActiveIncidentCountByBranch(branchId: String): Flow<Int>
+    fun getActiveIncidentCountByVenue(venueId: String): Flow<Int>
     fun getIncidentsByDateRange(startDate: Long, endDate: Long): Flow<List<IncidentEntity>>
 
     suspend fun createIncident(
-        branchId: String,
+        venueId: String,
         title: String,
         description: String,
         severity: String,
@@ -28,7 +28,8 @@ interface IncidentRepository {
         location: String = "",
         photoUri: String = "",
         reportedBy: String = "",
-        notes: String = ""
+        notes: String = "",
+        eventId: String? = null
     ): Result<String>
 
     suspend fun updateIncident(incident: IncidentEntity): Result<Unit>

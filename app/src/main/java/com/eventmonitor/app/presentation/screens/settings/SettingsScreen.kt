@@ -17,7 +17,7 @@ import com.eventmonitor.core.common.utils.rememberHapticFeedback
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onManageServiceTypes: () -> Unit = {},
-    onAddBranch: () -> Unit = {}
+    onAddVenue: () -> Unit = {}
 ) {
     val haptic = rememberHapticFeedback()
 
@@ -76,7 +76,7 @@ fun SettingsScreen(
                             },
                             modifier = Modifier.clickable {
                                 haptic.medium()
-                                onAddBranch()
+                                onAddVenue()
                             }
                         )
 

@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.eventmonitor.core.data.local.entities.AreaTemplateEntity
 import com.eventmonitor.core.domain.models.AreaType
 import com.eventmonitor.core.data.repository.interfaces.AreaRepository
-import com.eventmonitor.core.data.repository.interfaces.BranchRepository
+import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,11 +17,11 @@ import javax.inject.Inject
 @HiltViewModel
 class AreaManagementViewModel @Inject constructor(
     private val areaRepository: AreaRepository,
-    private val branchRepository: BranchRepository,
+    private val branchRepository: VenueRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val branchId: String = checkNotNull(savedStateHandle.get<String>("branchId"))
+    private val venueId: String = checkNotNull(savedStateHandle.get<String>("venueId"))
 
     private val _uiState = MutableStateFlow(AreaManagementUiState())
     val uiState: StateFlow<AreaManagementUiState> = _uiState.asStateFlow()
@@ -33,10 +33,10 @@ class AreaManagementViewModel @Inject constructor(
 
     private fun loadBranchInfo() {
         viewModelScope.launch {
-            branchRepository.getBranchById(branchId).collect { branchWithAreas ->
+            branchRepository.getVenueById(venueId).collect { branchWithAreas ->
                 branchWithAreas?.let {
                     _uiState.value = _uiState.value.copy(
-                        branchName = it.branch.name
+                        branchName = it.venue.name
                     )
                 }
             }
@@ -45,7 +45,7 @@ class AreaManagementViewModel @Inject constructor(
 
     private fun loadAreas() {
         viewModelScope.launch {
-            areaRepository.getAreasByBranch(branchId).collect { areas ->
+            areaRepository.getAreasByVenue(venueId).collect { areas ->
                 _uiState.value = _uiState.value.copy(
                     areas = areas,
                     isLoading = false
@@ -66,7 +66,7 @@ class AreaManagementViewModel @Inject constructor(
                 val displayOrder = currentAreas.maxOfOrNull { it.displayOrder }?.plus(1) ?: 0
 
                 areaRepository.createArea(
-                    branchId = branchId,
+                    venueId = venueId,
                     name = name,
                     type = type,
                     capacity = capacity,
@@ -170,7 +170,7 @@ class AreaManagementViewModel @Inject constructor(
                     }
 
                     areaRepository.createArea(
-                        branchId = branchId,
+                        venueId = venueId,
                         name = name,
                         type = areaType,
                         capacity = 100,

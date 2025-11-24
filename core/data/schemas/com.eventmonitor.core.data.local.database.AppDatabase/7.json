@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 6,
-    "identityHash": "0d382320e80dd3cf095902061c643f3f",
+    "version": 7,
+    "identityHash": "29a51005c5c0bfa97eae83b005a6d524",
     "entities": [
       {
         "tableName": "branches",
@@ -741,7 +741,7 @@
       },
       {
         "tableName": "lost_items",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `locationId` TEXT NOT NULL, `description` TEXT NOT NULL, `category` TEXT NOT NULL, `foundZone` TEXT NOT NULL, `foundDate` INTEGER NOT NULL, `photoUri` TEXT NOT NULL, `color` TEXT NOT NULL, `brand` TEXT NOT NULL, `identifyingMarks` TEXT NOT NULL, `status` TEXT NOT NULL, `claimedBy` TEXT NOT NULL, `claimedDate` INTEGER NOT NULL, `claimerContact` TEXT NOT NULL, `verificationNotes` TEXT NOT NULL, `reportedBy` TEXT NOT NULL, `notes` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `isSyncedToCloud` INTEGER NOT NULL, `cloudId` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`locationId`) REFERENCES `branches`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `locationId` TEXT NOT NULL, `eventId` TEXT, `description` TEXT NOT NULL, `category` TEXT NOT NULL, `foundZone` TEXT NOT NULL, `foundDate` INTEGER NOT NULL, `photoUri` TEXT NOT NULL, `color` TEXT NOT NULL, `brand` TEXT NOT NULL, `identifyingMarks` TEXT NOT NULL, `status` TEXT NOT NULL, `claimedBy` TEXT NOT NULL, `claimedDate` INTEGER NOT NULL, `claimerContact` TEXT NOT NULL, `verificationNotes` TEXT NOT NULL, `reportedBy` TEXT NOT NULL, `notes` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `isSyncedToCloud` INTEGER NOT NULL, `cloudId` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`locationId`) REFERENCES `branches`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`eventId`) REFERENCES `events`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
         "fields": [
           {
             "fieldPath": "id",
@@ -754,6 +754,12 @@
             "columnName": "locationId",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "eventId",
+            "columnName": "eventId",
+            "affinity": "TEXT",
+            "notNull": false
           },
           {
             "fieldPath": "description",
@@ -887,6 +893,15 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_lost_items_locationId` ON `${TABLE_NAME}` (`locationId`)"
           },
           {
+            "name": "index_lost_items_eventId",
+            "unique": false,
+            "columnNames": [
+              "eventId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lost_items_eventId` ON `${TABLE_NAME}` (`eventId`)"
+          },
+          {
             "name": "index_lost_items_status",
             "unique": false,
             "columnNames": [
@@ -925,12 +940,23 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "events",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "eventId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       },
       {
         "tableName": "incidents",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `branchId` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `severity` TEXT NOT NULL, `status` TEXT NOT NULL, `category` TEXT NOT NULL, `location` TEXT NOT NULL, `photoUri` TEXT NOT NULL, `reportedBy` TEXT NOT NULL, `assignedTo` TEXT NOT NULL, `reportedAt` INTEGER NOT NULL, `resolvedAt` INTEGER, `notes` TEXT NOT NULL, `actionsTaken` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `isSyncedToCloud` INTEGER NOT NULL, `cloudId` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`branchId`) REFERENCES `branches`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `branchId` TEXT NOT NULL, `eventId` TEXT, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `severity` TEXT NOT NULL, `status` TEXT NOT NULL, `category` TEXT NOT NULL, `location` TEXT NOT NULL, `photoUri` TEXT NOT NULL, `reportedBy` TEXT NOT NULL, `assignedTo` TEXT NOT NULL, `reportedAt` INTEGER NOT NULL, `resolvedAt` INTEGER, `notes` TEXT NOT NULL, `actionsTaken` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `isSyncedToCloud` INTEGER NOT NULL, `cloudId` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`branchId`) REFERENCES `branches`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`eventId`) REFERENCES `events`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
         "fields": [
           {
             "fieldPath": "id",
@@ -943,6 +969,12 @@
             "columnName": "branchId",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "eventId",
+            "columnName": "eventId",
+            "affinity": "TEXT",
+            "notNull": false
           },
           {
             "fieldPath": "title",
@@ -1064,6 +1096,15 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_incidents_branchId` ON `${TABLE_NAME}` (`branchId`)"
           },
           {
+            "name": "index_incidents_eventId",
+            "unique": false,
+            "columnNames": [
+              "eventId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_incidents_eventId` ON `${TABLE_NAME}` (`eventId`)"
+          },
+          {
             "name": "index_incidents_severity",
             "unique": false,
             "columnNames": [
@@ -1111,6 +1152,17 @@
             "referencedColumns": [
               "id"
             ]
+          },
+          {
+            "table": "events",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "eventId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       }
@@ -1118,7 +1170,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0d382320e80dd3cf095902061c643f3f')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '29a51005c5c0bfa97eae83b005a6d524')"
     ]
   }
 }

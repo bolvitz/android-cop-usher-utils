@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AreaTemplateDao {
-    @Query("SELECT * FROM area_templates WHERE branchId = :branchId AND isActive = 1 ORDER BY displayOrder ASC, name ASC")
-    fun getAreasByBranch(branchId: String): Flow<List<AreaTemplateEntity>>
+    @Query("SELECT * FROM area_templates WHERE venueId = :venueId AND isActive = 1 ORDER BY name ASC")
+    fun getAreasByVenue(venueId: String): Flow<List<AreaTemplateEntity>>
 
     @Query("SELECT * FROM area_templates WHERE id = :areaId")
     fun getAreaById(areaId: String): Flow<AreaTemplateEntity?>
@@ -30,9 +30,9 @@ interface AreaTemplateDao {
     @Query("UPDATE area_templates SET displayOrder = :order WHERE id = :areaId")
     suspend fun updateDisplayOrder(areaId: String, order: Int)
 
-    @Query("SELECT SUM(capacity) FROM area_templates WHERE branchId = :branchId AND isActive = 1")
-    fun getTotalCapacityForBranch(branchId: String): Flow<Int?>
+    @Query("SELECT SUM(capacity) FROM area_templates WHERE venueId = :venueId AND isActive = 1")
+    fun getTotalCapacityForVenue(venueId: String): Flow<Int?>
 
-    @Query("DELETE FROM area_templates WHERE branchId = :branchId")
-    suspend fun deleteAllAreasForBranch(branchId: String)
+    @Query("DELETE FROM area_templates WHERE venueId = :venueId")
+    suspend fun deleteAllAreasForVenue(venueId: String)
 }

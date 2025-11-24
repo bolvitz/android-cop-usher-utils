@@ -10,9 +10,9 @@ import java.util.UUID
     tableName = "events",
     foreignKeys = [
         ForeignKey(
-            entity = BranchEntity::class,
+            entity = VenueEntity::class,
             parentColumns = ["id"],
-            childColumns = ["branchId"],
+            childColumns = ["venueId"],
             onDelete = ForeignKey.CASCADE
         ),
         ForeignKey(
@@ -23,18 +23,18 @@ import java.util.UUID
         )
     ],
     indices = [
-        Index("branchId"),
+        Index("venueId"),
         Index("date"),
         Index("eventType"),
         Index("eventTypeId"),
-        Index(value = ["branchId", "date"], name = "idx_services_branch_date"),
-        Index(value = ["branchId", "eventTypeId"], name = "idx_services_branch_type")
+        Index(value = ["venueId", "date"], name = "idx_events_venue_date"),
+        Index(value = ["venueId", "eventTypeId"], name = "idx_events_venue_type")
     ]
 )
 data class EventEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
-    val branchId: String,
+    val venueId: String,
     val eventTypeId: String? = null, // References EventTypeEntity for dynamic service types
     val date: Long, // Unix timestamp
     val eventType: String = "", // Deprecated: kept for backward compatibility

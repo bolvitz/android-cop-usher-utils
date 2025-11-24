@@ -111,11 +111,11 @@ class EventTypeRepositoryImpl @Inject constructor(
 
     override suspend fun deleteServiceType(id: String): Result<Unit> {
         // Check if service type has services
-        if (hasServices(id)) {
+        if (hasEvents(id)) {
             return Result.Error(
                 AppError.HasDependencies(
                     resource = "Service type",
-                    dependencyCount = eventDao.getRecentServices(999).first().count { it.event.eventTypeId == id },
+                    dependencyCount = eventDao.getRecentEvents(999).first().count { it.event.eventTypeId == id },
                     dependencyType = "events"
                 )
             )
@@ -134,7 +134,7 @@ class EventTypeRepositoryImpl @Inject constructor(
         return eventTypeDao.getServiceTypeCount()
     }
 
-    override suspend fun hasServices(eventTypeId: String): Boolean {
-        return eventDao.hasServicesWithType(eventTypeId)
+    override suspend fun hasEvents(eventTypeId: String): Boolean {
+        return eventDao.hasEventsWithType(eventTypeId)
     }
 }

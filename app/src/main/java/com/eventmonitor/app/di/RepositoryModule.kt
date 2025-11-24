@@ -2,14 +2,14 @@ package com.eventmonitor.app.di
 
 import com.eventmonitor.core.data.repository.AreaCountRepositoryImpl
 import com.eventmonitor.core.data.repository.AreaRepositoryImpl
-import com.eventmonitor.core.data.repository.BranchRepositoryImpl
+import com.eventmonitor.core.data.repository.VenueRepositoryImpl
 import com.eventmonitor.core.data.repository.IncidentRepositoryImpl
 import com.eventmonitor.core.data.repository.LostItemRepositoryImpl
 import com.eventmonitor.core.data.repository.EventRepositoryImpl
 import com.eventmonitor.core.data.repository.EventTypeRepositoryImpl
 import com.eventmonitor.core.data.repository.interfaces.AreaCountRepository
 import com.eventmonitor.core.data.repository.interfaces.AreaRepository
-import com.eventmonitor.core.data.repository.interfaces.BranchRepository
+import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import com.eventmonitor.core.data.repository.interfaces.IncidentRepository
 import com.eventmonitor.core.data.repository.interfaces.LostItemRepository
 import com.eventmonitor.core.data.repository.interfaces.EventRepository
@@ -26,9 +26,9 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindBranchRepository(
-        branchRepositoryImpl: BranchRepositoryImpl
-    ): BranchRepository
+    abstract fun bindVenueRepository(
+        venueRepositoryImpl: VenueRepositoryImpl
+    ): VenueRepository
 
     @Binds
     @Singleton

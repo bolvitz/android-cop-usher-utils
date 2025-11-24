@@ -27,9 +27,9 @@ fun ReportsScreen(
     val haptic = rememberHapticFeedback()
     val selectedPeriod by viewModel.selectedPeriod.collectAsState()
     val reportData by viewModel.reportData.collectAsState()
-    val branches by viewModel.branches.collectAsState()
+    val venues by viewModel.venues.collectAsState()
     val eventTypes by viewModel.eventTypes.collectAsState()
-    val selectedBranch by viewModel.selectedBranch.collectAsState()
+    val selectedVenue by viewModel.selectedVenue.collectAsState()
     val selectedServiceType by viewModel.selectedServiceType.collectAsState()
 
     var showPeriodMenu by remember { mutableStateOf(false) }
@@ -81,7 +81,7 @@ fun ReportsScreen(
             )
         }
     ) { paddingValues ->
-        if (reportData.totalServices == 0) {
+        if (reportData.totalEvents == 0) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -141,8 +141,8 @@ fun ReportsScreen(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = selectedBranch?.let { branchId ->
-                                        branches.find { it.id == branchId }?.name ?: "All Branches"
+                                    text = selectedVenue?.let { branchId ->
+                                        venues.find { it.id == branchId }?.name ?: "All Branches"
                                     } ?: "All Branches",
                                     style = MaterialTheme.typography.labelMedium,
                                     modifier = Modifier.weight(1f)
@@ -161,22 +161,22 @@ fun ReportsScreen(
                                     text = { Text("All Branches") },
                                     onClick = {
                                         haptic.selection()
-                                        viewModel.selectBranch(null)
+                                        viewModel.selectVenue(null)
                                         showBranchMenu = false
                                     },
-                                    leadingIcon = if (selectedBranch == null) {
+                                    leadingIcon = if (selectedVenue == null) {
                                         { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
                                     } else null
                                 )
-                                branches.forEach { branch ->
+                                venues.forEach { branch ->
                                     DropdownMenuItem(
                                         text = { Text(branch.name) },
                                         onClick = {
                                             haptic.selection()
-                                            viewModel.selectBranch(branch.id)
+                                            viewModel.selectVenue(branch.id)
                                             showBranchMenu = false
                                         },
-                                        leadingIcon = if (selectedBranch == branch.id) {
+                                        leadingIcon = if (selectedVenue == branch.id) {
                                             { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
                                         } else null
                                     )
@@ -254,7 +254,7 @@ fun ReportsScreen(
                     ) {
                         SummaryCard(
                             title = "Total\nServices",
-                            value = reportData.totalServices.toString(),
+                            value = reportData.totalEvents.toString(),
                             icon = Icons.Default.Event,
                             modifier = Modifier.weight(1f)
                         )
@@ -464,7 +464,7 @@ fun AreaStatisticsCard(
                 Divider()
                 Spacer(modifier = Modifier.height(8.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    DetailRow("Services counted", areaStatistics.servicesCount.toString())
+                    DetailRow("Services counted", areaStatistics.eventsCount.toString())
                     DetailRow("Highest count", areaStatistics.maxCount.toString())
                     DetailRow("Lowest count", areaStatistics.minCount.toString())
                     DetailRow("Capacity", areaStatistics.capacity.toString())

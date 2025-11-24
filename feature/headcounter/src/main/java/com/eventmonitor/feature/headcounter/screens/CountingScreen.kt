@@ -114,15 +114,6 @@ fun CountingScreen(
             }
 
             uiState.eventId != null -> {
-                val animatedAttendance by animateIntAsState(
-                    targetValue = uiState.totalAttendance,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    ),
-                    label = "attendanceAnimation"
-                )
-
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -160,12 +151,28 @@ fun CountingScreen(
                                     )
                                 }
                             }
-                            Text(
-                                text = animatedAttendance.toString(),
-                                style = MaterialTheme.typography.displayMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+
+                            // Total attendance with flip animation matching area counts
+                            AnimatedContent(
+                                targetState = uiState.totalAttendance,
+                                transitionSpec = {
+                                    if (targetState > initialState) {
+                                        // Incrementing: flip up
+                                        flipUpTransform()
+                                    } else {
+                                        // Decrementing: flip down
+                                        flipDownTransform()
+                                    }
+                                },
+                                label = "totalAttendanceAnimation"
+                            ) { attendance ->
+                                Text(
+                                    text = attendance.toString(),
+                                    style = MaterialTheme.typography.displayMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
                         }
                     }
 
@@ -439,23 +446,11 @@ fun AreaCountCard(
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
                     )
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Remove,
-                            contentDescription = "Decrease",
-                            modifier = Modifier.size(40.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "−",
-                            fontSize = 48.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Remove,
+                        contentDescription = "Decrease",
+                        modifier = Modifier.size(48.dp)
+                    )
                 }
 
                 // Plus button - Large and emphasized
@@ -470,23 +465,11 @@ fun AreaCountCard(
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Increase",
-                            modifier = Modifier.size(40.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "+",
-                            fontSize = 48.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Increase",
+                        modifier = Modifier.size(48.dp)
+                    )
                 }
             }
 

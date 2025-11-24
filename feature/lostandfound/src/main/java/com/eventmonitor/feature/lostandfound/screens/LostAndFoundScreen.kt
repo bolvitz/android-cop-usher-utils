@@ -1,5 +1,6 @@
 package com.eventmonitor.feature.lostandfound.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +23,7 @@ import java.util.*
 fun LostAndFoundScreen(
     locationId: String?,
     onNavigateToAddItem: (String) -> Unit,
+    onNavigateToItemDetail: (String) -> Unit = {},
     onNavigateBack: () -> Unit,
     viewModel: LostAndFoundViewModel = hiltViewModel()
 ) {
@@ -67,6 +69,7 @@ fun LostAndFoundScreen(
                 is LostAndFoundUiState.Success -> {
                     ItemList(
                         items = state.items,
+                        onItemClick = onNavigateToItemDetail,
                         onClaimItem = { showClaimDialog = it },
                         onUpdateStatus = viewModel::updateItemStatus,
                         onDeleteItem = viewModel::deleteItem
@@ -107,6 +110,7 @@ fun LostAndFoundScreen(
 @Composable
 fun ItemList(
     items: List<LostItemEntity>,
+    onItemClick: (String) -> Unit,
     onClaimItem: (String) -> Unit,
     onUpdateStatus: (String, String) -> Unit,
     onDeleteItem: (String) -> Unit
@@ -119,6 +123,7 @@ fun ItemList(
         items(items, key = { it.id }) { item ->
             LostItemCard(
                 item = item,
+                onClick = { onItemClick(item.id) },
                 onClaim = { onClaimItem(item.id) },
                 onUpdateStatus = { status -> onUpdateStatus(item.id, status) },
                 onDelete = { onDeleteItem(item.id) }
@@ -131,53 +136,260 @@ fun ItemList(
 @Composable
 fun LostItemCard(
     item: LostItemEntity,
+    onClick: () -> Unit,
     onClaim: () -> Unit,
     onUpdateStatus: (String) -> Unit,
     onDelete: () -> Unit
 ) {
-    val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val status = ItemStatus.fromString(item.status)
 
+    // Calculate if 6 months have passed since item was found
+    val currentTime = System.currentTimeMillis()
+    val sixMonthsInMillis = 6L * 30L * 24L * 60L * 60L * 1000L // Approximately 6 months (180 days)
+    val timeSinceFound = currentTime - item.foundDate
+    val canDonate = timeSinceFound >= sixMonthsInMillis
+
+    // Calculate days remaining and progress
+    val totalDays = 180
+    val daysElapsed = (timeSinceFound / (24L * 60L * 60L * 1000L)).toInt()
+    val daysRemaining = (totalDays - daysElapsed).coerceAtLeast(0)
+    val donationProgress = (daysElapsed.toFloat() / totalDays).coerceIn(0f, 1f)
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = Color(android.graphics.Color.parseColor(status.color)).copy(alpha = 0.1f)
-        )
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Header with description and status
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = item.description,
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = item.description,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    )
+                    Text(
+                        text = "Found ${dateFormat.format(Date(item.foundDate))} at ${timeFormat.format(Date(item.foundDate))}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 AssistChip(
                     onClick = {},
-                    label = { Text(status.displayName, style = MaterialTheme.typography.labelSmall) }
+                    label = { Text(status.displayName) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = Color(android.graphics.Color.parseColor(status.color)).copy(alpha = 0.2f),
+                        labelColor = Color(android.graphics.Color.parseColor(status.color))
+                    )
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            Text("Found: ${item.foundZone}", style = MaterialTheme.typography.bodySmall)
-            Text("Date: ${dateFormat.format(Date(item.foundDate))}", style = MaterialTheme.typography.bodySmall)
-            if (item.color.isNotBlank()) {
-                Text("Color: ${item.color}", style = MaterialTheme.typography.bodySmall)
-            }
-            if (item.brand.isNotBlank()) {
-                Text("Brand: ${item.brand}", style = MaterialTheme.typography.bodySmall)
+            // Item details section
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Location
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = item.foundZone,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                        )
+                    }
+
+                    // Color and Brand if available
+                    if (item.color.isNotBlank() || item.brand.isNotBlank()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            if (item.color.isNotBlank()) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Palette,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.secondary
+                                    )
+                                    Text(
+                                        text = item.color,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                            if (item.brand.isNotBlank()) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Business,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.secondary
+                                    )
+                                    Text(
+                                        text = item.brand,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Identifying marks if available
+                    if (item.identifyingMarks.isNotBlank()) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.tertiary
+                            )
+                            Text(
+                                text = item.identifyingMarks,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
 
+            // Donation countdown section (only for pending items)
             if (item.status == ItemStatus.PENDING.name) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onClaim) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Donation Progress Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (canDonate)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    if (canDonate) Icons.Default.CheckCircle else Icons.Default.Schedule,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = if (canDonate)
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Text(
+                                    text = if (canDonate) "Ready for Donation" else "Holding Period",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    color = if (canDonate)
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                            Text(
+                                text = if (canDonate) "180/180 days" else "$daysElapsed/180 days",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (canDonate)
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Progress bar
+                        LinearProgressIndicator(
+                            progress = donationProgress,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp),
+                            color = if (canDonate)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.secondary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+
+                        if (!canDonate) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "$daysRemaining days remaining until donation eligibility",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onClaim,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text("Claim")
                     }
-                    OutlinedButton(onClick = { onUpdateStatus(ItemStatus.DONATED.name) }) {
-                        Text("Mark as Donated")
+                    OutlinedButton(
+                        onClick = { onUpdateStatus(ItemStatus.DONATED.name) },
+                        enabled = canDonate,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Donate")
                     }
                 }
             }

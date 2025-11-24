@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eventmonitor.core.domain.common.Result
 import com.eventmonitor.core.domain.models.IncidentSeverity
+import com.eventmonitor.core.data.local.dao.EventDao
+import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.data.repository.interfaces.IncidentRepository
 import com.eventmonitor.feature.incidents.utils.IncidentNotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,12 +21,19 @@ import javax.inject.Inject
 @HiltViewModel
 class AddEditIncidentViewModel @Inject constructor(
     private val incidentRepository: IncidentRepository,
+    private val eventDao: EventDao,
     private val application: Application,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val branchId: String = savedStateHandle.get<String>("branchId") ?: ""
+    private val venueId: String = savedStateHandle.get<String>("venueId") ?: ""
     private val incidentId: String? = savedStateHandle.get<String>("incidentId")
+
+    private val _events = MutableStateFlow<List<EventWithDetails>>(emptyList())
+    val events: StateFlow<List<EventWithDetails>> = _events.asStateFlow()
+
+    private val _selectedEventId = MutableStateFlow<String?>(null)
+    val selectedEventId: StateFlow<String?> = _selectedEventId.asStateFlow()
 
     private val _title = MutableStateFlow("")
     val title: StateFlow<String> = _title.asStateFlow()
@@ -60,8 +69,17 @@ class AddEditIncidentViewModel @Inject constructor(
     val saveSuccess: StateFlow<Boolean> = _saveSuccess.asStateFlow()
 
     init {
+        loadEvents()
         if (incidentId != null) {
             loadIncident(incidentId)
+        }
+    }
+
+    private fun loadEvents() {
+        viewModelScope.launch {
+            eventDao.getRecentEventsByVenue(venueId, limit = 20).collect { eventsList ->
+                _events.value = eventsList
+            }
         }
     }
 
@@ -77,6 +95,7 @@ class AddEditIncidentViewModel @Inject constructor(
                     _photoUri.value = it.photoUri
                     _reportedBy.value = it.reportedBy
                     _notes.value = it.notes
+                    _selectedEventId.value = it.eventId
                 }
             }
         }
@@ -114,6 +133,10 @@ class AddEditIncidentViewModel @Inject constructor(
         _notes.value = value
     }
 
+    fun updateSelectedEvent(eventId: String?) {
+        _selectedEventId.value = eventId
+    }
+
     fun saveIncident() {
         if (_isSaving.value) return
 
@@ -134,14 +157,15 @@ class AddEditIncidentViewModel @Inject constructor(
                             location = _location.value,
                             photoUri = _photoUri.value,
                             reportedBy = _reportedBy.value,
-                            notes = _notes.value
+                            notes = _notes.value,
+                            eventId = _selectedEventId.value
                         )
                     )
                 } ?: Result.Success(Unit)
             } else {
                 // Create new incident
                 val createResult = incidentRepository.createIncident(
-                    branchId = branchId,
+                    venueId = venueId,
                     title = _title.value,
                     description = _description.value,
                     severity = _severity.value,
@@ -149,7 +173,8 @@ class AddEditIncidentViewModel @Inject constructor(
                     location = _location.value,
                     photoUri = _photoUri.value,
                     reportedBy = _reportedBy.value,
-                    notes = _notes.value
+                    notes = _notes.value,
+                    eventId = _selectedEventId.value
                 )
 
                 // Show notification for high/critical incidents

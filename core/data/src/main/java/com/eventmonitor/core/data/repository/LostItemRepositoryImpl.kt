@@ -57,7 +57,8 @@ class LostItemRepositoryImpl @Inject constructor(
         brand: String,
         identifyingMarks: String,
         reportedBy: String,
-        notes: String
+        notes: String,
+        eventId: String?
     ): Result<String> {
         // Validate input
         if (description.isBlank()) {
@@ -77,6 +78,7 @@ class LostItemRepositoryImpl @Inject constructor(
             val item = LostItemEntity(
                 id = itemId,
                 locationId = locationId,
+                eventId = eventId,
                 description = description,
                 category = category,
                 foundZone = foundZone,

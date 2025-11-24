@@ -6,18 +6,18 @@ import androidx.room.PrimaryKey
 import java.util.UUID
 
 @Entity(
-    tableName = "branches",
+    tableName = "venues",
     indices = [Index(value = ["code"], unique = true)]
 )
-data class BranchEntity(
+data class VenueEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
-    val name: String, // e.g., "Main Campus", "North Branch", "Downtown"
+    val name: String, // e.g., "Main Campus", "North Venue", "Downtown"
     val location: String, // Address or location description
-    val code: String, // Short code like "MC", "NB", "DT"
+    val code: String, // Short code like "MC", "NV", "DT"
     val isActive: Boolean = true,
     val logoUrl: String = "",
-    val color: String = "#1976D2", // Brand color for this branch
+    val color: String = "#1976D2", // Brand color for this venue
     val contactPerson: String = "",
     val contactPhone: String = "",
     val contactEmail: String = "",
@@ -26,5 +26,9 @@ data class BranchEntity(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val isSyncedToCloud: Boolean = false,
-    val cloudId: String = "" // Firebase document ID
+    val cloudId: String = "", // Firebase document ID
+    // Feature toggles
+    val isHeadCountEnabled: Boolean = true,
+    val isLostAndFoundEnabled: Boolean = false,
+    val isIncidentReportingEnabled: Boolean = false
 )

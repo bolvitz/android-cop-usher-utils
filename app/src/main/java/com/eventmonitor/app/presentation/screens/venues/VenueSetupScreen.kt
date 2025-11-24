@@ -1,4 +1,4 @@
-package com.eventmonitor.app.presentation.screens.branches
+package com.eventmonitor.app.presentation.screens.venues
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,8 +16,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BranchSetupScreen(
-    viewModel: BranchSetupViewModel = hiltViewModel(),
+fun VenueSetupScreen(
+    viewModel: VenueSetupViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
     onManageAreas: (String) -> Unit = {}
 ) {
@@ -112,6 +112,49 @@ fun BranchSetupScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 singleLine = true
             )
+
+            // Feature toggles section
+            Text(
+                text = "Enabled Features",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Text("Head Count")
+                Switch(
+                    checked = uiState.isHeadCountEnabled,
+                    onCheckedChange = viewModel::updateHeadCountEnabled
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Text("Lost and Found")
+                Switch(
+                    checked = uiState.isLostAndFoundEnabled,
+                    onCheckedChange = viewModel::updateLostAndFoundEnabled
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Text("Incident Reporting")
+                Switch(
+                    checked = uiState.isIncidentReportingEnabled,
+                    onCheckedChange = viewModel::updateIncidentReportingEnabled
+                )
+            }
 
             uiState.error?.let { error ->
                 Text(

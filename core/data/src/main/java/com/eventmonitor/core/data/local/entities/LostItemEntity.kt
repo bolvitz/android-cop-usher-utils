@@ -10,14 +10,21 @@ import java.util.UUID
     tableName = "lost_items",
     foreignKeys = [
         ForeignKey(
-            entity = BranchEntity::class,
+            entity = VenueEntity::class,
             parentColumns = ["id"],
             childColumns = ["locationId"],
             onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = EventEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["eventId"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
     indices = [
         Index(value = ["locationId"]),
+        Index(value = ["eventId"]),
         Index(value = ["status"]),
         Index(value = ["category"]),
         Index(value = ["foundDate"])
@@ -27,6 +34,7 @@ data class LostItemEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
     val locationId: String, // Where the event is happening
+    val eventId: String? = null, // Optional link to specific event/service
     val description: String, // Description of the lost item
     val category: String, // ELECTRONICS, CLOTHING, DOCUMENTS, ACCESSORIES, BAGS, PERSONAL_ITEMS, OTHER
     val foundZone: String, // Specific zone/area where item was found

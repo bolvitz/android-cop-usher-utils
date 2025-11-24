@@ -8,7 +8,7 @@ import com.eventmonitor.core.data.local.entities.*
 
 @Database(
     entities = [
-        BranchEntity::class,
+        VenueEntity::class,
         AreaTemplateEntity::class,
         EventEntity::class,
         EventTypeEntity::class,
@@ -17,12 +17,12 @@ import com.eventmonitor.core.data.local.entities.*
         LostItemEntity::class,
         IncidentEntity::class
     ],
-    version = 6,
+    version = 8,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun branchDao(): BranchDao
+    abstract fun venueDao(): VenueDao
     abstract fun areaTemplateDao(): AreaTemplateDao
     abstract fun eventDao(): EventDao
     abstract fun eventTypeDao(): EventTypeDao

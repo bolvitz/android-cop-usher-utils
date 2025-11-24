@@ -8,7 +8,12 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface AreaCountDao {
     @Transaction
-    @Query("SELECT * FROM area_counts WHERE eventId = :eventId")
+    @Query("""
+        SELECT ac.* FROM area_counts ac
+        INNER JOIN area_templates at ON ac.areaTemplateId = at.id
+        WHERE ac.eventId = :eventId
+        ORDER BY at.name ASC
+    """)
     fun getAreaCountsByService(eventId: String): Flow<List<AreaCountWithTemplate>>
 
     @Query("SELECT * FROM area_counts WHERE id = :areaCountId")

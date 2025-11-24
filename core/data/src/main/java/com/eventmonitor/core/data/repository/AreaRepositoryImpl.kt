@@ -15,17 +15,17 @@ class AreaRepositoryImpl @Inject constructor(
     private val areaCountDao: AreaCountDao
 ) : AreaRepository {
 
-    override fun getAreasByBranch(branchId: String): Flow<List<AreaTemplateEntity>> =
-        areaTemplateDao.getAreasByBranch(branchId)
+    override fun getAreasByVenue(venueId: String): Flow<List<AreaTemplateEntity>> =
+        areaTemplateDao.getAreasByVenue(venueId)
 
     override fun getAreaById(areaId: String): Flow<AreaTemplateEntity?> =
         areaTemplateDao.getAreaById(areaId)
 
-    override fun getTotalCapacityForBranch(branchId: String): Flow<Int?> =
-        areaTemplateDao.getTotalCapacityForBranch(branchId)
+    override fun getTotalCapacityForVenue(venueId: String): Flow<Int?> =
+        areaTemplateDao.getTotalCapacityForVenue(venueId)
 
     override suspend fun createArea(
-        branchId: String,
+        venueId: String,
         name: String,
         type: AreaType,
         capacity: Int,
@@ -34,7 +34,7 @@ class AreaRepositoryImpl @Inject constructor(
         val areaId = UUID.randomUUID().toString()
         val area = AreaTemplateEntity(
             id = areaId,
-            branchId = branchId,
+            venueId = venueId,
             name = name,
             type = type.name,
             capacity = capacity,
@@ -67,13 +67,13 @@ class AreaRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun duplicateAreaToBranches(areaId: String, targetBranchIds: List<String>) {
+    override suspend fun duplicateAreaToVenues(areaId: String, targetVenueIds: List<String>) {
         val sourceArea = areaTemplateDao.getAreaById(areaId).first() ?: return
 
-        val newAreas = targetBranchIds.map { branchId ->
+        val newAreas = targetVenueIds.map { venueId ->
             sourceArea.copy(
                 id = UUID.randomUUID().toString(),
-                branchId = branchId,
+                venueId = venueId,
                 createdAt = System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis()
             )

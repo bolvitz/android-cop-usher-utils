@@ -7,6 +7,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,8 +16,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -41,8 +47,12 @@ fun AddEditLostItemScreen(
     val isSaving by viewModel.isSaving.collectAsState()
     val saveSuccess by viewModel.saveSuccess.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val events by viewModel.events.collectAsState()
+    val selectedEventId by viewModel.selectedEventId.collectAsState()
 
     var showCategoryDialog by remember { mutableStateOf(false) }
+    var showEventDropdown by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
     val context = LocalContext.current
 
@@ -80,18 +90,6 @@ fun AddEditLostItemScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, "Back")
                     }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { viewModel.saveItem() },
-                        enabled = !isSaving && description.isNotBlank() && foundZone.isNotBlank()
-                    ) {
-                        if (isSaving) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        } else {
-                            Icon(Icons.Default.Check, "Save")
-                        }
-                    }
                 }
             )
         }
@@ -105,6 +103,11 @@ fun AddEditLostItemScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Photo Section
+            Text(
+                text = "Item Photo",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -122,6 +125,18 @@ fun AddEditLostItemScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
+                        IconButton(
+                            onClick = { showPhotoOptions = true },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Change Photo",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     } else {
                         Column(
                             modifier = Modifier.align(Alignment.Center),
@@ -130,11 +145,86 @@ fun AddEditLostItemScreen(
                             Icon(
                                 Icons.Default.AddAPhoto,
                                 contentDescription = null,
-                                modifier = Modifier.size(48.dp)
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Add Photo")
+                            Text("Tap to add photo", color = MaterialTheme.colorScheme.primary)
                         }
+                    }
+                }
+            }
+
+            // Basic Information Section
+            Text(
+                text = "Basic Information",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            // Event Selection (Optional)
+            ExposedDropdownMenuBox(
+                expanded = showEventDropdown,
+                onExpandedChange = { showEventDropdown = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedEventId?.let { id ->
+                        events.find { it.event.id == id }?.let { event ->
+                            "${event.eventType?.name ?: "Event"} - ${java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(java.util.Date(event.event.date))}"
+                        }
+                    } ?: "None",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Event (Optional)") },
+                    supportingText = { Text("Link this item to a specific event") },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = showEventDropdown)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = showEventDropdown,
+                    onDismissRequest = { showEventDropdown = false }
+                ) {
+                    // None option
+                    DropdownMenuItem(
+                        text = { Text("None") },
+                        onClick = {
+                            viewModel.updateSelectedEvent(null)
+                            showEventDropdown = false
+                        }
+                    )
+
+                    if (events.isNotEmpty()) {
+                        HorizontalDivider()
+                    }
+
+                    // Event options
+                    events.forEach { eventWithDetails ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(
+                                        text = eventWithDetails.eventType?.name ?: "Event",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        text = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+                                            .format(java.util.Date(eventWithDetails.event.date)),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            onClick = {
+                                viewModel.updateSelectedEvent(eventWithDetails.event.id)
+                                showEventDropdown = false
+                            }
+                        )
                     }
                 }
             }
@@ -143,11 +233,40 @@ fun AddEditLostItemScreen(
             OutlinedTextField(
                 value = description,
                 onValueChange = viewModel::updateDescription,
-                label = { Text("Description *") },
+                label = { Text("Item Description *") },
                 placeholder = { Text("e.g., Black leather wallet") },
+                supportingText = { Text("What is the item?") },
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 3,
-                isError = description.isBlank()
+                isError = description.isBlank(),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                )
+            )
+
+            // Found Zone (Required)
+            OutlinedTextField(
+                value = foundZone,
+                onValueChange = viewModel::updateFoundZone,
+                label = { Text("Found Location *") },
+                placeholder = { Text("e.g., Main Hall, Row 5") },
+                supportingText = { Text("Where was it found?") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = foundZone.isBlank(),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = {
+                        showCategoryDialog = true
+                        focusManager.clearFocus()
+                    }
+                )
             )
 
             // Category
@@ -155,23 +274,27 @@ fun AddEditLostItemScreen(
                 value = ItemCategory.fromString(category).displayName,
                 onValueChange = {},
                 label = { Text("Category") },
-                modifier = Modifier.fillMaxWidth(),
-                readOnly = true,
+                supportingText = { Text("Tap to select a category") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showCategoryDialog = true },
+                enabled = false,
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                    disabledBorderColor = MaterialTheme.colorScheme.outline,
+                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    disabledSupportingTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
                 trailingIcon = {
-                    IconButton(onClick = { showCategoryDialog = true }) {
-                        Icon(Icons.Default.ArrowDropDown, "Select Category")
-                    }
+                    Icon(Icons.Default.ArrowDropDown, "Select Category")
                 }
             )
 
-            // Found Zone (Required)
-            OutlinedTextField(
-                value = foundZone,
-                onValueChange = viewModel::updateFoundZone,
-                label = { Text("Found Location/Zone *") },
-                placeholder = { Text("e.g., Main Hall, Row 5") },
-                modifier = Modifier.fillMaxWidth(),
-                isError = foundZone.isBlank()
+            // Item Details Section
+            Text(
+                text = "Item Details (Optional)",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
             )
 
             // Color
@@ -180,7 +303,14 @@ fun AddEditLostItemScreen(
                 onValueChange = viewModel::updateColor,
                 label = { Text("Color") },
                 placeholder = { Text("e.g., Black, Blue") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                )
             )
 
             // Brand
@@ -189,7 +319,14 @@ fun AddEditLostItemScreen(
                 onValueChange = viewModel::updateBrand,
                 label = { Text("Brand") },
                 placeholder = { Text("e.g., Nike, Apple") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                )
             )
 
             // Identifying Marks
@@ -199,7 +336,21 @@ fun AddEditLostItemScreen(
                 label = { Text("Identifying Marks") },
                 placeholder = { Text("Unique features, scratches, engravings") },
                 modifier = Modifier.fillMaxWidth(),
-                maxLines = 3
+                maxLines = 3,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                )
+            )
+
+            // Report Information Section
+            Text(
+                text = "Report Information",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
             )
 
             // Reported By
@@ -208,7 +359,15 @@ fun AddEditLostItemScreen(
                 onValueChange = viewModel::updateReportedBy,
                 label = { Text("Reported By") },
                 placeholder = { Text("Staff member name") },
-                modifier = Modifier.fillMaxWidth()
+                supportingText = { Text("Who found this item?") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                )
             )
 
             // Notes
@@ -216,9 +375,42 @@ fun AddEditLostItemScreen(
                 value = notes,
                 onValueChange = viewModel::updateNotes,
                 label = { Text("Additional Notes") },
+                placeholder = { Text("Any other relevant information") },
                 modifier = Modifier.fillMaxWidth(),
-                maxLines = 4
+                maxLines = 4,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        focusManager.clearFocus()
+                        if (description.isNotBlank() && foundZone.isNotBlank()) {
+                            viewModel.saveItem()
+                        }
+                    }
+                )
             )
+
+            // Save Button
+            Button(
+                onClick = { viewModel.saveItem() },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isSaving && description.isNotBlank() && foundZone.isNotBlank()
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Saving...")
+                } else {
+                    Icon(Icons.Default.Check, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Save Item")
+                }
+            }
 
             Text(
                 "* Required fields",

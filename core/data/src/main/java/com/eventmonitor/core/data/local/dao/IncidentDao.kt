@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface IncidentDao {
-    @Query("SELECT * FROM incidents WHERE branchId = :branchId ORDER BY reportedAt DESC")
-    fun getIncidentsByBranch(branchId: String): Flow<List<IncidentEntity>>
+    @Query("SELECT * FROM incidents WHERE venueId = :venueId ORDER BY reportedAt DESC")
+    fun getIncidentsByVenue(venueId: String): Flow<List<IncidentEntity>>
 
     @Query("SELECT * FROM incidents WHERE status = :status ORDER BY reportedAt DESC")
     fun getIncidentsByStatus(status: String): Flow<List<IncidentEntity>>
@@ -23,23 +23,23 @@ interface IncidentDao {
 
     @Query("""
         SELECT * FROM incidents
-        WHERE branchId = :branchId
+        WHERE venueId = :venueId
         AND status = :status
         ORDER BY reportedAt DESC
     """)
-    fun getIncidentsByBranchAndStatus(
-        branchId: String,
+    fun getIncidentsByVenueAndStatus(
+        venueId: String,
         status: String
     ): Flow<List<IncidentEntity>>
 
     @Query("""
         SELECT * FROM incidents
-        WHERE branchId = :branchId
+        WHERE venueId = :venueId
         AND severity = :severity
         ORDER BY reportedAt DESC
     """)
-    fun getIncidentsByBranchAndSeverity(
-        branchId: String,
+    fun getIncidentsByVenueAndSeverity(
+        venueId: String,
         severity: String
     ): Flow<List<IncidentEntity>>
 
@@ -114,8 +114,8 @@ interface IncidentDao {
     @Query("SELECT COUNT(*) FROM incidents WHERE severity = :severity AND status != 'RESOLVED' AND status != 'CLOSED'")
     fun getActiveIncidentCountBySeverity(severity: String): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM incidents WHERE branchId = :branchId AND status != 'RESOLVED' AND status != 'CLOSED'")
-    fun getActiveIncidentCountByBranch(branchId: String): Flow<Int>
+    @Query("SELECT COUNT(*) FROM incidents WHERE venueId = :venueId AND status != 'RESOLVED' AND status != 'CLOSED'")
+    fun getActiveIncidentCountByVenue(venueId: String): Flow<Int>
 
     @Query("""
         SELECT * FROM incidents

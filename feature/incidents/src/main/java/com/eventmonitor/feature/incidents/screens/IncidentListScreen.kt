@@ -30,7 +30,8 @@ fun IncidentListScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAddIncident: (String) -> Unit,
     onNavigateToIncidentDetail: (String) -> Unit,
-    branchId: String? = null,
+    onNavigateToEditIncident: (String, String) -> Unit = { _, _ -> },
+    venueId: String? = null,
     viewModel: IncidentListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -62,9 +63,9 @@ fun IncidentListScreen(
             )
         },
         floatingActionButton = {
-            if (branchId != null) {
+            if (venueId != null) {
                 FloatingActionButton(
-                    onClick = { onNavigateToAddIncident(branchId) }
+                    onClick = { onNavigateToAddIncident(venueId) }
                 ) {
                     Icon(Icons.Default.Add, "Report Incident")
                 }
@@ -168,7 +169,10 @@ fun IncidentListScreen(
                         items(state.incidents) { incident ->
                             IncidentCard(
                                 incident = incident,
-                                onClick = { onNavigateToIncidentDetail(incident.id) }
+                                onClick = { onNavigateToIncidentDetail(incident.id) },
+                                onEdit = {
+                                    venueId?.let { onNavigateToEditIncident(it, incident.id) }
+                                }
                             )
                         }
                     }
@@ -223,114 +227,263 @@ fun IncidentListScreen(
 @Composable
 fun IncidentCard(
     incident: IncidentEntity,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onEdit: () -> Unit = {}
 ) {
     val severity = IncidentSeverity.fromString(incident.severity)
     val status = IncidentStatus.fromString(incident.status)
-    val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    val severityColor = Color(android.graphics.Color.parseColor(severity.color))
+    val statusColor = Color(android.graphics.Color.parseColor(status.color))
+
+    // Can only edit if not resolved or closed
+    val canEdit = status != IncidentStatus.RESOLVED && status != IncidentStatus.CLOSED
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Title and severity
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = incident.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                SeverityBadge(severity)
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Description
-            Text(
-                text = incident.description,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            // Colored left border indicating severity
+            Box(
+                modifier = Modifier
+                    .width(6.dp)
+                    .height(IntrinsicSize.Min)
+                    .background(severityColor)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Status and date
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
             ) {
-                StatusBadge(status)
+                // Header: Title with severity icon and badge
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Severity icon
+                        Icon(
+                            imageVector = when (severity) {
+                                IncidentSeverity.CRITICAL -> Icons.Default.Error
+                                IncidentSeverity.HIGH -> Icons.Default.Warning
+                                IncidentSeverity.MEDIUM -> Icons.Default.Info
+                                IncidentSeverity.LOW -> Icons.Default.CheckCircle
+                            },
+                            contentDescription = null,
+                            tint = severityColor,
+                            modifier = Modifier.size(24.dp)
+                        )
 
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = "Reported: ${dateFormat.format(Date(incident.reportedAt))}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                    incident.resolvedAt?.let { resolvedAt ->
                         Text(
-                            text = "Resolved: ${dateFormat.format(Date(resolvedAt))}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
+                            text = incident.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
-                }
-            }
 
-            // Category and location
-            if (incident.category.isNotEmpty() || incident.location.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
+                    SeverityBadge(severity)
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Description with better styling
+                Text(
+                    text = incident.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 3,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Info section with cards
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (incident.category.isNotEmpty()) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    // Location card
+                    if (incident.location.isNotEmpty()) {
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
-                            Icon(
-                                Icons.Default.Category,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.outline
+                            Row(
+                                modifier = Modifier.padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Column {
+                                    Text(
+                                        text = "Location",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = incident.location,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Category card
+                    if (incident.category.isNotEmpty()) {
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Category,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.secondary
+                                )
+                                Column {
+                                    Text(
+                                        text = "Category",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = incident.category,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Reporter and date info
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Reporter
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                        Text(
+                            text = if (incident.reportedBy.isNotEmpty()) incident.reportedBy else "Anonymous",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Date and time
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = dateFormat.format(Date(incident.reportedAt)),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = incident.category,
+                                text = timeFormat.format(Date(incident.reportedAt)),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
                         }
                     }
-                    if (incident.location.isNotEmpty()) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                }
+
+                // Status badge at bottom
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StatusBadge(status)
+
+                    // Edit button or resolved time
+                    if (canEdit) {
+                        IconButton(
+                            onClick = onEdit,
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
-                                Icons.Default.LocationOn,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.outline
+                                Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
                             )
-                            Text(
-                                text = incident.location,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.outline
-                            )
+                        }
+                    } else {
+                        // Resolved time if applicable
+                        incident.resolvedAt?.let { resolvedAt ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = statusColor
+                                )
+                                Text(
+                                    text = "Resolved ${dateFormat.format(Date(resolvedAt))}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = statusColor,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
                 }

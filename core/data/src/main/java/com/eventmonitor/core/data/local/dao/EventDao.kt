@@ -10,25 +10,25 @@ import kotlinx.coroutines.flow.Flow
 interface EventDao {
     @Transaction
     @Query("SELECT * FROM events ORDER BY date DESC, createdAt DESC LIMIT :limit")
-    fun getRecentServices(limit: Int = 50): Flow<List<EventWithDetails>>
+    fun getRecentEvents(limit: Int = 50): Flow<List<EventWithDetails>>
 
     @Transaction
-    @Query("SELECT * FROM events WHERE branchId = :branchId ORDER BY date DESC, createdAt DESC LIMIT :limit")
-    fun getRecentServicesByBranch(branchId: String, limit: Int = 50): Flow<List<EventWithDetails>>
+    @Query("SELECT * FROM events WHERE venueId = :venueId ORDER BY date DESC, createdAt DESC LIMIT :limit")
+    fun getRecentEventsByVenue(venueId: String, limit: Int = 50): Flow<List<EventWithDetails>>
 
     @Transaction
     @Query("SELECT * FROM events WHERE id = :eventId")
-    fun getServiceById(eventId: String): Flow<EventWithDetails?>
+    fun getEventById(eventId: String): Flow<EventWithDetails?>
 
     @Transaction
     @Query("""
         SELECT * FROM events
-        WHERE branchId = :branchId
+        WHERE venueId = :venueId
         AND date BETWEEN :startDate AND :endDate
         ORDER BY date ASC, createdAt ASC
     """)
-    fun getServicesByBranchAndDateRange(
-        branchId: String,
+    fun getEventsByVenueAndDateRange(
+        venueId: String,
         startDate: Long,
         endDate: Long
     ): Flow<List<EventWithDetails>>
@@ -37,43 +37,43 @@ interface EventDao {
     @Query("""
         SELECT * FROM events
         WHERE date BETWEEN :startDate AND :endDate
-        ORDER BY date ASC, branchId ASC
+        ORDER BY date ASC, venueId ASC
     """)
-    fun getServicesAcrossBranchesByDateRange(
+    fun getEventsAcrossVenuesByDateRange(
         startDate: Long,
         endDate: Long
     ): Flow<List<EventWithDetails>>
 
-    @Query("SELECT * FROM events WHERE branchId = :branchId AND eventType = :eventType ORDER BY date DESC LIMIT 1")
-    fun getLastServiceOfType(branchId: String, eventType: String): Flow<EventEntity?>
+    @Query("SELECT * FROM events WHERE venueId = :venueId AND eventType = :eventType ORDER BY date DESC LIMIT 1")
+    fun getLastEventOfType(venueId: String, eventType: String): Flow<EventEntity?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertService(service: EventEntity): Long
+    suspend fun insertEvent(event: EventEntity): Long
 
     @Update
-    suspend fun updateService(service: EventEntity)
+    suspend fun updateEvent(event: EventEntity)
 
     @Delete
-    suspend fun deleteService(service: EventEntity)
+    suspend fun deleteEvent(event: EventEntity)
 
     @Query("DELETE FROM events WHERE id = :eventId")
-    suspend fun deleteServiceById(eventId: String)
+    suspend fun deleteEventById(eventId: String)
 
     @Query("""
         SELECT AVG(totalAttendance)
         FROM events
-        WHERE branchId = :branchId
+        WHERE venueId = :venueId
         AND date BETWEEN :startDate AND :endDate
     """)
     fun getAverageAttendance(
-        branchId: String,
+        venueId: String,
         startDate: Long,
         endDate: Long
     ): Flow<Double?>
 
     @Transaction
     @Query("SELECT * FROM events ORDER BY date DESC, createdAt DESC LIMIT :limit")
-    fun getRecentServicesWithAreaCounts(limit: Int = 50): Flow<List<EventWithAreaCounts>>
+    fun getRecentEventsWithAreaCounts(limit: Int = 50): Flow<List<EventWithAreaCounts>>
 
     @Transaction
     @Query("""
@@ -81,11 +81,11 @@ interface EventDao {
         WHERE date BETWEEN :startDate AND :endDate
         ORDER BY date DESC, createdAt DESC
     """)
-    fun getServicesWithAreaCountsByDateRange(
+    fun getEventsWithAreaCountsByDateRange(
         startDate: Long,
         endDate: Long
     ): Flow<List<EventWithAreaCounts>>
 
     @Query("SELECT EXISTS(SELECT 1 FROM events WHERE eventTypeId = :eventTypeId LIMIT 1)")
-    suspend fun hasServicesWithType(eventTypeId: String): Boolean
+    suspend fun hasEventsWithType(eventTypeId: String): Boolean
 }

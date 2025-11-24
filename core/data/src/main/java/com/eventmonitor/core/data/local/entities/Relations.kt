@@ -6,17 +6,22 @@ import androidx.room.Relation
 data class EventWithDetails(
     @Embedded val event: EventEntity,
     @Relation(
-        parentColumn = "branchId",
+        parentColumn = "venueId",
         entityColumn = "id"
     )
-    val branch: BranchEntity
+    val venue: VenueEntity,
+    @Relation(
+        parentColumn = "eventTypeId",
+        entityColumn = "id"
+    )
+    val eventType: EventTypeEntity?
 )
 
-data class BranchWithAreas(
-    @Embedded val branch: BranchEntity,
+data class VenueWithAreas(
+    @Embedded val venue: VenueEntity,
     @Relation(
         parentColumn = "id",
-        entityColumn = "branchId"
+        entityColumn = "venueId"
     )
     val areas: List<AreaTemplateEntity>
 )
@@ -33,10 +38,15 @@ data class AreaCountWithTemplate(
 data class EventWithAreaCounts(
     @Embedded val event: EventEntity,
     @Relation(
-        parentColumn = "branchId",
+        parentColumn = "venueId",
         entityColumn = "id"
     )
-    val branch: BranchEntity,
+    val venue: VenueEntity,
+    @Relation(
+        parentColumn = "eventTypeId",
+        entityColumn = "id"
+    )
+    val eventType: EventTypeEntity?,
     @Relation(
         parentColumn = "id",
         entityColumn = "eventId",

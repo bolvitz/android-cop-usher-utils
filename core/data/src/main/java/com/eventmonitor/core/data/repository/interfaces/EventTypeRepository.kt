@@ -27,5 +27,5 @@ interface EventTypeRepository {
 
     suspend fun getServiceTypeCount(): Int
 
-    suspend fun hasServices(eventTypeId: String): Boolean
+    suspend fun hasEvents(eventTypeId: String): Boolean
 }

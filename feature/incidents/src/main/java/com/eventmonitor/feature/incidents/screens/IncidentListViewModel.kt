@@ -46,13 +46,13 @@ class IncidentListViewModel @Inject constructor(
                     incidentRepository.searchIncidents(_searchQuery.value)
                 }
                 branchId != null && _selectedStatus.value != null -> {
-                    incidentRepository.getIncidentsByBranchAndStatus(branchId, _selectedStatus.value!!)
+                    incidentRepository.getIncidentsByVenueAndStatus(branchId, _selectedStatus.value!!)
                 }
                 branchId != null && _selectedSeverity.value != null -> {
-                    incidentRepository.getIncidentsByBranchAndSeverity(branchId, _selectedSeverity.value!!)
+                    incidentRepository.getIncidentsByVenueAndSeverity(branchId, _selectedSeverity.value!!)
                 }
                 branchId != null -> {
-                    incidentRepository.getIncidentsByBranch(branchId)
+                    incidentRepository.getIncidentsByVenue(branchId)
                 }
                 _selectedStatus.value != null -> {
                     incidentRepository.getIncidentsByStatus(_selectedStatus.value!!)

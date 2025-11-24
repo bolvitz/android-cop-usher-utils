@@ -35,7 +35,7 @@ class FakeServiceRepository : ServiceRepository {
         return services.map { it.values.take(limit) }
     }
 
-    override fun getRecentServicesByBranch(branchId: String, limit: Int): Flow<List<ServiceWithDetails>> {
+    override fun getRecentEventsByVenue(branchId: String, limit: Int): Flow<List<ServiceWithDetails>> {
         return services.map { servicesMap ->
             servicesMap.values.filter { it.service.branchId == branchId }.take(limit)
         }
@@ -45,7 +45,7 @@ class FakeServiceRepository : ServiceRepository {
         return services.map { it[serviceId] }
     }
 
-    override fun getServicesByBranchAndDateRange(
+    override fun getEventsByVenueAndDateRange(
         branchId: String,
         startDate: Long,
         endDate: Long
@@ -58,7 +58,7 @@ class FakeServiceRepository : ServiceRepository {
         }
     }
 
-    override fun getServicesAcrossBranches(
+    override fun getEventsAcrossVenues(
         startDate: Long,
         endDate: Long
     ): Flow<List<ServiceWithDetails>> {
@@ -146,7 +146,7 @@ class FakeServiceRepository : ServiceRepository {
         throw NotImplementedError("Implement as needed in tests")
     }
 
-    override suspend fun exportBranchComparisonReport(
+    override suspend fun exportVenueComparisonReport(
         branchIds: List<String>,
         startDate: Long,
         endDate: Long

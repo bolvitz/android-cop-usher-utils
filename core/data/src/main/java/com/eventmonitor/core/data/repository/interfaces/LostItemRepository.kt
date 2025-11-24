@@ -25,7 +25,8 @@ interface LostItemRepository {
         brand: String = "",
         identifyingMarks: String = "",
         reportedBy: String = "",
-        notes: String = ""
+        notes: String = "",
+        eventId: String? = null
     ): Result<String>
 
     suspend fun updateItem(item: LostItemEntity): Result<Unit>
