@@ -22,6 +22,7 @@ import java.util.*
 fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel(),
     onServiceClick: (branchId: String, serviceId: String) -> Unit,
+    onStartNewCount: (venueId: String) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     val haptic = rememberHapticFeedback()
@@ -43,6 +44,26 @@ fun HistoryScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            if (uiState is HistoryUiState.Success || uiState is HistoryUiState.Empty) {
+                val venueId = when (val state = uiState) {
+                    is HistoryUiState.Success -> state.events.firstOrNull()?.event?.venueId
+                    is HistoryUiState.Empty -> viewModel.venueId
+                    else -> null
+                }
+
+                venueId?.let { vId ->
+                    FloatingActionButton(
+                        onClick = {
+                            haptic.medium()
+                            onStartNewCount(vId)
+                        }
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Start New Count")
+                    }
+                }
+            }
         }
     ) { paddingValues ->
         when (val state = uiState) {

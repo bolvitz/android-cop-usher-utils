@@ -228,7 +228,7 @@ fun VenueListScreen(
                                         Button(
                                             onClick = {
                                                 haptic.medium()
-                                                onVenueClick(branchWithAreas.venue.id)
+                                                onVenueHistory(branchWithAreas.venue.id)
                                             },
                                             modifier = Modifier.weight(1f)
                                         ) {

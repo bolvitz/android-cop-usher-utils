@@ -16,7 +16,8 @@ class HistoryViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val branchId: String? = savedStateHandle.get<String>("branchId")
+    val venueId: String? = savedStateHandle.get<String>("venueId")
+    private val branchId: String? = venueId // For backward compatibility
 
     private val _uiState = MutableStateFlow<HistoryUiState>(HistoryUiState.Loading)
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()

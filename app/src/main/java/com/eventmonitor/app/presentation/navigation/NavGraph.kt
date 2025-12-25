@@ -118,6 +118,9 @@ fun NavGraph(
                 onServiceClick = { venueId, serviceId ->
                     navController.navigate(Screen.Counting.createRoute(venueId, serviceId))
                 },
+                onStartNewCount = { venueId ->
+                    navController.navigate(Screen.Counting.createRoute(venueId))
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
