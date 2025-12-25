@@ -148,6 +148,10 @@ fun ServiceTypeManagementScreen(
                             onDelete = {
                                 selectedServiceType = eventType
                                 showDeleteDialog = true
+                            },
+                            onToggleStatus = { isActive ->
+                                haptic.medium()
+                                viewModel.toggleServiceTypeStatus(eventType.id, isActive)
                             }
                         )
                     }
@@ -220,28 +224,86 @@ fun ServiceTypeManagementScreen(
 fun ServiceTypeCard(
     eventType: EventTypeEntity,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onToggleStatus: (Boolean) -> Unit
 ) {
     val haptic = rememberHapticFeedback()
 
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (eventType.isActive) {
+                MaterialTheme.colorScheme.surface
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            }
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = if (eventType.isActive) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.error
+            }
+        )
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp)
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = eventType.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (eventType.isActive) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                    Surface(
+                        color = if (eventType.isActive) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.errorContainer
+                        },
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(
+                            text = if (eventType.isActive) "Active" else "Inactive",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (eventType.isActive) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            }
+                        )
+                    }
+                }
+                Switch(
+                    checked = eventType.isActive,
+                    onCheckedChange = {
+                        onToggleStatus(it)
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Column(
-                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = eventType.name,
-                    style = MaterialTheme.typography.titleMedium
-                )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -281,7 +343,12 @@ fun ServiceTypeCard(
                 }
             }
 
-            Row {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
                 IconButton(onClick = {
                     haptic.light()
                     onEdit()

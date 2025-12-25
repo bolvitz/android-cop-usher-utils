@@ -44,6 +44,7 @@ class VenueSetupViewModel @Inject constructor(
                     contactEmail = it.venue.contactEmail,
                     contactPhone = it.venue.contactPhone,
                     color = it.venue.color,
+                    isActive = it.venue.isActive,
                     isHeadCountEnabled = it.venue.isHeadCountEnabled,
                     isLostAndFoundEnabled = it.venue.isLostAndFoundEnabled,
                     isIncidentReportingEnabled = it.venue.isIncidentReportingEnabled,
@@ -87,6 +88,10 @@ class VenueSetupViewModel @Inject constructor(
 
     fun updateIncidentReportingEnabled(enabled: Boolean) {
         _uiState.value = _uiState.value.copy(isIncidentReportingEnabled = enabled)
+    }
+
+    fun updateActive(isActive: Boolean) {
+        _uiState.value = _uiState.value.copy(isActive = isActive)
     }
 
     fun saveBranch(onSuccess: (String) -> Unit) {
@@ -136,6 +141,7 @@ class VenueSetupViewModel @Inject constructor(
                         contactEmail = state.contactEmail,
                         contactPhone = state.contactPhone,
                         color = state.color,
+                        isActive = state.isActive,
                         isHeadCountEnabled = state.isHeadCountEnabled,
                         isLostAndFoundEnabled = state.isLostAndFoundEnabled,
                         isIncidentReportingEnabled = state.isIncidentReportingEnabled,
@@ -182,6 +188,7 @@ data class VenueSetupUiState(
     val contactEmail: String = "",
     val contactPhone: String = "",
     val color: String = "#1976D2",
+    val isActive: Boolean = true,
     val isHeadCountEnabled: Boolean = true,
     val isLostAndFoundEnabled: Boolean = false,
     val isIncidentReportingEnabled: Boolean = false,

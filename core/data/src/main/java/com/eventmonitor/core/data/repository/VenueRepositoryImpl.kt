@@ -25,8 +25,7 @@ class VenueRepositoryImpl @Inject constructor(
 ) : VenueRepository {
 
     override fun getAllActiveVenues(): Flow<List<VenueWithAreas>> =
-        venueDao.getAllVenuesWithAreas()
-            .map { list -> list.filter { it.venue.isActive } }
+        venueDao.getAllActiveVenuesWithAreas()
 
     override fun getAllVenues(): Flow<List<VenueWithAreas>> =
         venueDao.getAllVenuesWithAreas()

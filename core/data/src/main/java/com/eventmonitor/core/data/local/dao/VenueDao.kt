@@ -22,6 +22,10 @@ interface VenueDao {
 
     @Transaction
     @Query("SELECT * FROM venues WHERE isActive = 1 ORDER BY name ASC")
+    fun getAllActiveVenuesWithAreas(): Flow<List<VenueWithAreas>>
+
+    @Transaction
+    @Query("SELECT * FROM venues ORDER BY name ASC")
     fun getAllVenuesWithAreas(): Flow<List<VenueWithAreas>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

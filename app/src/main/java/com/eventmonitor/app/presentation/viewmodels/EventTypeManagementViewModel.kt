@@ -19,7 +19,7 @@ class EventTypeManagementViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ServiceTypeManagementUiState())
     val uiState: StateFlow<ServiceTypeManagementUiState> = _uiState.asStateFlow()
 
-    val eventTypes = eventTypeRepository.getAllServiceTypes()
+    val eventTypes = eventTypeRepository.getAllServiceTypesIncludingInactive()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -98,6 +98,13 @@ class EventTypeManagementViewModel @Inject constructor(
                     }
                 }
             }
+        }
+    }
+
+    fun toggleServiceTypeStatus(id: String, isActive: Boolean) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(error = null, message = null) }
+            eventTypeRepository.setServiceTypeActive(id, isActive)
         }
     }
 

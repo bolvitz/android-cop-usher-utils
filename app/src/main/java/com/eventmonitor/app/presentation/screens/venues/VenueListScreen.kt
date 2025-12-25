@@ -129,7 +129,22 @@ fun VenueListScreen(
                                         dampingRatio = Spring.DampingRatioMediumBouncy,
                                         stiffness = Spring.StiffnessLow
                                     )
-                                )
+                                ),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (branchWithAreas.venue.isActive) {
+                                    MaterialTheme.colorScheme.surface
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                }
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                width = 1.dp,
+                                color = if (branchWithAreas.venue.isActive) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                }
+                            )
                         ) {
                             Column(
                                 modifier = Modifier.padding(16.dp)
@@ -140,20 +155,54 @@ fun VenueListScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = branchWithAreas.venue.name,
-                                            style = MaterialTheme.typography.titleLarge
-                                        )
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = branchWithAreas.venue.name,
+                                                style = MaterialTheme.typography.titleLarge,
+                                                color = if (branchWithAreas.venue.isActive) {
+                                                    MaterialTheme.colorScheme.onSurface
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                }
+                                            )
+                                            Surface(
+                                                color = if (branchWithAreas.venue.isActive) {
+                                                    MaterialTheme.colorScheme.primaryContainer
+                                                } else {
+                                                    MaterialTheme.colorScheme.errorContainer
+                                                },
+                                                shape = MaterialTheme.shapes.small
+                                            ) {
+                                                Text(
+                                                    text = if (branchWithAreas.venue.isActive) "Active" else "Inactive",
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = if (branchWithAreas.venue.isActive) {
+                                                        MaterialTheme.colorScheme.primary
+                                                    } else {
+                                                        MaterialTheme.colorScheme.error
+                                                    }
+                                                )
+                                            }
+                                        }
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = branchWithAreas.venue.location,
-                                            style = MaterialTheme.typography.bodyMedium
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
                                             text = "${branchWithAreas.areas.size} areas configured",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.secondary
+                                            color = if (branchWithAreas.venue.isActive) {
+                                                MaterialTheme.colorScheme.secondary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            }
                                         )
                                     }
                                     Row {

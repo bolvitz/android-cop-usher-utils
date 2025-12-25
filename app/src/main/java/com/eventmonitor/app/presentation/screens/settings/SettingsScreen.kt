@@ -17,7 +17,7 @@ import com.eventmonitor.core.common.utils.rememberHapticFeedback
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onManageServiceTypes: () -> Unit = {},
-    onAddVenue: () -> Unit = {}
+    onManageVenues: () -> Unit = {}
 ) {
     val haptic = rememberHapticFeedback()
 
@@ -59,11 +59,11 @@ fun SettingsScreen(
                 ) {
                     Column {
                         ListItem(
-                            headlineContent = { Text("Add Campus/Branch") },
-                            supportingContent = { Text("Create a new campus or branch location") },
+                            headlineContent = { Text("Manage Campus/Branch") },
+                            supportingContent = { Text("View and manage all campus or branch locations") },
                             leadingContent = {
                                 Icon(
-                                    Icons.Default.Add,
+                                    Icons.Default.LocationOn,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary
                                 )
@@ -76,7 +76,7 @@ fun SettingsScreen(
                             },
                             modifier = Modifier.clickable {
                                 haptic.medium()
-                                onAddVenue()
+                                onManageVenues()
                             }
                         )
 

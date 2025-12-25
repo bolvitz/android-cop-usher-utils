@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.Flow
 interface EventTypeRepository {
     fun getAllServiceTypes(): Flow<List<EventTypeEntity>>
 
+    fun getAllServiceTypesIncludingInactive(): Flow<List<EventTypeEntity>>
+
     suspend fun getServiceTypeById(id: String): EventTypeEntity?
 
     fun getServiceTypeByIdFlow(id: String): Flow<EventTypeEntity?>
@@ -28,4 +30,6 @@ interface EventTypeRepository {
     suspend fun getServiceTypeCount(): Int
 
     suspend fun hasEvents(eventTypeId: String): Boolean
+
+    suspend fun setServiceTypeActive(id: String, isActive: Boolean)
 }

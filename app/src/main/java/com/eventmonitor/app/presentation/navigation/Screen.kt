@@ -24,6 +24,7 @@ sealed class Screen(val route: String) {
         fun createRoute(venueId: String) = "area_management/$venueId"
     }
     object ServiceTypeManagement : Screen("service_type_management")
+    object VenueManagement : Screen("venue_management")
     object LostAndFound : Screen("lost_and_found?locationId={locationId}") {
         fun createRoute(locationId: String? = null) =
             if (locationId != null) "lost_and_found?locationId=$locationId"

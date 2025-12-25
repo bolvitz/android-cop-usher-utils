@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.eventmonitor.app.presentation.screens.areas.AreaManagementScreen
 import com.eventmonitor.app.presentation.screens.venues.VenueListScreen
+import com.eventmonitor.app.presentation.screens.venues.VenueManagementScreen
 import com.eventmonitor.app.presentation.screens.venues.VenueSetupScreen
 import com.eventmonitor.app.presentation.screens.reports.ReportsScreen
 import com.eventmonitor.app.presentation.screens.eventtypes.ServiceTypeManagementScreen
@@ -88,6 +89,18 @@ fun NavGraph(
             )
         }
 
+        composable(route = Screen.VenueManagement.route) {
+            VenueManagementScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onAddVenue = {
+                    navController.navigate(Screen.VenueSetup.createRoute())
+                },
+                onEditVenue = { venueId ->
+                    navController.navigate(Screen.VenueSetup.createRoute(venueId))
+                }
+            )
+        }
+
         composable(
             route = Screen.Counting.route,
             arguments = listOf(
@@ -137,8 +150,8 @@ fun NavGraph(
                 onManageServiceTypes = {
                     navController.navigate(Screen.ServiceTypeManagement.route)
                 },
-                onAddVenue = {
-                    navController.navigate(Screen.VenueSetup.createRoute())
+                onManageVenues = {
+                    navController.navigate(Screen.VenueManagement.route)
                 }
             )
         }

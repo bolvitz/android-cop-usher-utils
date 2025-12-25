@@ -22,6 +22,10 @@ class EventTypeRepositoryImpl @Inject constructor(
         return eventTypeDao.getAllServiceTypes()
     }
 
+    override fun getAllServiceTypesIncludingInactive(): Flow<List<EventTypeEntity>> {
+        return eventTypeDao.getAllServiceTypesIncludingInactive()
+    }
+
     override suspend fun getServiceTypeById(id: String): EventTypeEntity? {
         return eventTypeDao.getServiceTypeById(id)
     }
@@ -136,5 +140,9 @@ class EventTypeRepositoryImpl @Inject constructor(
 
     override suspend fun hasEvents(eventTypeId: String): Boolean {
         return eventDao.hasEventsWithType(eventTypeId)
+    }
+
+    override suspend fun setServiceTypeActive(id: String, isActive: Boolean) {
+        eventTypeDao.setServiceTypeActive(id, isActive)
     }
 }

@@ -113,6 +113,54 @@ fun VenueSetupScreen(
                 singleLine = true
             )
 
+            // Status toggle section
+            if (isEditMode) {
+                Text(
+                    text = "Status",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (uiState.isActive) {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        } else {
+                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                        }
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = if (uiState.isActive) "Active" else "Inactive",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = if (uiState.isActive) {
+                                    "This venue is visible to users"
+                                } else {
+                                    "This venue is hidden from users"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = uiState.isActive,
+                            onCheckedChange = viewModel::updateActive
+                        )
+                    }
+                }
+            }
+
             // Feature toggles section
             Text(
                 text = "Enabled Features",

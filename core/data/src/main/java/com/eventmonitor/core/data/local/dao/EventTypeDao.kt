@@ -9,6 +9,9 @@ interface EventTypeDao {
     @Query("SELECT * FROM event_types WHERE isActive = 1 ORDER BY displayOrder ASC, dayType ASC, time ASC")
     fun getAllServiceTypes(): Flow<List<EventTypeEntity>>
 
+    @Query("SELECT * FROM event_types ORDER BY isActive DESC, displayOrder ASC, dayType ASC, time ASC")
+    fun getAllServiceTypesIncludingInactive(): Flow<List<EventTypeEntity>>
+
     @Query("SELECT * FROM event_types WHERE id = :id")
     suspend fun getServiceTypeById(id: String): EventTypeEntity?
 
@@ -32,4 +35,7 @@ interface EventTypeDao {
 
     @Query("SELECT COUNT(*) FROM event_types WHERE isActive = 1")
     suspend fun getServiceTypeCount(): Int
+
+    @Query("UPDATE event_types SET isActive = :isActive WHERE id = :id")
+    suspend fun setServiceTypeActive(id: String, isActive: Boolean)
 }
