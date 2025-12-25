@@ -159,16 +159,6 @@ fun VenueListScreen(
                                     Row {
                                         IconButton(onClick = {
                                             haptic.light()
-                                            onVenueHistory(branchWithAreas.venue.id)
-                                        }) {
-                                            Icon(
-                                                Icons.Default.History,
-                                                contentDescription = "Branch History",
-                                                tint = MaterialTheme.colorScheme.secondary
-                                            )
-                                        }
-                                        IconButton(onClick = {
-                                            haptic.light()
                                             onManageAreas(branchWithAreas.venue.id)
                                         }) {
                                             Icon(
