@@ -54,7 +54,8 @@ fun VenueListScreen(
                     }) {
                         Icon(Icons.Default.Settings, "Settings")
                     }
-                }
+                },
+                windowInsets = WindowInsets.statusBars
             )
         }
     ) { paddingValues ->
