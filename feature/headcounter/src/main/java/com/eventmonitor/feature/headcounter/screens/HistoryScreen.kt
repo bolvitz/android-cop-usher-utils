@@ -479,9 +479,16 @@ fun ServiceReportDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Report Receipt")
-                IconButton(onClick = onShare) {
-                    Icon(Icons.Default.Share, "Share")
+                Text("Summary")
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    IconButton(onClick = onShare) {
+                        Icon(Icons.Default.Share, "Share")
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, "Close")
+                    }
                 }
             }
         },
@@ -505,11 +512,7 @@ fun ServiceReportDialog(
                 }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
-        }
+        confirmButton = {}
     )
 }
 
@@ -564,8 +567,8 @@ fun ServiceReportText(report: String, modifier: Modifier = Modifier) {
                     )
                 }
                 // Section headers
-                line in listOf("AREA BREAKDOWN", "TOTAL", "EVENT NOTES") -> {
-                    inAreaBreakdown = line == "AREA BREAKDOWN"
+                line in listOf("AREA", "TOTAL", "EVENT NOTES") -> {
+                    inAreaBreakdown = line == "AREA"
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = line,
