@@ -24,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
@@ -477,42 +479,61 @@ fun ServiceReportDialog(
     report: String,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.92f),
+            color = MaterialTheme.colorScheme.surface,
+            shape = MaterialTheme.shapes.large
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text("Summary")
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, "Close")
-                }
-            }
-        },
-        text = {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 500.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = MaterialTheme.shapes.small
-            ) {
-                LazyColumn(
-                    modifier = Modifier.padding(12.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    item {
-                        ServiceReportText(
-                            report = report,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    Text(
+                        "Summary",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, "Close")
+                    }
+                }
+
+                HorizontalDivider()
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        item {
+                            ServiceReportText(
+                                report = report,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }
-        },
-        confirmButton = {}
-    )
+        }
+    }
 }
 
 @Composable
