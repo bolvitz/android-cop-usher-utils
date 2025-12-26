@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
@@ -156,10 +157,6 @@ fun HistoryScreen(
             onDismiss = {
                 haptic.light()
                 viewModel.clearReport()
-            },
-            onShare = {
-                // TODO: Implement share functionality
-                haptic.medium()
             }
         )
     }
@@ -468,8 +465,7 @@ fun ServiceHistoryCard(
 @Composable
 fun ServiceReportDialog(
     report: String,
-    onDismiss: () -> Unit,
-    onShare: () -> Unit
+    onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -480,15 +476,8 @@ fun ServiceReportDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Summary")
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    IconButton(onClick = onShare) {
-                        Icon(Icons.Default.Share, "Share")
-                    }
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, "Close")
-                    }
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, "Close")
                 }
             }
         },
@@ -519,7 +508,6 @@ fun ServiceReportDialog(
 @Composable
 fun ServiceReportText(report: String, modifier: Modifier = Modifier) {
     val lines = remember(report) { report.split("\n") }
-    val primaryColor = MaterialTheme.colorScheme.primary
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
     val onSurface = MaterialTheme.colorScheme.onSurface
 
@@ -567,18 +555,35 @@ fun ServiceReportText(report: String, modifier: Modifier = Modifier) {
                     )
                 }
                 // Section headers
-                line in listOf("AREA", "TOTAL", "EVENT NOTES") -> {
-                    inAreaBreakdown = line == "AREA"
+                line in listOf("AREA BREAKDOWN", "AREA", "TOTAL", "EVENT NOTES") -> {
+                    inAreaBreakdown = line == "AREA BREAKDOWN" || line == "AREA"
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = line,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.displaySmall.copy(
+                            fontSize = 18.sp,
+                            letterSpacing = 3.sp
+                        ),
                         fontWeight = FontWeight.Bold,
                         color = onSurface,
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(4.dp))
+                }
+                // Area count number (standalone number line in area breakdown)
+                inAreaBreakdown && line.trim().toIntOrNull() != null -> {
+                    Text(
+                        text = line.trim(),
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = 24.sp,
+                            letterSpacing = 3.sp
+                        ),
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
                 // Area name with count (e.g., "Bay 1                  5")
                 inAreaBreakdown && line.contains(Regex("\\s{2,}")) &&
@@ -588,22 +593,27 @@ fun ServiceReportText(report: String, modifier: Modifier = Modifier) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 2.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = parts[0],
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = onSurface,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontSize = 18.sp
+                                ),
+                                fontWeight = FontWeight.Normal,
+                                color = onSurfaceVariant,
                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                             )
                             Text(
                                 text = parts[1],
-                                style = MaterialTheme.typography.displayMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = primaryColor,
+                                style = MaterialTheme.typography.displayLarge.copy(
+                                    fontSize = 24.sp,
+                                    letterSpacing = 3.sp
+                                ),
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                             )
                         }
@@ -622,7 +632,7 @@ fun ServiceReportText(report: String, modifier: Modifier = Modifier) {
                     HorizontalDivider(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                            .padding(vertical = 1.dp),
                         color = onSurfaceVariant.copy(alpha = 0.2f)
                     )
                 }
@@ -674,6 +684,18 @@ fun ServiceReportText(report: String, modifier: Modifier = Modifier) {
                             color = onSurface
                         )
                     }
+                }
+                // Area names in area breakdown (non-numeric lines)
+                inAreaBreakdown && line.trim().isNotEmpty() -> {
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 11.sp
+                        ),
+                        color = onSurfaceVariant,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
                 // Regular text
                 else -> {
