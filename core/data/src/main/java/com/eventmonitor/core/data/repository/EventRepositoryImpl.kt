@@ -199,24 +199,30 @@ class EventRepositoryImpl @Inject constructor(
         val venue = eventWithDetails.venue
         val areaCounts = areaCountDao.getAreaCountsByService(eventId).first()
 
-        val dateFormat = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
-        val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
-        val eventTypeName = ServiceType.fromString(event.eventType).displayName
+        val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val shortDateFormat = SimpleDateFormat("MM/dd/yy HH:mm", Locale.getDefault())
+        val eventTypeName = event.eventName.ifEmpty {
+            ServiceType.fromString(event.eventType).displayName
+        }
+
+        val totalCount = event.totalAttendance
+        val totalCapacity = event.totalCapacity
+        val utilizationPercent = if (totalCapacity > 0) {
+            (totalCount.toFloat() / totalCapacity * 100).toInt()
+        } else 0
 
         return buildString {
-            appendLine("ATTENDANCE REPORT")
-            appendLine("=".repeat(40))
-            appendLine("Venue: ${venue.name}")
-            appendLine("Date: ${dateFormat.format(Date(event.date))}")
-            appendLine("Service: $eventTypeName")
-            if (event.eventName.isNotEmpty()) {
-                appendLine("Event: ${event.eventName}")
-            }
-            appendLine("Counted by: ${event.countedBy}")
+            // Header
+            appendLine("HEAD COUNT REPORT")
+            appendLine(venue.name.uppercase())
+            appendLine(venue.location)
+            appendLine("_".repeat(40))
             appendLine()
 
+            // Area breakdown
             appendLine("AREA BREAKDOWN")
-            appendLine("-".repeat(40))
+            appendLine()
 
             areaCounts
                 .sortedBy { it.template.displayOrder }
@@ -224,40 +230,58 @@ class EventRepositoryImpl @Inject constructor(
                     val area = areaCountWithTemplate.areaCount
                     val template = areaCountWithTemplate.template
 
-                    // Create a readable format: "Name: Count" with proper spacing
-                    val maxNameLength = 20
-                    val truncatedName = if (template.name.length > maxNameLength) {
-                        template.name.take(maxNameLength - 3) + "..."
-                    } else {
-                        template.name.padEnd(maxNameLength)
-                    }
+                    // Format: "Area Name" followed by spaces, then the count right-aligned
+                    val maxLineLength = 40
+                    val countStr = area.count.toString()
+                    val nameLength = template.name.length
+                    val spacesNeeded = maxLineLength - nameLength - countStr.length
+                    val spaces = if (spacesNeeded > 0) " ".repeat(spacesNeeded) else "  "
 
-                    // Format count with leading zeros for better alignment
-                    val countStr = area.count.toString().padStart(3, ' ')
+                    appendLine("${template.name}${spaces}${countStr}")
 
-                    appendLine("${truncatedName}    ${countStr}")
-
+                    // Include area notes if present
                     if (area.notes.isNotEmpty()) {
-                        appendLine("  Note: ${area.notes}")
+                        appendLine("Note:        ${area.notes}")
                     }
+
+                    appendLine(".".repeat(40))
                 }
 
-            appendLine("-".repeat(40))
-            appendLine("TOTAL${" ".repeat(19)}${event.totalAttendance.toString().padStart(3, ' ')}")
-
-            if (event.notes.isNotEmpty()) {
-                appendLine()
-                appendLine("EVENT NOTES:")
-                appendLine(event.notes)
-            }
-
-            if (event.weather.isNotEmpty()) {
-                appendLine()
-                appendLine("Weather: ${event.weather}")
-            }
-
+            appendLine("_".repeat(40))
             appendLine()
-            appendLine("Generated: ${timeFormat.format(Date())}")
+
+            // Total section
+            appendLine("TOTAL")
+            appendLine()
+            appendLine("Total Count:     $totalCount")
+            appendLine("Total Capacity:  $totalCapacity")
+            appendLine("Utilization:     $utilizationPercent%")
+            appendLine("_".repeat(40))
+            appendLine()
+
+            // Event notes section
+            if (event.notes.isNotEmpty()) {
+                appendLine("EVENT NOTES")
+                appendLine(event.notes)
+                appendLine()
+            }
+
+            // Weather section
+            if (event.weather.isNotEmpty()) {
+                appendLine("Weather: ${event.weather}")
+                appendLine()
+            }
+
+            // Event details at the bottom
+            appendLine("Event:       $eventTypeName")
+            appendLine("Date:        ${dateFormat.format(Date(event.date))}")
+            appendLine("Time:        ${timeFormat.format(Date(event.date))}")
+            appendLine("Counted By:  ${event.countedBy}")
+            appendLine()
+
+            // Footer
+            appendLine("Generated: ${shortDateFormat.format(Date())}")
+            appendLine("ID: ${eventId.take(8).uppercase()}")
         }
     }
 

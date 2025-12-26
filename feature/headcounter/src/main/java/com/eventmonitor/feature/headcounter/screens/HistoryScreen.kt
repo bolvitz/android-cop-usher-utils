@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.data.local.entities.EventWithDetails
@@ -478,7 +479,7 @@ fun ServiceReportDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Service Report")
+                Text("Report Receipt")
                 IconButton(onClick = onShare) {
                     Icon(Icons.Default.Share, "Share")
                 }
@@ -486,16 +487,22 @@ fun ServiceReportDialog(
         },
         text = {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 500.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = MaterialTheme.shapes.small
             ) {
-                ServiceReportText(
-                    report = report,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp)
-                )
+                LazyColumn(
+                    modifier = Modifier.padding(12.dp)
+                ) {
+                    item {
+                        ServiceReportText(
+                            report = report,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
@@ -511,87 +518,168 @@ fun ServiceReportText(report: String, modifier: Modifier = Modifier) {
     val lines = remember(report) { report.split("\n") }
     val primaryColor = MaterialTheme.colorScheme.primary
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val onSurface = MaterialTheme.colorScheme.onSurface
 
-    Column(modifier = modifier) {
-        lines.forEach { line ->
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        var inAreaBreakdown = false
+
+        lines.forEachIndexed { index, line ->
             when {
-                // Headers (all caps lines)
-                line.matches(Regex("^[A-Z][A-Z ]+$")) -> {
+                // Main title "HEAD COUNT REPORT"
+                line == "HEAD COUNT REPORT" -> {
                     Text(
                         text = line,
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = primaryColor,
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        color = onSurface,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
-                // Lines with area counts (name followed by spaces and number)
-                line.matches(Regex("^[A-Za-z0-9 .]+\\s{2,}\\d+$")) && !line.startsWith("TOTAL") -> {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        val parts = line.split(Regex("\\s{2,}"))
-                        if (parts.size == 2) {
+                // Venue name (uppercase, second line)
+                index == 1 && line == line.uppercase() -> {
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = onSurface,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                // Location (third line, typically not all caps)
+                index == 2 -> {
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = onSurfaceVariant,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                // Section headers
+                line in listOf("AREA BREAKDOWN", "TOTAL", "EVENT NOTES") -> {
+                    inAreaBreakdown = line == "AREA BREAKDOWN"
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = onSurface,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                // Area name with count (e.g., "Bay 1                  5")
+                inAreaBreakdown && line.contains(Regex("\\s{2,}")) &&
+                line.split(Regex("\\s{2,}")).lastOrNull()?.toIntOrNull() != null -> {
+                    val parts = line.split(Regex("\\s{2,}"))
+                    if (parts.size == 2) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
                                 text = parts[0],
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                color = onSurfaceVariant
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = onSurface,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                             )
                             Text(
                                 text = parts[1],
+                                style = MaterialTheme.typography.displayMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = primaryColor,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+                // Divider lines (solid underscore)
+                line.startsWith("_") -> {
+                    inAreaBreakdown = false
+                    HorizontalDivider(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = onSurfaceVariant.copy(alpha = 0.3f)
+                    )
+                }
+                // Dashed separator (dots)
+                line.startsWith(".") -> {
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        color = onSurfaceVariant.copy(alpha = 0.2f)
+                    )
+                }
+                // Empty lines
+                line.isEmpty() -> {
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                // Label: Value format (Event:, Date:, Time:, etc.)
+                line.contains(":") && !line.startsWith(" ") -> {
+                    val parts = line.split(":", limit = 2)
+                    if (parts.size == 2) {
+                        // Special handling for Weather and Generated
+                        val isMetadata = parts[0] in listOf("Weather", "Generated", "ID")
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            Text(
+                                text = parts[0] + ":",
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
+                                color = onSurfaceVariant,
                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                color = primaryColor
+                                modifier = if (isMetadata) Modifier else Modifier.width(130.dp)
                             )
-                        } else {
-                            Text(
-                                text = line,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                            )
+                            if (!isMetadata) {
+                                Text(
+                                    text = parts[1].trim(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Normal,
+                                    color = onSurface,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = parts[1].trim(),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = onSurfaceVariant.copy(alpha = 0.7f),
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                )
+                            }
                         }
+                    } else {
+                        Text(
+                            text = line,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            color = onSurface
+                        )
                     }
                 }
-                // TOTAL line
-                line.startsWith("TOTAL") -> {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        val parts = line.split(Regex("\\s{2,}"))
-                        if (parts.size == 2) {
-                            Text(
-                                text = parts[0],
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                            )
-                            Text(
-                                text = parts[1],
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                color = primaryColor
-                            )
-                        } else {
-                            Text(
-                                text = line,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-                // Regular lines
+                // Regular text
                 else -> {
                     Text(
                         text = line,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = onSurfaceVariant,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
