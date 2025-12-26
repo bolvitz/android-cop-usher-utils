@@ -4,7 +4,18 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,7 +53,7 @@ fun HistoryScreen(
                         haptic.light()
                         onNavigateBack()
                     }) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 }
             )
@@ -230,7 +241,6 @@ fun ServiceHistoryCard(
     onDelete: () -> Unit
 ) {
     val dateFormat = remember { SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault()) }
-    val timeFormat = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -305,7 +315,7 @@ fun ServiceHistoryCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     LinearProgressIndicator(
-                        progress = (percentage / 100f).coerceIn(0f, 1f),
+                        progress = { (percentage / 100f).coerceIn(0f, 1f) },
                         modifier = Modifier
                             .weight(1f)
                             .height(4.dp),
@@ -313,7 +323,7 @@ fun ServiceHistoryCard(
                             percentage < 50 -> MaterialTheme.colorScheme.tertiary
                             percentage < 80 -> MaterialTheme.colorScheme.primary
                             else -> MaterialTheme.colorScheme.error
-                        }
+                        },
                     )
                     Text(
                         text = "$percentage%",

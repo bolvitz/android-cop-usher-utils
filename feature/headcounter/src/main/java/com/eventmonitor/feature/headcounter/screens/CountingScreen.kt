@@ -7,7 +7,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -58,7 +64,7 @@ fun CountingScreen(
                         haptic.light()
                         onNavigateBack()
                     }) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 actions = {
@@ -69,7 +75,7 @@ fun CountingScreen(
                         },
                         enabled = canUndo
                     ) {
-                        Icon(Icons.Default.Undo, "Undo")
+                        Icon(Icons.AutoMirrored.Filled.Undo, "Undo")
                     }
                     IconButton(
                         onClick = {
@@ -78,7 +84,7 @@ fun CountingScreen(
                         },
                         enabled = canRedo
                     ) {
-                        Icon(Icons.Default.Redo, "Redo")
+                        Icon(Icons.AutoMirrored.Filled.Redo, "Redo")
                     }
                     IconButton(onClick = {
                         haptic.light()
@@ -274,7 +280,7 @@ fun CreateServiceDialog(
                             label = { Text("Service Type") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                             modifier = Modifier
-                                .menuAnchor()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                                 .fillMaxWidth()
                         )
                         ExposedDropdownMenu(
@@ -417,7 +423,7 @@ fun AreaCountCard(
             if (areaCount.capacity > 0) {
                 val progress = (areaCount.count.toFloat() / areaCount.capacity).coerceIn(0f, 1f)
                 LinearProgressIndicator(
-                    progress = progress,
+                    progress = { progress },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp),
@@ -425,7 +431,7 @@ fun AreaCountCard(
                         progress < 0.5f -> MaterialTheme.colorScheme.tertiary
                         progress < 0.8f -> MaterialTheme.colorScheme.primary
                         else -> MaterialTheme.colorScheme.error
-                    }
+                    },
                 )
             }
 
