@@ -487,8 +487,8 @@ fun ServiceReportDialog(
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.95f)
-                .fillMaxHeight(0.92f),
+                .fillMaxWidth(0.85f)
+                .fillMaxHeight(0.82f),
             color = MaterialTheme.colorScheme.surface,
             shape = MaterialTheme.shapes.large
         ) {
