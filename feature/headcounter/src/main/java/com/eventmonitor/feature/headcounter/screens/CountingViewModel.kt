@@ -39,6 +39,7 @@ class CountingViewModel @Inject constructor(
 
     private val _undoStack = MutableStateFlow<List<CountAction>>(emptyList())
     private val _redoStack = MutableStateFlow<List<CountAction>>(emptyList())
+    private val _excludedAreaIds = MutableStateFlow<Set<String>>(emptySet())
 
     val canUndo: StateFlow<Boolean> = _undoStack.map { it.isNotEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -114,14 +115,15 @@ class CountingViewModel @Inject constructor(
     }
 
     private fun loadServiceDetails(serviceId: String) {
-        // Combine both flows to avoid flickering from separate updates
+        // Combine all flows to avoid flickering from separate updates
         viewModelScope.launch {
             combine(
                 eventRepository.getEventById(serviceId),
-                areaCountRepository.getAreaCountsByService(serviceId)
-            ) { serviceWithDetails, areaCounts ->
-                Pair(serviceWithDetails, areaCounts)
-            }.collect { (serviceWithDetails, areaCounts) ->
+                areaCountRepository.getAreaCountsByService(serviceId),
+                _excludedAreaIds
+            ) { serviceWithDetails, areaCounts, excludedIds ->
+                Triple(serviceWithDetails, areaCounts, excludedIds)
+            }.collect { (serviceWithDetails, areaCounts, excludedIds) ->
                 serviceWithDetails?.let { details ->
                     val areaCountStates = areaCounts.map { areaCountWithTemplate ->
                         AreaCountState(
@@ -130,6 +132,7 @@ class CountingViewModel @Inject constructor(
                             count = areaCountWithTemplate.areaCount.count,
                             capacity = areaCountWithTemplate.areaCount.capacity,
                             notes = areaCountWithTemplate.areaCount.notes,
+                            isIncluded = areaCountWithTemplate.areaCount.id !in excludedIds,
                             percentage = if (areaCountWithTemplate.areaCount.capacity > 0) {
                                 (areaCountWithTemplate.areaCount.count.toFloat() / areaCountWithTemplate.areaCount.capacity * 100).toInt()
                             } else 0,
@@ -137,17 +140,27 @@ class CountingViewModel @Inject constructor(
                         )
                     }
 
+                    val includedAreas = areaCountStates.filter { it.isIncluded }
+                    val totalAttendance = includedAreas.sumOf { it.count }
+                    val totalCapacity = includedAreas.sumOf { it.capacity }
+
                     // Single atomic update to prevent flickering
                     _uiState.update { currentState ->
                         currentState.copy(
-                            totalAttendance = details.event.totalAttendance,
-                            totalCapacity = details.event.totalCapacity,
+                            totalAttendance = totalAttendance,
+                            totalCapacity = totalCapacity,
                             isLocked = details.event.isLocked,
                             areaCounts = areaCountStates
                         )
                     }
                 }
             }
+        }
+    }
+
+    fun toggleAreaInclusion(areaCountId: String) {
+        _excludedAreaIds.update { current ->
+            if (areaCountId in current) current - areaCountId else current + areaCountId
         }
     }
 
@@ -305,6 +318,7 @@ data class AreaCountState(
     val count: Int,
     val capacity: Int,
     val notes: String,
+    val isIncluded: Boolean = true,
     val percentage: Int,
     val lastUpdated: Long
 )

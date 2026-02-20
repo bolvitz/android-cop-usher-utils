@@ -221,6 +221,10 @@ fun CountingScreen(
                                     },
                                     onSetCount = { newCount ->
                                         viewModel.setCount(areaCount.id, newCount)
+                                    },
+                                    onToggleInclusion = {
+                                        haptic.selection()
+                                        viewModel.toggleAreaInclusion(areaCount.id)
                                     }
                                 )
                             }
@@ -352,10 +356,12 @@ fun AreaCountCard(
     isLocked: Boolean,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit,
-    onSetCount: (Int) -> Unit
+    onSetCount: (Int) -> Unit,
+    onToggleInclusion: () -> Unit
 ) {
     var previousCount by remember { mutableStateOf(areaCount.count) }
     val isIncrementing = areaCount.count > previousCount
+    val contentAlpha = if (areaCount.isIncluded) 1f else 0.4f
 
     LaunchedEffect(areaCount.count) {
         previousCount = areaCount.count
@@ -380,18 +386,25 @@ fun AreaCountCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Checkbox(
+                    checked = areaCount.isIncluded,
+                    onCheckedChange = { onToggleInclusion() },
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = areaCount.template.name,
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = contentAlpha)
                     )
                     if (areaCount.capacity > 0) {
                         val percentage = (areaCount.count.toFloat() / areaCount.capacity * 100).toInt()
                         Text(
                             text = "$percentage% · ${areaCount.capacity} capacity",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha)
                         )
                     }
                 }
@@ -414,7 +427,7 @@ fun AreaCountCard(
                         text = count.toString(),
                         style = MaterialTheme.typography.displayLarge.copy(fontSize = 56.sp),
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = contentAlpha)
                     )
                 }
             }
