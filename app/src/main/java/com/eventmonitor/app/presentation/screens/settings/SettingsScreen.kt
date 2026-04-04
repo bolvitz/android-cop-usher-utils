@@ -17,7 +17,8 @@ import com.eventmonitor.core.common.utils.rememberHapticFeedback
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onManageServiceTypes: () -> Unit = {},
-    onManageVenues: () -> Unit = {}
+    onManageVenues: () -> Unit = {},
+    onSeatMapDemo: () -> Unit = {}
 ) {
     val haptic = rememberHapticFeedback()
 
@@ -104,6 +105,44 @@ fun SettingsScreen(
                             }
                         )
                     }
+                }
+            }
+
+            // Prototypes Section
+            item {
+                Text(
+                    text = "Prototypes",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    ListItem(
+                        headlineContent = { Text("Cinema Seat Map") },
+                        supportingContent = { Text("Preview seat management prototype for head counter") },
+                        leadingContent = {
+                            Icon(
+                                Icons.Default.EventSeat,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary
+                            )
+                        },
+                        trailingContent = {
+                            Icon(
+                                Icons.Default.ChevronRight,
+                                contentDescription = null
+                            )
+                        },
+                        modifier = Modifier.clickable {
+                            haptic.medium()
+                            onSeatMapDemo()
+                        }
+                    )
                 }
             }
 

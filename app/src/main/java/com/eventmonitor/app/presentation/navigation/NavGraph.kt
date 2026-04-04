@@ -16,6 +16,8 @@ import com.eventmonitor.app.presentation.screens.eventtypes.ServiceTypeManagemen
 import com.eventmonitor.app.presentation.screens.settings.SettingsScreen
 import com.eventmonitor.feature.headcounter.screens.CountingScreen
 import com.eventmonitor.feature.headcounter.screens.HistoryScreen
+import com.eventmonitor.feature.headcounter.screens.TrendsScreen
+import com.eventmonitor.feature.headcounter.seatmap.SeatMapDemoScreen
 import com.eventmonitor.feature.lostandfound.screens.AddEditLostItemScreen
 import com.eventmonitor.feature.lostandfound.screens.LostAndFoundScreen
 import com.eventmonitor.feature.incidents.screens.AddEditIncidentScreen
@@ -134,6 +136,24 @@ fun NavGraph(
                 onStartNewCount = { venueId ->
                     navController.navigate(Screen.Counting.createRoute(venueId))
                 },
+                onViewTrends = { venueId ->
+                    navController.navigate(Screen.Trends.createRoute(venueId))
+                },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.Trends.route,
+            arguments = listOf(
+                navArgument("venueId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) {
+            TrendsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -152,6 +172,9 @@ fun NavGraph(
                 },
                 onManageVenues = {
                     navController.navigate(Screen.VenueManagement.route)
+                },
+                onSeatMapDemo = {
+                    navController.navigate(Screen.SeatMapDemo.route)
                 }
             )
         }
@@ -275,6 +298,12 @@ fun NavGraph(
                     // We need to get the branchId from the incident, for now navigate back
                     navController.popBackStack()
                 }
+            )
+        }
+
+        composable(Screen.SeatMapDemo.route) {
+            SeatMapDemoScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

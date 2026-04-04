@@ -51,4 +51,10 @@ sealed class Screen(val route: String) {
     object IncidentDetail : Screen("incident/{incidentId}") {
         fun createRoute(incidentId: String) = "incident/$incidentId"
     }
+    object Trends : Screen("trends?venueId={venueId}") {
+        fun createRoute(venueId: String? = null) =
+            if (venueId != null) "trends?venueId=$venueId"
+            else "trends"
+    }
+    object SeatMapDemo : Screen("seat_map_demo")
 }

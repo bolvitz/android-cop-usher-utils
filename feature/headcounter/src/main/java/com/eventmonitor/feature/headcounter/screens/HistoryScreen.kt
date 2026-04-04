@@ -1,5 +1,6 @@
 package com.eventmonitor.feature.headcounter.screens
 
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
@@ -38,11 +41,13 @@ fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel(),
     onServiceClick: (branchId: String, serviceId: String) -> Unit,
     onStartNewCount: (venueId: String) -> Unit,
+    onViewTrends: (venueId: String?) -> Unit = {},
     onNavigateBack: () -> Unit
 ) {
     val haptic = rememberHapticFeedback()
     val uiState by viewModel.uiState.collectAsState()
     val selectedReport by viewModel.selectedServiceReport.collectAsState()
+    val csvExport by viewModel.csvExportData.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<String?>(null) }
     var showUnlockDialog by remember { mutableStateOf<String?>(null) }
 
@@ -56,6 +61,14 @@ fun HistoryScreen(
                         onNavigateBack()
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        haptic.light()
+                        onViewTrends(viewModel.venueId)
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ShowChart, "View Trends")
                     }
                 }
             )
@@ -147,6 +160,10 @@ fun HistoryScreen(
                                     haptic.light()
                                     viewModel.generateReport(serviceWithDetails.event.id)
                                 },
+                                onExportCsv = {
+                                    haptic.light()
+                                    viewModel.generateCsvExport(serviceWithDetails.event.id)
+                                },
                                 onUnlock = {
                                     haptic.light()
                                     showUnlockDialog = serviceWithDetails.event.id
@@ -232,6 +249,20 @@ fun HistoryScreen(
             }
         )
     }
+
+    // CSV Export share
+    val context = LocalContext.current
+    LaunchedEffect(csvExport) {
+        csvExport?.let { csv ->
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/csv"
+                putExtra(Intent.EXTRA_TEXT, csv)
+                putExtra(Intent.EXTRA_SUBJECT, "Head Count Export")
+            }
+            context.startActivity(Intent.createChooser(shareIntent, "Share CSV"))
+            viewModel.clearCsvExport()
+        }
+    }
 }
 
 @Composable
@@ -239,6 +270,7 @@ fun ServiceHistoryCard(
     service: EventWithDetails,
     onResumeEdit: () -> Unit,
     onViewReport: () -> Unit,
+    onExportCsv: () -> Unit,
     onUnlock: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -443,6 +475,14 @@ fun ServiceHistoryCard(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
+                        DropdownMenuItem(
+                            text = { Text("Export CSV") },
+                            onClick = {
+                                onExportCsv()
+                                showMenu = false
+                            },
+                            leadingIcon = { Icon(Icons.Default.Description, null) }
+                        )
                         if (service.event.isLocked) {
                             DropdownMenuItem(
                                 text = { Text("Unlock") },

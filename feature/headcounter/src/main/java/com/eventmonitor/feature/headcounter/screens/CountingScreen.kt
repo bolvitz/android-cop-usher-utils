@@ -2,23 +2,31 @@ package com.eventmonitor.feature.headcounter.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -29,6 +37,7 @@ import com.eventmonitor.core.domain.models.ServiceType
 import com.eventmonitor.core.common.utils.flipDownTransform
 import com.eventmonitor.core.common.utils.flipUpTransform
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -126,57 +135,101 @@ fun CountingScreen(
                         .padding(paddingValues)
                 ) {
                     // Total attendance card - fixed at top
+                    val totalPercentage = if (uiState.totalCapacity > 0) {
+                        (uiState.totalAttendance.toFloat() / uiState.totalCapacity * 100).toInt()
+                    } else 0
+                    val totalCapacityLevel = when {
+                        totalPercentage >= 95 -> CapacityLevel.CRITICAL
+                        totalPercentage >= 80 -> CapacityLevel.WARNING
+                        else -> CapacityLevel.NORMAL
+                    }
+                    val totalCardColor = when (totalCapacityLevel) {
+                        CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.errorContainer
+                        CapacityLevel.WARNING -> MaterialTheme.colorScheme.tertiaryContainer
+                        CapacityLevel.NORMAL -> MaterialTheme.colorScheme.primaryContainer
+                    }
+                    val totalContentColor = when (totalCapacityLevel) {
+                        CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.onErrorContainer
+                        CapacityLevel.WARNING -> MaterialTheme.colorScheme.onTertiaryContainer
+                        CapacityLevel.NORMAL -> MaterialTheme.colorScheme.onPrimaryContainer
+                    }
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
                             .padding(top = 16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
+                        colors = CardDefaults.cardColors(containerColor = totalCardColor)
                     ) {
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(12.dp)
                         ) {
-                            Column {
-                                Text(
-                                    "Total Attendance",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                                )
-                                if (uiState.totalCapacity > 0) {
-                                    val percentage = (uiState.totalAttendance.toFloat() / uiState.totalCapacity * 100).toInt()
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            "Total Attendance",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = totalContentColor.copy(alpha = 0.8f)
+                                        )
+                                        if (totalCapacityLevel != CapacityLevel.NORMAL) {
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Icon(
+                                                imageVector = if (totalCapacityLevel == CapacityLevel.CRITICAL)
+                                                    Icons.Default.Warning else Icons.Default.Info,
+                                                contentDescription = "Capacity alert",
+                                                modifier = Modifier.size(16.dp),
+                                                tint = totalContentColor
+                                            )
+                                        }
+                                    }
+                                    if (uiState.totalCapacity > 0) {
+                                        Text(
+                                            text = "$totalPercentage% of ${uiState.totalCapacity}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = totalContentColor.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                }
+
+                                AnimatedContent(
+                                    targetState = uiState.totalAttendance,
+                                    transitionSpec = {
+                                        if (targetState > initialState) {
+                                            flipUpTransform()
+                                        } else {
+                                            flipDownTransform()
+                                        }
+                                    },
+                                    label = "totalAttendanceAnimation"
+                                ) { attendance ->
                                     Text(
-                                        text = "$percentage% of ${uiState.totalCapacity}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                        text = attendance.toString(),
+                                        style = MaterialTheme.typography.displayMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = totalContentColor
                                     )
                                 }
                             }
 
-                            // Total attendance with flip animation matching area counts
-                            AnimatedContent(
-                                targetState = uiState.totalAttendance,
-                                transitionSpec = {
-                                    if (targetState > initialState) {
-                                        // Incrementing: flip up
-                                        flipUpTransform()
-                                    } else {
-                                        // Decrementing: flip down
-                                        flipDownTransform()
-                                    }
-                                },
-                                label = "totalAttendanceAnimation"
-                            ) { attendance ->
-                                Text(
-                                    text = attendance.toString(),
-                                    style = MaterialTheme.typography.displayMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                            // Total capacity progress bar
+                            if (uiState.totalCapacity > 0) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                LinearProgressIndicator(
+                                    progress = {
+                                        (uiState.totalAttendance.toFloat() / uiState.totalCapacity).coerceIn(0f, 1f)
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(4.dp),
+                                    color = totalContentColor.copy(alpha = 0.8f),
+                                    trackColor = totalContentColor.copy(alpha = 0.2f),
                                 )
                             }
                         }
@@ -211,13 +264,13 @@ fun CountingScreen(
                                 AreaCountCard(
                                     areaCount = areaCount,
                                     isLocked = uiState.isLocked,
-                                    onIncrement = {
+                                    onIncrement = { amount ->
                                         haptic.counter()
-                                        viewModel.incrementCount(areaCount.id)
+                                        viewModel.incrementCount(areaCount.id, amount)
                                     },
-                                    onDecrement = {
+                                    onDecrement = { amount ->
                                         haptic.counter()
-                                        viewModel.decrementCount(areaCount.id)
+                                        viewModel.decrementCount(areaCount.id, amount)
                                     },
                                     onSetCount = { newCount ->
                                         viewModel.setCount(areaCount.id, newCount)
@@ -354,33 +407,101 @@ fun CreateServiceDialog(
 fun AreaCountCard(
     areaCount: AreaCountState,
     isLocked: Boolean,
-    onIncrement: () -> Unit,
-    onDecrement: () -> Unit,
+    onIncrement: (amount: Int) -> Unit,
+    onDecrement: (amount: Int) -> Unit,
     onSetCount: (Int) -> Unit,
     onToggleInclusion: () -> Unit
 ) {
+    val haptic = rememberHapticFeedback()
     var previousCount by remember { mutableStateOf(areaCount.count) }
-    val isIncrementing = areaCount.count > previousCount
     val contentAlpha = if (areaCount.isIncluded) 1f else 0.4f
+    val capacityPercentage = if (areaCount.capacity > 0) {
+        (areaCount.count.toFloat() / areaCount.capacity * 100).toInt()
+    } else 0
+
+    // Capacity alert state
+    val capacityLevel = when {
+        capacityPercentage >= 95 -> CapacityLevel.CRITICAL
+        capacityPercentage >= 80 -> CapacityLevel.WARNING
+        else -> CapacityLevel.NORMAL
+    }
+
+    // Haptic alert when crossing thresholds
+    LaunchedEffect(capacityLevel) {
+        when (capacityLevel) {
+            CapacityLevel.CRITICAL -> haptic.strong()
+            CapacityLevel.WARNING -> haptic.medium()
+            CapacityLevel.NORMAL -> {}
+        }
+    }
 
     LaunchedEffect(areaCount.count) {
         previousCount = areaCount.count
     }
 
+    // Resolve area template color
+    val areaColor = remember(areaCount.template.color) {
+        try {
+            Color(android.graphics.Color.parseColor(areaCount.template.color))
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    // Resolve area template icon
+    val areaIcon = remember(areaCount.template.icon) {
+        mapIconNameToVector(areaCount.template.icon)
+    }
+
+    // Card border color for capacity alerts
+    val alertBorderColor = when (capacityLevel) {
+        CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.error
+        CapacityLevel.WARNING -> MaterialTheme.colorScheme.tertiary
+        CapacityLevel.NORMAL -> Color.Transparent
+    }
+
+    // Pulse animation for critical capacity
+    val infiniteTransition = rememberInfiniteTransition(label = "capacityPulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = EaseInOut),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+
+    val cardBorderModifier = if (capacityLevel != CapacityLevel.NORMAL) {
+        Modifier.border(
+            width = 2.dp,
+            color = alertBorderColor.copy(
+                alpha = if (capacityLevel == CapacityLevel.CRITICAL) pulseAlpha else 0.7f
+            ),
+            shape = MaterialTheme.shapes.medium
+        )
+    } else {
+        Modifier
+    }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(cardBorderModifier),
         colors = CardDefaults.cardColors(
-            containerColor = if (isLocked)
-                MaterialTheme.colorScheme.surfaceVariant
-            else
-                MaterialTheme.colorScheme.surface
+            containerColor = when {
+                isLocked -> MaterialTheme.colorScheme.surfaceVariant
+                capacityLevel == CapacityLevel.CRITICAL ->
+                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
+                else -> MaterialTheme.colorScheme.surface
+            }
         )
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Area name and count
+            // Area name, icon, color indicator, and count
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -391,7 +512,27 @@ fun AreaCountCard(
                     onCheckedChange = { onToggleInclusion() },
                     modifier = Modifier.size(24.dp)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Area color dot + icon
+                if (areaColor != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(areaColor.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = areaIcon,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = areaColor
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = areaCount.template.name,
@@ -400,12 +541,41 @@ fun AreaCountCard(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = contentAlpha)
                     )
                     if (areaCount.capacity > 0) {
-                        val percentage = (areaCount.count.toFloat() / areaCount.capacity * 100).toInt()
-                        Text(
-                            text = "$percentage% · ${areaCount.capacity} capacity",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "$capacityPercentage% · ${areaCount.capacity} capacity",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = when (capacityLevel) {
+                                    CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.error
+                                    CapacityLevel.WARNING -> MaterialTheme.colorScheme.tertiary
+                                    CapacityLevel.NORMAL -> MaterialTheme.colorScheme.onSurfaceVariant
+                                }.copy(alpha = contentAlpha)
+                            )
+                            // Capacity alert badge
+                            if (capacityLevel != CapacityLevel.NORMAL) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = when (capacityLevel) {
+                                        CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.error
+                                        CapacityLevel.WARNING -> MaterialTheme.colorScheme.tertiary
+                                        CapacityLevel.NORMAL -> Color.Transparent
+                                    }
+                                ) {
+                                    Text(
+                                        text = if (capacityLevel == CapacityLevel.CRITICAL) "FULL" else "HIGH",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = when (capacityLevel) {
+                                            CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.onError
+                                            CapacityLevel.WARNING -> MaterialTheme.colorScheme.onTertiary
+                                            CapacityLevel.NORMAL -> Color.Transparent
+                                        },
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -414,10 +584,8 @@ fun AreaCountCard(
                     targetState = areaCount.count,
                     transitionSpec = {
                         if (targetState > initialState) {
-                            // Incrementing: flip up
                             flipUpTransform()
                         } else {
-                            // Decrementing: flip down
                             flipDownTransform()
                         }
                     },
@@ -427,7 +595,11 @@ fun AreaCountCard(
                         text = count.toString(),
                         style = MaterialTheme.typography.displayLarge.copy(fontSize = 56.sp),
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = contentAlpha)
+                        color = when (capacityLevel) {
+                            CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.error
+                            CapacityLevel.WARNING -> MaterialTheme.colorScheme.tertiary
+                            CapacityLevel.NORMAL -> MaterialTheme.colorScheme.primary
+                        }.copy(alpha = contentAlpha)
                     )
                 }
             }
@@ -440,26 +612,29 @@ fun AreaCountCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp),
-                    color = when {
-                        progress < 0.5f -> MaterialTheme.colorScheme.tertiary
-                        progress < 0.8f -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.error
+                    color = when (capacityLevel) {
+                        CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.error
+                        CapacityLevel.WARNING -> MaterialTheme.colorScheme.tertiary
+                        CapacityLevel.NORMAL -> if (progress < 0.5f)
+                            MaterialTheme.colorScheme.tertiary
+                        else
+                            MaterialTheme.colorScheme.primary
                     },
                 )
             }
 
-            // Large, emphasized plus and minus buttons
+            // Main ±1 buttons with long-press rapid count
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Minus button - Large and emphasized
-                FilledTonalButton(
-                    onClick = onDecrement,
+                // Minus button with long-press
+                RepeatableButton(
+                    onClick = { onDecrement(1) },
+                    enabled = !isLocked && areaCount.count > 0,
                     modifier = Modifier
                         .weight(1f)
-                        .height(80.dp),
-                    enabled = !isLocked && areaCount.count > 0,
+                        .height(72.dp),
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -467,18 +642,18 @@ fun AreaCountCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Remove,
-                        contentDescription = "Decrease",
-                        modifier = Modifier.size(48.dp)
+                        contentDescription = "Decrease by 1",
+                        modifier = Modifier.size(40.dp)
                     )
                 }
 
-                // Plus button - Large and emphasized
-                FilledTonalButton(
-                    onClick = onIncrement,
+                // Plus button with long-press
+                RepeatableButton(
+                    onClick = { onIncrement(1) },
+                    enabled = !isLocked,
                     modifier = Modifier
                         .weight(1f)
-                        .height(80.dp),
-                    enabled = !isLocked,
+                        .height(72.dp),
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -486,8 +661,8 @@ fun AreaCountCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Increase",
-                        modifier = Modifier.size(48.dp)
+                        contentDescription = "Increase by 1",
+                        modifier = Modifier.size(40.dp)
                     )
                 }
             }
@@ -514,5 +689,105 @@ fun AreaCountCard(
                 }
             }
         }
+    }
+}
+
+enum class CapacityLevel { NORMAL, WARNING, CRITICAL }
+
+@Composable
+fun RepeatableButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    colors: ButtonColors = ButtonDefaults.filledTonalButtonColors(),
+    content: @Composable RowScope.() -> Unit
+) {
+    val haptic = rememberHapticFeedback()
+    var isPressed by remember { mutableStateOf(false) }
+
+    // Long-press rapid fire
+    LaunchedEffect(isPressed, enabled) {
+        if (isPressed && enabled) {
+            delay(400) // Initial delay before rapid fire
+            var interval = 200L
+            while (isPressed) {
+                onClick()
+                haptic.counter()
+                delay(interval)
+                // Accelerate: reduce interval down to 50ms
+                if (interval > 50L) interval = (interval * 0.85).toLong().coerceAtLeast(50L)
+            }
+        }
+    }
+
+    FilledTonalButton(
+        onClick = {
+            haptic.counter()
+            onClick()
+        },
+        modifier = modifier.pointerInput(enabled) {
+            if (enabled) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    }
+                )
+            }
+        },
+        enabled = enabled,
+        colors = colors,
+        content = content
+    )
+}
+
+@Composable
+fun BulkButton(
+    text: String,
+    onClick: () -> Unit,
+    enabled: Boolean,
+    isSubtract: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val haptic = rememberHapticFeedback()
+    OutlinedButton(
+        onClick = {
+            haptic.medium()
+            onClick()
+        },
+        modifier = modifier.height(44.dp),
+        enabled = enabled,
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = if (isSubtract)
+                MaterialTheme.colorScheme.error
+            else
+                MaterialTheme.colorScheme.primary
+        ),
+        contentPadding = PaddingValues(horizontal = 4.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+fun mapIconNameToVector(iconName: String): ImageVector {
+    return when (iconName.lowercase()) {
+        "chair" -> Icons.Default.Chair
+        "child_care", "baby" -> Icons.Default.ChildCare
+        "balcony" -> Icons.Default.Balcony
+        "overflow", "groups" -> Icons.Default.Groups
+        "local_parking", "parking" -> Icons.Default.LocalParking
+        "meeting_room", "room" -> Icons.Default.MeetingRoom
+        "stairs" -> Icons.Default.Stairs
+        "weekend", "vip" -> Icons.Default.Weekend
+        "church" -> Icons.Default.Church
+        "event_seat", "seat" -> Icons.Default.EventSeat
+        "people" -> Icons.Default.People
+        "accessibility" -> Icons.Default.AccessibleForward
+        else -> Icons.Default.Place
     }
 }
