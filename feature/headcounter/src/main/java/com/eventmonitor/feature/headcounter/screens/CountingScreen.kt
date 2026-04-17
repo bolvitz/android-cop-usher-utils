@@ -1,366 +1,961 @@
 package com.eventmonitor.feature.headcounter.screens
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Redo
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.eventmonitor.core.data.local.entities.EventTypeEntity
-import com.eventmonitor.core.domain.models.ServiceType
-import com.eventmonitor.core.common.utils.flipDownTransform
-import com.eventmonitor.core.common.utils.flipUpTransform
+import com.eventmonitor.core.common.theme.Amber
+import com.eventmonitor.core.common.theme.MonoTiny
+import com.eventmonitor.core.common.theme.Signal
+import com.eventmonitor.core.common.ui.DigitRoll
+import com.eventmonitor.core.common.ui.FieldAppBar
+import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.FieldKeyButton
+import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.HairlineSoft
+import com.eventmonitor.core.common.ui.KeyVariant
+import com.eventmonitor.core.common.ui.SevPill
+import com.eventmonitor.core.common.ui.Severity
+import com.eventmonitor.core.common.ui.ZoneChip
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
+import com.eventmonitor.core.data.local.entities.EventTypeEntity
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Locale
+import kotlin.math.abs
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CountingScreen(
     viewModel: CountingViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
 ) {
     val haptic = rememberHapticFeedback()
     val uiState by viewModel.uiState.collectAsState()
     val eventTypes by viewModel.eventTypes.collectAsState()
     val canUndo by viewModel.canUndo.collectAsState()
     val canRedo by viewModel.canRedo.collectAsState()
+
     var showCreateDialog by remember { mutableStateOf(uiState.eventId == null) }
+    var selectedAreaId by remember { mutableStateOf<String?>(null) }
+    var snackMessage by remember { mutableStateOf<String?>(null) }
+
+    // Choose the active zone: last-tapped, else first included, else first.
+    val areas = uiState.areaCounts
+    val activeArea = remember(areas, selectedAreaId) {
+        areas.firstOrNull { it.id == selectedAreaId }
+            ?: areas.firstOrNull { it.isIncluded }
+            ?: areas.firstOrNull()
+    }
+
+    // Auto-dismiss snackbar.
+    LaunchedEffect(snackMessage) {
+        if (snackMessage != null) {
+            delay(2400)
+            snackMessage = null
+        }
+    }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        // FieldAppBar pads itself against the status bar; body handles bottom.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(uiState.branchName)
-                        if (uiState.eventName.isNotEmpty()) {
-                            Text(
-                                text = uiState.eventName,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
+            FieldAppBar(
+                title = uiState.branchName.ifBlank { "Headcount" },
+                eyebrow = uiState.eventName.ifBlank { "zone · live" },
+                leading = {
+                    FieldAppBarIcon("‹", onClick = {
+                        haptic.light(); onNavigateBack()
+                    })
                 },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        haptic.light()
-                        onNavigateBack()
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
+                trailing = {
+                    FieldAppBarIcon("↺", enabled = canUndo, onClick = {
+                        haptic.medium(); viewModel.undo()
+                    })
                 },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            haptic.medium()
-                            viewModel.undo()
-                        },
-                        enabled = canUndo
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Undo, "Undo")
-                    }
-                    IconButton(
-                        onClick = {
-                            haptic.medium()
-                            viewModel.redo()
-                        },
-                        enabled = canRedo
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Redo, "Redo")
-                    }
-                    IconButton(onClick = {
-                        haptic.light()
-                        viewModel.shareReport()
-                    }) {
-                        Icon(Icons.Default.Share, "Share")
-                    }
-                }
             )
-        }
-    ) { paddingValues ->
-        if (showCreateDialog) {
-            CreateServiceDialog(
-                eventTypes = eventTypes,
-                onDismiss = { showCreateDialog = false; onNavigateBack() },
-                onCreate = { eventTypeId, eventTypeName, date, countedBy ->
-                    viewModel.createNewService(eventTypeId, eventTypeName, date, countedBy)
-                    showCreateDialog = false
+        },
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            when {
+                showCreateDialog -> {
+                    CreateEventDialog(
+                        eventTypes = eventTypes,
+                        onDismiss = {
+                            showCreateDialog = false
+                            if (uiState.eventId == null) onNavigateBack()
+                        },
+                        onCreate = { typeId, typeName, date, counter ->
+                            viewModel.createNewService(typeId, typeName, date, counter)
+                            showCreateDialog = false
+                        },
+                    )
                 }
-            )
-        }
 
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+                uiState.isLoading -> {
+                    LoadingPanel()
+                }
+
+                activeArea == null -> {
+                    EmptyPanel()
+                }
+
+                else -> {
+                    CountBody(
+                        uiState = uiState,
+                        activeArea = activeArea,
+                        areas = areas,
+                        canUndo = canUndo,
+                        canRedo = canRedo,
+                        onSelectArea = { selectedAreaId = it.id },
+                        onBump = { delta ->
+                            if (delta >= 0) viewModel.incrementCount(activeArea.id, delta)
+                            else viewModel.decrementCount(activeArea.id, -delta)
+                            snackMessage =
+                                "${if (delta >= 0) "+" else ""}$delta on ${activeArea.template.name}"
+                        },
+                        onUndo = {
+                            viewModel.undo()
+                            snackMessage = "Undone."
+                        },
+                        onRedo = { viewModel.redo() },
+                        onShare = { viewModel.shareReport() },
+                    )
                 }
             }
 
-            uiState.eventId != null -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    // Total attendance card - fixed at top
-                    val totalPercentage = if (uiState.totalCapacity > 0) {
-                        (uiState.totalAttendance.toFloat() / uiState.totalCapacity * 100).toInt()
-                    } else 0
-                    val totalCapacityLevel = when {
-                        totalPercentage >= 95 -> CapacityLevel.CRITICAL
-                        totalPercentage >= 80 -> CapacityLevel.WARNING
-                        else -> CapacityLevel.NORMAL
-                    }
-                    val totalCardColor = when (totalCapacityLevel) {
-                        CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.errorContainer
-                        CapacityLevel.WARNING -> MaterialTheme.colorScheme.tertiaryContainer
-                        CapacityLevel.NORMAL -> MaterialTheme.colorScheme.primaryContainer
-                    }
-                    val totalContentColor = when (totalCapacityLevel) {
-                        CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.onErrorContainer
-                        CapacityLevel.WARNING -> MaterialTheme.colorScheme.onTertiaryContainer
-                        CapacityLevel.NORMAL -> MaterialTheme.colorScheme.onPrimaryContainer
-                    }
+            // Snackbar dock — float above the gesture bar.
+            FieldSnackbar(
+                message = snackMessage,
+                onUndo = {
+                    viewModel.undo()
+                    snackMessage = "Undone."
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(16.dp),
+            )
+        }
+    }
+}
 
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .padding(top = 16.dp),
-                        colors = CardDefaults.cardColors(containerColor = totalCardColor)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            "Total Attendance",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = totalContentColor.copy(alpha = 0.8f)
-                                        )
-                                        if (totalCapacityLevel != CapacityLevel.NORMAL) {
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Icon(
-                                                imageVector = if (totalCapacityLevel == CapacityLevel.CRITICAL)
-                                                    Icons.Default.Warning else Icons.Default.Info,
-                                                contentDescription = "Capacity alert",
-                                                modifier = Modifier.size(16.dp),
-                                                tint = totalContentColor
-                                            )
-                                        }
-                                    }
-                                    if (uiState.totalCapacity > 0) {
-                                        Text(
-                                            text = "$totalPercentage% of ${uiState.totalCapacity}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = totalContentColor.copy(alpha = 0.7f)
-                                        )
-                                    }
+// ---------------------------------------------------------------------------
+// Body composition
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun CountBody(
+    uiState: CountingUiState,
+    activeArea: AreaCountState,
+    areas: List<AreaCountState>,
+    canUndo: Boolean,
+    canRedo: Boolean,
+    onSelectArea: (AreaCountState) -> Unit,
+    onBump: (Int) -> Unit,
+    onUndo: () -> Unit,
+    onRedo: () -> Unit,
+    onShare: () -> Unit,
+) {
+    val locked = uiState.isLocked
+    val scroll = rememberScrollState()
+    val dateFormatter = remember { SimpleDateFormat("EEE d MMM · HH:mm", Locale.getDefault()) }
+
+    // Shared horizontal-swipe state. The tally panel drives it via drag gestures,
+    // while the zone chip rail mirrors it with parallax so both tracks move as one.
+    val dragOffset = remember { Animatable(0f) }
+    val chipListState = rememberLazyListState()
+
+    // Auto-center the active chip when it changes (after a swipe or explicit tap).
+    LaunchedEffect(activeArea.id, areas) {
+        val idx = areas.indexOfFirst { it.id == activeArea.id }
+        if (idx >= 0) chipListState.animateScrollToItem(idx)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scroll)
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp),
+    ) {
+        Spacer(Modifier.height(12.dp))
+
+        // Crumbs + editorial header
+        Text(
+            text = "VENUES › ${uiState.branchName.uppercase().ifBlank { "—" }} › HEADCOUNT",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = uiState.eventName.ifBlank { "Live count" },
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    text = dateFormatter.format(uiState.serviceDate).uppercase(),
+                    style = MonoTiny,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            Column(
+                horizontalAlignment = Alignment.End,
+            ) {
+                Text(
+                    text = "TOTAL",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = uiState.totalAttendance.toString(),
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                if (uiState.totalCapacity > 0) {
+                    Text(
+                        text = "/ ${uiState.totalCapacity}",
+                        style = MonoTiny,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        HairlineSoft()
+        Spacer(Modifier.height(12.dp))
+
+        // Zone chip rail — stationary during tally drags; auto-scrolls to centre
+        // the active chip once a swipe commits (or an explicit tap changes zones).
+        LazyRow(
+            state = chipListState,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            items(areas, key = { it.id }) { area ->
+                ZoneChip(
+                    label = area.template.name,
+                    selected = area.id == activeArea.id,
+                    onClick = { onSelectArea(area) },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Zone head
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = activeArea.template.name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    text = "ZONE · ${activeArea.template.name.uppercase()}",
+                    style = MonoTiny,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                val capText = if (activeArea.capacity > 0) activeArea.capacity.toString() else "—"
+                Text(
+                    "CAP $capText",
+                    style = MonoTiny,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = "${activeArea.count} / $capText",
+                    style = MonoTiny,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        TallyPanel(
+            area = activeArea,
+            areas = areas,
+            onSelectArea = onSelectArea,
+            dragOffset = dragOffset,
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        // Keypad (2x2)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FieldKeyButton(
+                label = "−1",
+                caption = "Subtract",
+                variant = KeyVariant.Minus,
+                enabled = !locked && activeArea.count > 0,
+                onTap = { onBump(-1) },
+                modifier = Modifier.weight(1f),
+            )
+            FieldKeyButton(
+                label = "+1",
+                caption = "Tap · Hold = rapid",
+                variant = KeyVariant.Plus,
+                enabled = !locked,
+                onTap = { onBump(1) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FieldKeyButton(
+                label = "−5",
+                caption = "Bulk out",
+                variant = KeyVariant.Minus,
+                enabled = !locked && activeArea.count > 0,
+                repeatable = false,
+                onTap = { onBump(-5) },
+                modifier = Modifier.weight(1f),
+            )
+            FieldKeyButton(
+                label = "+5",
+                caption = "Group in",
+                variant = KeyVariant.Plus,
+                enabled = !locked,
+                repeatable = false,
+                onTap = { onBump(5) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        // Tool row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ToolButton(
+                label = "↶ UNDO",
+                enabled = canUndo && !locked,
+                modifier = Modifier.weight(1f),
+                onClick = onUndo,
+            )
+            ToolButton(
+                label = "↷ REDO",
+                enabled = canRedo && !locked,
+                modifier = Modifier.weight(1f),
+                onClick = onRedo,
+            )
+            ToolButton(
+                label = "SHARE",
+                enabled = true,
+                modifier = Modifier.weight(1f),
+                onClick = onShare,
+            )
+        }
+
+        if (locked) {
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SevPill(Severity.CRITICAL, "LOCKED")
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "This count is sealed. Unlock from the event menu to resume.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(28.dp))
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tally panel — black slab, big Fraunces-slot count, progress bar.
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun TallyPanel(
+    area: AreaCountState,
+    areas: List<AreaCountState>,
+    onSelectArea: (AreaCountState) -> Unit,
+    dragOffset: Animatable<Float, *>,
+) {
+    val pct = if (area.capacity > 0) {
+        (area.count.toFloat() / area.capacity).coerceIn(0f, 1f)
+    } else 0f
+    val progressColor = when {
+        pct >= 0.95f -> Signal
+        pct >= 0.80f -> Amber
+        else -> Signal
+    }
+    val animatedPct by animateFloatAsState(
+        targetValue = pct,
+        animationSpec = tween(durationMillis = 500),
+        label = "pct",
+    )
+
+    var prev by remember(area.id) { mutableIntStateOf(area.count) }
+    LaunchedEffect(area.count) { prev = area.count }
+
+    val haptic = rememberHapticFeedback()
+    val density = LocalDensity.current
+    val commitThreshold = with(density) { 96.dp.toPx() }
+    val travelLimit = with(density) { 260.dp.toPx() }
+    val flingOffset = with(density) { 360.dp.toPx() }
+
+    val currentIndex = areas.indexOfFirst { it.id == area.id }
+    val prevArea = if (currentIndex > 0) areas[currentIndex - 1] else null
+    val nextArea = if (currentIndex in 0 until areas.lastIndex) areas[currentIndex + 1] else null
+
+    val scope = rememberCoroutineScope()
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.onBackground)
+            .pointerInput(area.id, areas) {
+                detectHorizontalDragGestures(
+                    onDragStart = {
+                        scope.launch { dragOffset.stop() }
+                    },
+                    onDragEnd = {
+                        val off = dragOffset.value
+                        scope.launch {
+                            when {
+                                off <= -commitThreshold && nextArea != null -> {
+                                    haptic.selection()
+                                    // Continuity: new active starts where the ghost was.
+                                    val continuePos = flingOffset + off
+                                    onSelectArea(nextArea)
+                                    dragOffset.snapTo(continuePos)
+                                    dragOffset.animateTo(
+                                        targetValue = 0f,
+                                        animationSpec = spring(
+                                            dampingRatio = 0.82f,
+                                            stiffness = Spring.StiffnessMediumLow,
+                                        ),
+                                    )
                                 }
 
-                                AnimatedContent(
-                                    targetState = uiState.totalAttendance,
-                                    transitionSpec = {
-                                        if (targetState > initialState) {
-                                            flipUpTransform()
-                                        } else {
-                                            flipDownTransform()
-                                        }
-                                    },
-                                    label = "totalAttendanceAnimation"
-                                ) { attendance ->
-                                    Text(
-                                        text = attendance.toString(),
-                                        style = MaterialTheme.typography.displayMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = totalContentColor
+                                off >= commitThreshold && prevArea != null -> {
+                                    haptic.selection()
+                                    val continuePos = -flingOffset + off
+                                    onSelectArea(prevArea)
+                                    dragOffset.snapTo(continuePos)
+                                    dragOffset.animateTo(
+                                        targetValue = 0f,
+                                        animationSpec = spring(
+                                            dampingRatio = 0.82f,
+                                            stiffness = Spring.StiffnessMediumLow,
+                                        ),
+                                    )
+                                }
+
+                                else -> {
+                                    dragOffset.animateTo(
+                                        targetValue = 0f,
+                                        animationSpec = spring(
+                                            dampingRatio = 0.62f,
+                                            stiffness = Spring.StiffnessMedium,
+                                        ),
                                     )
                                 }
                             }
-
-                            // Total capacity progress bar
-                            if (uiState.totalCapacity > 0) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                LinearProgressIndicator(
-                                    progress = {
-                                        (uiState.totalAttendance.toFloat() / uiState.totalCapacity).coerceIn(0f, 1f)
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(4.dp),
-                                    color = totalContentColor.copy(alpha = 0.8f),
-                                    trackColor = totalContentColor.copy(alpha = 0.2f),
-                                )
-                            }
                         }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Area counting cards - scrollable
-                    if (uiState.areaCounts.isEmpty()) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        ) {
-                            Text(
-                                "Loading areas...",
-                                modifier = Modifier.padding(16.dp),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    onDragCancel = {
+                        scope.launch {
+                            dragOffset.animateTo(
+                                targetValue = 0f,
+                                animationSpec = spring(
+                                    dampingRatio = 0.62f,
+                                    stiffness = Spring.StiffnessMedium,
+                                ),
                             )
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(uiState.areaCounts) { areaCount ->
-                                AreaCountCard(
-                                    areaCount = areaCount,
-                                    isLocked = uiState.isLocked,
-                                    onIncrement = { amount ->
-                                        haptic.counter()
-                                        viewModel.incrementCount(areaCount.id, amount)
-                                    },
-                                    onDecrement = { amount ->
-                                        haptic.counter()
-                                        viewModel.decrementCount(areaCount.id, amount)
-                                    },
-                                    onSetCount = { newCount ->
-                                        viewModel.setCount(areaCount.id, newCount)
-                                    },
-                                    onToggleInclusion = {
-                                        haptic.selection()
-                                        viewModel.toggleAreaInclusion(areaCount.id)
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
+                    },
+                    onHorizontalDrag = { _, dragAmount ->
+                        val target = dragOffset.value + dragAmount
+                        val resisted = when {
+                            target < 0f && nextArea == null -> target * 0.28f
+                            target > 0f && prevArea == null -> target * 0.28f
+                            else -> target
+                        }.coerceIn(-travelLimit, travelLimit)
+                        scope.launch { dragOffset.snapTo(resisted) }
+                    },
+                )
+            }
+            .padding(horizontal = 16.dp, vertical = 20.dp),
+    ) {
+        // Corner crosshairs
+        Text(
+            "+",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.align(Alignment.TopStart),
+        )
+        Text(
+            "+",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.align(Alignment.TopEnd),
+        )
+        Text(
+            "+",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.align(Alignment.BottomStart),
+        )
+        Text(
+            "+",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.align(Alignment.BottomEnd),
+        )
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            val digitStyle = MaterialTheme.typography.displayLarge.copy(
+                fontSize = FieldTokens.TallyFontSize,
+                lineHeight = FieldTokens.TallyLineHeight,
+            )
+            val prevCaption = prevArea?.let {
+                if (it.capacity > 0) {
+                    "${
+                        ((it.count.toFloat() / it.capacity).coerceIn(
+                            0f,
+                            1f
+                        ) * 100).toInt()
+                    }% OF CAPACITY"
+                } else "NO CAPACITY SET"
+            }
+            val nextCaption = nextArea?.let {
+                if (it.capacity > 0) {
+                    "${
+                        ((it.count.toFloat() / it.capacity).coerceIn(
+                            0f,
+                            1f
+                        ) * 100).toInt()
+                    }% OF CAPACITY"
+                } else "NO CAPACITY SET"
             }
 
-            else -> {
+            // Count row — prev ghost (left), next ghost (right), active (center).
+            // All reads of dragOffset happen in graphicsLayer lambdas so the swap
+            // + snapTo are applied in the same draw frame (no flicker).
+            Box(modifier = Modifier.fillMaxWidth()) {
+                if (prevArea != null) {
+                    Text(
+                        text = prevArea.count.toString(),
+                        style = digitStyle,
+                        color = MaterialTheme.colorScheme.background,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .graphicsLayer {
+                                val p = dragOffset.value
+                                translationX = -flingOffset + p
+                                alpha = (p / commitThreshold).coerceIn(0f, 1f) * 0.45f
+                            },
+                    )
+                }
+                if (nextArea != null) {
+                    Text(
+                        text = nextArea.count.toString(),
+                        style = digitStyle,
+                        color = MaterialTheme.colorScheme.background,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .graphicsLayer {
+                                val p = dragOffset.value
+                                translationX = flingOffset + p
+                                alpha = (-p / commitThreshold).coerceIn(0f, 1f) * 0.45f
+                            },
+                    )
+                }
+                DigitRoll(
+                    value = area.count,
+                    previous = prev,
+                    style = digitStyle,
+                    color = MaterialTheme.colorScheme.background,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .graphicsLayer {
+                            val p = dragOffset.value
+                            translationX = p
+                            alpha = 1f - (abs(p) / commitThreshold).coerceIn(0f, 1f) * 0.55f
+                        },
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+
+            // Caption row — same tri-layer pattern, with parallax (0.55×).
+            Box(modifier = Modifier.fillMaxWidth()) {
+                if (prevArea != null && prevCaption != null) {
+                    Text(
+                        text = prevCaption,
+                        style = MonoTiny,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .graphicsLayer {
+                                val p = dragOffset.value
+                                translationX = (-flingOffset + p) * 0.55f
+                                alpha = (p / commitThreshold).coerceIn(0f, 1f) * 0.45f
+                            },
+                    )
+                }
+                if (nextArea != null && nextCaption != null) {
+                    Text(
+                        text = nextCaption,
+                        style = MonoTiny,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .graphicsLayer {
+                                val p = dragOffset.value
+                                translationX = (flingOffset + p) * 0.55f
+                                alpha = (-p / commitThreshold).coerceIn(0f, 1f) * 0.45f
+                            },
+                    )
+                }
+                Text(
+                    text = if (area.capacity > 0) {
+                        "${(pct * 100).toInt()}% OF CAPACITY"
+                    } else {
+                        "NO CAPACITY SET"
+                    },
+                    style = MonoTiny,
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .graphicsLayer {
+                            val p = dragOffset.value
+                            translationX = p * 0.55f
+                            alpha = 1f - (abs(p) / commitThreshold).coerceIn(0f, 1f) * 0.55f
+                        },
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Progress track
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
+            ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Creating service...")
-                }
+                        .fillMaxHeight()
+                        .fillMaxWidth(animatedPct)
+                        .background(progressColor),
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("0", style = MonoTiny, color = MaterialTheme.colorScheme.outline)
+                Text(
+                    text = area.capacity.takeIf { it > 0 }?.toString() ?: "—",
+                    style = MonoTiny,
+                    color = MaterialTheme.colorScheme.outline,
+                )
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ---------------------------------------------------------------------------
+// Small bits
+// ---------------------------------------------------------------------------
+
 @Composable
-fun CreateServiceDialog(
-    eventTypes: List<EventTypeEntity>,
-    onDismiss: () -> Unit,
-    onCreate: (String, String, Long, String) -> Unit
+private fun ToolButton(
+    label: String,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
 ) {
     val haptic = rememberHapticFeedback()
-    var selectedServiceType by remember { mutableStateOf<EventTypeEntity?>(eventTypes.firstOrNull()) }
+    val ink = MaterialTheme.colorScheme.onBackground
+    val alpha = if (enabled) 1f else 0.4f
+    Box(
+        modifier = modifier
+            .height(FieldTokens.ToolHeight)
+            .border(FieldTokens.Hair, ink.copy(alpha = alpha))
+            .clickable(enabled = enabled) {
+                haptic.light(); onClick()
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = ink.copy(alpha = alpha),
+        )
+    }
+}
+
+@Composable
+private fun FieldSnackbar(
+    message: String?,
+    onUndo: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = message != null,
+        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+        modifier = modifier,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.onBackground)
+                .border(FieldTokens.Hair, MaterialTheme.colorScheme.outline)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = message.orEmpty(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.background,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "UNDO",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.background,
+                modifier = Modifier
+                    .border(FieldTokens.Hair, MaterialTheme.colorScheme.outline)
+                    .clickable { onUndo() }
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LoadingPanel() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "LOADING · PLEASE STAND BY",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun EmptyPanel() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = "No zones configured.",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Add a zone template to this venue to begin counting.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Create Event dialog — FIELD-styled.
+// ---------------------------------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CreateEventDialog(
+    eventTypes: List<EventTypeEntity>,
+    onDismiss: () -> Unit,
+    onCreate: (String, String, Long, String) -> Unit,
+) {
+    val haptic = rememberHapticFeedback()
+    var selectedType by remember { mutableStateOf(eventTypes.firstOrNull()) }
     var countedBy by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
+    LaunchedEffect(eventTypes) {
+        if (selectedType == null) selectedType = eventTypes.firstOrNull()
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Start New Service") },
+        containerColor = MaterialTheme.colorScheme.background,
+        title = {
+            Column {
+                Text(
+                    "NEW · EVENT",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(4.dp))
+                Text("Start counting.", style = MaterialTheme.typography.headlineSmall)
+            }
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (eventTypes.isEmpty()) {
                     Text(
-                        "No service types configured. Please set up service types first.",
+                        "No event types configured. Configure types before starting a count.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.error,
                     )
                 } else {
                     ExposedDropdownMenuBox(
                         expanded = expanded,
-                        onExpandedChange = { expanded = !expanded }
+                        onExpandedChange = { expanded = !expanded },
                     ) {
                         OutlinedTextField(
-                            value = selectedServiceType?.let {
-                                "${it.name} - ${it.dayType} ${it.time}"
-                            } ?: "",
+                            value = selectedType?.let { "${it.name} — ${it.dayType} ${it.time}" }
+                                ?: "",
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Service Type") },
+                            label = {
+                                Text(
+                                    "EVENT TYPE",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                             modifier = Modifier
                                 .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                                .fillMaxWidth()
+                                .fillMaxWidth(),
                         )
                         ExposedDropdownMenu(
                             expanded = expanded,
-                            onDismissRequest = { expanded = false }
+                            onDismissRequest = { expanded = false },
                         ) {
                             eventTypes.forEach { type ->
                                 DropdownMenuItem(
                                     text = {
                                         Column {
-                                            Text(type.name, style = MaterialTheme.typography.bodyMedium)
                                             Text(
-                                                "${type.dayType} • ${type.time}",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                type.name,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                            Text(
+                                                "${type.dayType} · ${type.time}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                         }
                                     },
                                     onClick = {
                                         haptic.selection()
-                                        selectedServiceType = type
+                                        selectedType = type
                                         expanded = false
-                                    }
+                                    },
                                 )
                             }
                         }
@@ -369,12 +964,15 @@ fun CreateServiceDialog(
                     OutlinedTextField(
                         value = countedBy,
                         onValueChange = { countedBy = it },
-                        label = { Text("Counted By") },
-                        placeholder = { Text("Your name") },
+                        label = { Text("COUNTED BY", style = MaterialTheme.typography.labelSmall) },
+                        placeholder = {
+                            Text(
+                                "Your name",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Words
-                        )
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                     )
                 }
             }
@@ -383,411 +981,24 @@ fun CreateServiceDialog(
             Button(
                 onClick = {
                     haptic.success()
-                    selectedServiceType?.let { type ->
+                    selectedType?.let { type ->
                         onCreate(type.id, type.name, System.currentTimeMillis(), countedBy)
                     }
                 },
-                enabled = countedBy.isNotBlank() && selectedServiceType != null && eventTypes.isNotEmpty()
+                enabled = countedBy.isNotBlank() && selectedType != null && eventTypes.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.onBackground,
+                    contentColor = MaterialTheme.colorScheme.background,
+                ),
             ) {
-                Text("Start Counting")
+                Text("START →", style = MaterialTheme.typography.labelMedium)
             }
         },
         dismissButton = {
-            TextButton(onClick = {
-                haptic.light()
-                onDismiss()
-            }) {
-                Text("Cancel")
+            TextButton(onClick = { haptic.light(); onDismiss() }) {
+                Text("CANCEL", style = MaterialTheme.typography.labelMedium)
             }
-        }
+        },
     )
 }
 
-@Composable
-fun AreaCountCard(
-    areaCount: AreaCountState,
-    isLocked: Boolean,
-    onIncrement: (amount: Int) -> Unit,
-    onDecrement: (amount: Int) -> Unit,
-    onSetCount: (Int) -> Unit,
-    onToggleInclusion: () -> Unit
-) {
-    val haptic = rememberHapticFeedback()
-    var previousCount by remember { mutableStateOf(areaCount.count) }
-    val contentAlpha = if (areaCount.isIncluded) 1f else 0.4f
-    val capacityPercentage = if (areaCount.capacity > 0) {
-        (areaCount.count.toFloat() / areaCount.capacity * 100).toInt()
-    } else 0
-
-    // Capacity alert state
-    val capacityLevel = when {
-        capacityPercentage >= 95 -> CapacityLevel.CRITICAL
-        capacityPercentage >= 80 -> CapacityLevel.WARNING
-        else -> CapacityLevel.NORMAL
-    }
-
-    // Haptic alert when crossing thresholds
-    LaunchedEffect(capacityLevel) {
-        when (capacityLevel) {
-            CapacityLevel.CRITICAL -> haptic.strong()
-            CapacityLevel.WARNING -> haptic.medium()
-            CapacityLevel.NORMAL -> {}
-        }
-    }
-
-    LaunchedEffect(areaCount.count) {
-        previousCount = areaCount.count
-    }
-
-    // Resolve area template color
-    val areaColor = remember(areaCount.template.color) {
-        try {
-            Color(android.graphics.Color.parseColor(areaCount.template.color))
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    // Resolve area template icon
-    val areaIcon = remember(areaCount.template.icon) {
-        mapIconNameToVector(areaCount.template.icon)
-    }
-
-    // Card border color for capacity alerts
-    val alertBorderColor = when (capacityLevel) {
-        CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.error
-        CapacityLevel.WARNING -> MaterialTheme.colorScheme.tertiary
-        CapacityLevel.NORMAL -> Color.Transparent
-    }
-
-    // Pulse animation for critical capacity
-    val infiniteTransition = rememberInfiniteTransition(label = "capacityPulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = EaseInOut),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseAlpha"
-    )
-
-    val cardBorderModifier = if (capacityLevel != CapacityLevel.NORMAL) {
-        Modifier.border(
-            width = 2.dp,
-            color = alertBorderColor.copy(
-                alpha = if (capacityLevel == CapacityLevel.CRITICAL) pulseAlpha else 0.7f
-            ),
-            shape = MaterialTheme.shapes.medium
-        )
-    } else {
-        Modifier
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(cardBorderModifier),
-        colors = CardDefaults.cardColors(
-            containerColor = when {
-                isLocked -> MaterialTheme.colorScheme.surfaceVariant
-                capacityLevel == CapacityLevel.CRITICAL ->
-                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
-                else -> MaterialTheme.colorScheme.surface
-            }
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Area name, icon, color indicator, and count
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = areaCount.isIncluded,
-                    onCheckedChange = { onToggleInclusion() },
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Area color dot + icon
-                if (areaColor != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(areaColor.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = areaIcon,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = areaColor
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = areaCount.template.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = contentAlpha)
-                    )
-                    if (areaCount.capacity > 0) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "$capacityPercentage% · ${areaCount.capacity} capacity",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = when (capacityLevel) {
-                                    CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.error
-                                    CapacityLevel.WARNING -> MaterialTheme.colorScheme.tertiary
-                                    CapacityLevel.NORMAL -> MaterialTheme.colorScheme.onSurfaceVariant
-                                }.copy(alpha = contentAlpha)
-                            )
-                            // Capacity alert badge
-                            if (capacityLevel != CapacityLevel.NORMAL) {
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(4.dp),
-                                    color = when (capacityLevel) {
-                                        CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.error
-                                        CapacityLevel.WARNING -> MaterialTheme.colorScheme.tertiary
-                                        CapacityLevel.NORMAL -> Color.Transparent
-                                    }
-                                ) {
-                                    Text(
-                                        text = if (capacityLevel == CapacityLevel.CRITICAL) "FULL" else "HIGH",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = when (capacityLevel) {
-                                            CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.onError
-                                            CapacityLevel.WARNING -> MaterialTheme.colorScheme.onTertiary
-                                            CapacityLevel.NORMAL -> Color.Transparent
-                                        },
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Count display with flip animation
-                AnimatedContent(
-                    targetState = areaCount.count,
-                    transitionSpec = {
-                        if (targetState > initialState) {
-                            flipUpTransform()
-                        } else {
-                            flipDownTransform()
-                        }
-                    },
-                    label = "countAnimation"
-                ) { count ->
-                    Text(
-                        text = count.toString(),
-                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 56.sp),
-                        fontWeight = FontWeight.Bold,
-                        color = when (capacityLevel) {
-                            CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.error
-                            CapacityLevel.WARNING -> MaterialTheme.colorScheme.tertiary
-                            CapacityLevel.NORMAL -> MaterialTheme.colorScheme.primary
-                        }.copy(alpha = contentAlpha)
-                    )
-                }
-            }
-
-            // Progress bar - inline
-            if (areaCount.capacity > 0) {
-                val progress = (areaCount.count.toFloat() / areaCount.capacity).coerceIn(0f, 1f)
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp),
-                    color = when (capacityLevel) {
-                        CapacityLevel.CRITICAL -> MaterialTheme.colorScheme.error
-                        CapacityLevel.WARNING -> MaterialTheme.colorScheme.tertiary
-                        CapacityLevel.NORMAL -> if (progress < 0.5f)
-                            MaterialTheme.colorScheme.tertiary
-                        else
-                            MaterialTheme.colorScheme.primary
-                    },
-                )
-            }
-
-            // Main ±1 buttons with long-press rapid count
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Minus button with long-press
-                RepeatableButton(
-                    onClick = { onDecrement(1) },
-                    enabled = !isLocked && areaCount.count > 0,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(72.dp),
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Remove,
-                        contentDescription = "Decrease by 1",
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-
-                // Plus button with long-press
-                RepeatableButton(
-                    onClick = { onIncrement(1) },
-                    enabled = !isLocked,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(72.dp),
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Increase by 1",
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-            }
-
-            // Lock indicator
-            if (isLocked) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        Icons.Default.Lock,
-                        "Locked",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        "Service locked",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        }
-    }
-}
-
-enum class CapacityLevel { NORMAL, WARNING, CRITICAL }
-
-@Composable
-fun RepeatableButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    colors: ButtonColors = ButtonDefaults.filledTonalButtonColors(),
-    content: @Composable RowScope.() -> Unit
-) {
-    val haptic = rememberHapticFeedback()
-    var isPressed by remember { mutableStateOf(false) }
-
-    // Long-press rapid fire
-    LaunchedEffect(isPressed, enabled) {
-        if (isPressed && enabled) {
-            delay(400) // Initial delay before rapid fire
-            var interval = 200L
-            while (isPressed) {
-                onClick()
-                haptic.counter()
-                delay(interval)
-                // Accelerate: reduce interval down to 50ms
-                if (interval > 50L) interval = (interval * 0.85).toLong().coerceAtLeast(50L)
-            }
-        }
-    }
-
-    FilledTonalButton(
-        onClick = {
-            haptic.counter()
-            onClick()
-        },
-        modifier = modifier.pointerInput(enabled) {
-            if (enabled) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        tryAwaitRelease()
-                        isPressed = false
-                    }
-                )
-            }
-        },
-        enabled = enabled,
-        colors = colors,
-        content = content
-    )
-}
-
-@Composable
-fun BulkButton(
-    text: String,
-    onClick: () -> Unit,
-    enabled: Boolean,
-    isSubtract: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val haptic = rememberHapticFeedback()
-    OutlinedButton(
-        onClick = {
-            haptic.medium()
-            onClick()
-        },
-        modifier = modifier.height(44.dp),
-        enabled = enabled,
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = if (isSubtract)
-                MaterialTheme.colorScheme.error
-            else
-                MaterialTheme.colorScheme.primary
-        ),
-        contentPadding = PaddingValues(horizontal = 4.dp)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-fun mapIconNameToVector(iconName: String): ImageVector {
-    return when (iconName.lowercase()) {
-        "chair" -> Icons.Default.Chair
-        "child_care", "baby" -> Icons.Default.ChildCare
-        "balcony" -> Icons.Default.Balcony
-        "overflow", "groups" -> Icons.Default.Groups
-        "local_parking", "parking" -> Icons.Default.LocalParking
-        "meeting_room", "room" -> Icons.Default.MeetingRoom
-        "stairs" -> Icons.Default.Stairs
-        "weekend", "vip" -> Icons.Default.Weekend
-        "church" -> Icons.Default.Church
-        "event_seat", "seat" -> Icons.Default.EventSeat
-        "people" -> Icons.Default.People
-        "accessibility" -> Icons.Default.AccessibleForward
-        else -> Icons.Default.Place
-    }
-}
