@@ -3,15 +3,18 @@ package com.eventmonitor.feature.headcounter.screens
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.eventmonitor.core.data.local.entities.EventWithAreaCounts
-import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.data.repository.interfaces.EventRepository
 import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -166,9 +169,9 @@ data class EventTypeBreakdown(
     val avgAttendance: Int
 )
 
-enum class TrendPeriod(val label: String, val days: Int) {
-    LAST_7_DAYS("7 Days", 7),
-    LAST_30_DAYS("30 Days", 30),
-    LAST_90_DAYS("90 Days", 90),
-    LAST_YEAR("1 Year", 365)
+enum class TrendPeriod(val label: String, val strip: String, val days: Int) {
+    LAST_7_DAYS("7 Days", "7·D", 7),
+    LAST_30_DAYS("30 Days", "30·D", 30),
+    LAST_90_DAYS("90 Days", "90·D", 90),
+    LAST_YEAR("1 Year", "1·Y", 365)
 }

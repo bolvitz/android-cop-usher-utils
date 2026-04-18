@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +70,11 @@ fun FieldKeyButton(
         }
     }
 
+    // Keep closures reading the LATEST onTap — otherwise pointerInput/LaunchedEffect
+    // capture the first-composition lambda and taps route to a stale zone after any
+    // recomposition that swaps which area is active.
+    val currentOnTap by rememberUpdatedState(onTap)
+
     var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.97f else 1f,
@@ -82,7 +88,7 @@ fun FieldKeyButton(
             delay(380)
             var interval = 180L
             while (pressed) {
-                onTap()
+                currentOnTap()
                 haptic.counter()
                 delay(interval)
                 if (interval > 50L) interval = (interval * 0.85).toLong().coerceAtLeast(50L)
@@ -109,7 +115,7 @@ fun FieldKeyButton(
                     },
                     onTap = {
                         haptic.counter()
-                        onTap()
+                        currentOnTap()
                     },
                 )
             },

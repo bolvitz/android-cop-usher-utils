@@ -24,30 +24,23 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,20 +52,30 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.common.theme.Amber
 import com.eventmonitor.core.common.theme.MonoTiny
+import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
 import com.eventmonitor.core.common.ui.DigitRoll
 import com.eventmonitor.core.common.ui.FieldAppBar
 import com.eventmonitor.core.common.ui.FieldAppBarIcon
 import com.eventmonitor.core.common.ui.FieldKeyButton
 import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.Hairline
 import com.eventmonitor.core.common.ui.HairlineSoft
 import com.eventmonitor.core.common.ui.KeyVariant
 import com.eventmonitor.core.common.ui.SevPill
@@ -83,6 +86,7 @@ import com.eventmonitor.core.data.local.entities.EventTypeEntity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 
@@ -870,10 +874,9 @@ private fun EmptyPanel() {
 }
 
 // ---------------------------------------------------------------------------
-// Create Event dialog — FIELD-styled.
+// Create Event dialog — FIELD intake sheet (full-bleed, editorial).
 // ---------------------------------------------------------------------------
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventDialog(
     eventTypes: List<EventTypeEntity>,
@@ -883,122 +886,396 @@ fun CreateEventDialog(
     val haptic = rememberHapticFeedback()
     var selectedType by remember { mutableStateOf(eventTypes.firstOrNull()) }
     var countedBy by remember { mutableStateOf("") }
-    var expanded by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val openedAt = remember { System.currentTimeMillis() }
+    val filingNo = remember {
+        val base = (openedAt / 1000L) % 1000L
+        base.toString().padStart(3, '0')
+    }
+    val stampFmt = remember { SimpleDateFormat("EEE d MMM · HH:mm", Locale.getDefault()) }
 
     LaunchedEffect(eventTypes) {
         if (selectedType == null) selectedType = eventTypes.firstOrNull()
     }
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.background,
-        title = {
-            Column {
-                Text(
-                    "NEW · EVENT",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(4.dp))
-                Text("Start counting.", style = MaterialTheme.typography.headlineSmall)
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (eventTypes.isEmpty()) {
-                    Text(
-                        "No event types configured. Configure types before starting a count.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                } else {
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = !expanded },
-                    ) {
-                        OutlinedTextField(
-                            value = selectedType?.let { "${it.name} — ${it.dayType} ${it.time}" }
-                                ?: "",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = {
-                                Text(
-                                    "EVENT TYPE",
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                            modifier = Modifier
-                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                                .fillMaxWidth(),
-                        )
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                        ) {
-                            eventTypes.forEach { type ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Column {
-                                            Text(
-                                                type.name,
-                                                style = MaterialTheme.typography.bodyMedium
-                                            )
-                                            Text(
-                                                "${type.dayType} · ${type.time}",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                        }
-                                    },
-                                    onClick = {
-                                        haptic.selection()
-                                        selectedType = type
-                                        expanded = false
-                                    },
-                                )
-                            }
-                        }
-                    }
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        val ink = MaterialTheme.colorScheme.onBackground
+        val paper = MaterialTheme.colorScheme.background
+        val muted = MaterialTheme.colorScheme.onSurfaceVariant
+        val outline = MaterialTheme.colorScheme.outline
 
-                    OutlinedTextField(
-                        value = countedBy,
-                        onValueChange = { countedBy = it },
-                        label = { Text("COUNTED BY", style = MaterialTheme.typography.labelSmall) },
-                        placeholder = {
-                            Text(
-                                "Your name",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(paper)
+                .imePadding(),
+        ) {
+            // ── Masthead ───────────────────────────────────────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FieldAppBarIcon("×", onClick = { haptic.light(); onDismiss() })
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "INTAKE · FILING № $filingNo",
+                        style = MonoTiny,
+                        color = muted,
+                    )
+                    Text(
+                        text = "New count",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = ink,
                     )
                 }
+                Box(
+                    modifier = Modifier
+                        .border(FieldTokens.Hair, outline)
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                ) {
+                    Text("DRAFT", style = MonoTiny, color = muted)
+                }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    haptic.success()
-                    selectedType?.let { type ->
-                        onCreate(type.id, type.name, System.currentTimeMillis(), countedBy)
-                    }
-                },
-                enabled = countedBy.isNotBlank() && selectedType != null && eventTypes.isNotEmpty(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.onBackground,
-                    contentColor = MaterialTheme.colorScheme.background,
-                ),
+            Hairline()
+
+            // ── Body (scrollable) ─────────────────────────────────────────
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp),
             ) {
-                Text("START →", style = MaterialTheme.typography.labelMedium)
+                Spacer(Modifier.height(28.dp))
+
+                // Editorial lede
+                Text(
+                    text = "Open a",
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontSize = 44.sp,
+                        lineHeight = 44.sp,
+                        fontWeight = FontWeight.Light,
+                    ),
+                    color = ink,
+                )
+                Text(
+                    text = "ledger.",
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontSize = 44.sp,
+                        lineHeight = 44.sp,
+                        fontStyle = FontStyle.Italic,
+                    ),
+                    color = ink,
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "Pick a type, stamp the counter, start the tally.".uppercase(),
+                    style = MonoTiny,
+                    color = muted,
+                )
+
+                Spacer(Modifier.height(26.dp))
+                HairlineSoft()
+                Spacer(Modifier.height(22.dp))
+
+                // Field 01 — TYPE
+                IntakeFieldHead("01", "TYPE", "What's on the card")
+                Spacer(Modifier.height(14.dp))
+
+                if (eventTypes.isEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(FieldTokens.Hair, Signal)
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(Signal),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                "NO TYPES ON FILE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Signal,
+                            )
+                            Text(
+                                "Configure event types before opening a count.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = ink,
+                            )
+                        }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(FieldTokens.Hair, ink),
+                    ) {
+                        eventTypes.forEachIndexed { idx, type ->
+                            TypePickRow(
+                                index = idx + 1,
+                                name = type.name,
+                                day = type.dayType,
+                                time = type.time,
+                                selected = selectedType?.id == type.id,
+                                onClick = {
+                                    haptic.selection()
+                                    selectedType = type
+                                },
+                            )
+                            if (idx < eventTypes.lastIndex) HairlineSoft()
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(26.dp))
+                HairlineSoft()
+                Spacer(Modifier.height(22.dp))
+
+                // Field 02 — STAMP
+                IntakeFieldHead("02", "STAMP", "Filed at (auto)")
+                Spacer(Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(FieldTokens.Hair, outline)
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(Sage),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stampFmt.format(Date(openedAt)).uppercase(),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = ink,
+                        )
+                        Text(
+                            text = "LIVE · CAPTURED AT OPEN",
+                            style = MonoTiny,
+                            color = muted,
+                        )
+                    }
+                    Text("NOW", style = MonoTiny, color = ink)
+                }
+
+                Spacer(Modifier.height(26.dp))
+                HairlineSoft()
+                Spacer(Modifier.height(22.dp))
+
+                // Field 03 — COUNTER
+                IntakeFieldHead("03", "COUNTER", "Who's on the clicker")
+                Spacer(Modifier.height(14.dp))
+
+                CounterInput(
+                    value = countedBy,
+                    onValueChange = { countedBy = it },
+                    focusRequester = focusRequester,
+                )
+
+                Spacer(Modifier.height(48.dp))
             }
-        },
-        dismissButton = {
-            TextButton(onClick = { haptic.light(); onDismiss() }) {
-                Text("CANCEL", style = MaterialTheme.typography.labelMedium)
+
+            // ── Footer CTA slab ───────────────────────────────────────────
+            Hairline()
+            val canStart =
+                countedBy.isNotBlank() && selectedType != null && eventTypes.isNotEmpty()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding(),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(64.dp)
+                        .clickable { haptic.light(); onDismiss() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "CANCEL",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = ink,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .width(FieldTokens.Hair)
+                        .height(64.dp)
+                        .background(ink),
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(2f)
+                        .height(64.dp)
+                        .background(if (canStart) ink else outline.copy(alpha = 0.25f))
+                        .clickable(enabled = canStart) {
+                            haptic.success()
+                            selectedType?.let { t ->
+                                onCreate(t.id, t.name, System.currentTimeMillis(), countedBy)
+                            }
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "START COUNT",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (canStart) paper else muted,
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = "→",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (canStart) paper else muted,
+                        )
+                    }
+                }
             }
-        },
-    )
+        }
+    }
+}
+
+@Composable
+private fun IntakeFieldHead(index: String, label: String, hint: String) {
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(
+            text = index,
+            style = MaterialTheme.typography.displaySmall.copy(
+                fontSize = 30.sp,
+                lineHeight = 30.sp,
+                fontWeight = FontWeight.Light,
+            ),
+            color = MaterialTheme.colorScheme.outline,
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.padding(bottom = 2.dp)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = hint.uppercase(),
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TypePickRow(
+    index: Int,
+    name: String,
+    day: String,
+    time: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val bg = if (selected) ink else paper
+    val fg = if (selected) paper else ink
+    val subFg = if (selected) paper.copy(alpha = 0.6f) else muted
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = index.toString().padStart(2, '0'),
+            style = MonoTiny,
+            color = subFg,
+            modifier = Modifier.width(28.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.titleMedium,
+                color = fg,
+            )
+            Text(
+                text = "${day.uppercase()} · ${time.uppercase()}",
+                style = MonoTiny,
+                color = subFg,
+            )
+        }
+        Text(
+            text = if (selected) "●" else "○",
+            style = MaterialTheme.typography.titleMedium,
+            color = fg,
+        )
+    }
+}
+
+@Composable
+private fun CounterInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    focusRequester: FocusRequester,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+
+    Column {
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.headlineSmall.copy(color = ink),
+            cursorBrush = SolidColor(ink),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .padding(vertical = 10.dp),
+            decorationBox = { inner ->
+                Box {
+                    if (value.isEmpty()) {
+                        Text(
+                            text = "Your name",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = muted.copy(alpha = 0.5f),
+                        )
+                    }
+                    inner()
+                }
+            },
+        )
+        Hairline()
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("SIGN OFF · REQUIRED", style = MonoTiny, color = muted)
+            Text(
+                text = if (value.isBlank()) "—" else "${value.length} CHAR",
+                style = MonoTiny,
+                color = muted,
+            )
+        }
+    }
 }
 

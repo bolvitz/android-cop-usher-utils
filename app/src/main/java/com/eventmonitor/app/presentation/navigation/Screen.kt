@@ -19,9 +19,18 @@ sealed class Screen(val route: String) {
         fun createRoute(serviceId: String) = "history/$serviceId"
     }
     object Reports : Screen("reports")
-    object Settings : Screen("settings")
     object AreaManagement : Screen("area_management/{venueId}") {
         fun createRoute(venueId: String) = "area_management/$venueId"
+    }
+    object ZoneEditor : Screen("zone_editor/{venueId}?zoneId={zoneId}&mode={mode}") {
+        const val MODE_SOLO = "solo"
+        const val MODE_BATCH = "batch"
+        const val MODE_EDIT = "edit"
+        fun createRoute(venueId: String, zoneId: String? = null, mode: String = MODE_SOLO): String {
+            val resolvedMode = if (zoneId != null) MODE_EDIT else mode
+            return if (zoneId != null) "zone_editor/$venueId?zoneId=$zoneId&mode=$resolvedMode"
+            else "zone_editor/$venueId?mode=$resolvedMode"
+        }
     }
     object ServiceTypeManagement : Screen("service_type_management")
     object VenueManagement : Screen("venue_management")

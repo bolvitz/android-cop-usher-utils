@@ -8,21 +8,21 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.eventmonitor.app.presentation.screens.areas.AreaManagementScreen
+import com.eventmonitor.app.presentation.screens.areas.ZoneEditorScreen
+import com.eventmonitor.app.presentation.screens.eventtypes.ServiceTypeManagementScreen
+import com.eventmonitor.app.presentation.screens.reports.ReportsScreen
 import com.eventmonitor.app.presentation.screens.venues.VenueListScreen
 import com.eventmonitor.app.presentation.screens.venues.VenueManagementScreen
 import com.eventmonitor.app.presentation.screens.venues.VenueSetupScreen
-import com.eventmonitor.app.presentation.screens.reports.ReportsScreen
-import com.eventmonitor.app.presentation.screens.eventtypes.ServiceTypeManagementScreen
-import com.eventmonitor.app.presentation.screens.settings.SettingsScreen
 import com.eventmonitor.feature.headcounter.screens.CountingScreen
 import com.eventmonitor.feature.headcounter.screens.HistoryScreen
 import com.eventmonitor.feature.headcounter.screens.TrendsScreen
 import com.eventmonitor.feature.headcounter.seatmap.SeatMapDemoScreen
-import com.eventmonitor.feature.lostandfound.screens.AddEditLostItemScreen
-import com.eventmonitor.feature.lostandfound.screens.LostAndFoundScreen
 import com.eventmonitor.feature.incidents.screens.AddEditIncidentScreen
 import com.eventmonitor.feature.incidents.screens.IncidentDetailScreen
 import com.eventmonitor.feature.incidents.screens.IncidentListScreen
+import com.eventmonitor.feature.lostandfound.screens.AddEditLostItemScreen
+import com.eventmonitor.feature.lostandfound.screens.LostAndFoundScreen
 
 @Composable
 fun NavGraph(
@@ -58,9 +58,15 @@ fun NavGraph(
                 onNavigateToReports = {
                     navController.navigate(Screen.Reports.route)
                 },
-                onNavigateToSettings = {
-                    navController.navigate(Screen.Settings.route)
-                }
+                onManageVenues = {
+                    navController.navigate(Screen.VenueManagement.route)
+                },
+                onManageServiceTypes = {
+                    navController.navigate(Screen.ServiceTypeManagement.route)
+                },
+                onSeatMapDemo = {
+                    navController.navigate(Screen.SeatMapDemo.route)
+                },
             )
         }
 
@@ -79,8 +85,45 @@ fun NavGraph(
         composable(
             route = Screen.AreaManagement.route,
             arguments = listOf(navArgument("venueId") { type = NavType.StringType })
-        ) {
+        ) { backStackEntry ->
+            val venueId = backStackEntry.arguments?.getString("venueId") ?: ""
             AreaManagementScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onCreateZone = {
+                    navController.navigate(
+                        Screen.ZoneEditor.createRoute(venueId, mode = Screen.ZoneEditor.MODE_SOLO)
+                    )
+                },
+                onBatchCreateZone = {
+                    navController.navigate(
+                        Screen.ZoneEditor.createRoute(venueId, mode = Screen.ZoneEditor.MODE_BATCH)
+                    )
+                },
+                onEditZone = { zoneId ->
+                    navController.navigate(
+                        Screen.ZoneEditor.createRoute(venueId, zoneId = zoneId)
+                    )
+                },
+            )
+        }
+
+        composable(
+            route = Screen.ZoneEditor.route,
+            arguments = listOf(
+                navArgument("venueId") { type = NavType.StringType },
+                navArgument("zoneId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("mode") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = Screen.ZoneEditor.MODE_SOLO
+                },
+            )
+        ) {
+            ZoneEditorScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -161,21 +204,6 @@ fun NavGraph(
         composable(Screen.Reports.route) {
             ReportsScreen(
                 onNavigateBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(Screen.Settings.route) {
-            SettingsScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onManageServiceTypes = {
-                    navController.navigate(Screen.ServiceTypeManagement.route)
-                },
-                onManageVenues = {
-                    navController.navigate(Screen.VenueManagement.route)
-                },
-                onSeatMapDemo = {
-                    navController.navigate(Screen.SeatMapDemo.route)
-                }
             )
         }
 

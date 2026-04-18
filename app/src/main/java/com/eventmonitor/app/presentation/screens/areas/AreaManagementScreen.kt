@@ -26,21 +26,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -49,10 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.common.theme.MonoTiny
@@ -83,6 +73,9 @@ import com.eventmonitor.core.domain.models.AreaType
 fun AreaManagementScreen(
     viewModel: AreaManagementViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
+    onCreateZone: () -> Unit = {},
+    onBatchCreateZone: () -> Unit = {},
+    onEditZone: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val haptic = rememberHapticFeedback()
@@ -102,15 +95,15 @@ fun AreaManagementScreen(
                 trailing = {
                     FieldAppBarIcon(
                         glyph = "+",
-                        onClick = { haptic.medium(); viewModel.toggleAddDialog(true) },
+                        onClick = { haptic.medium(); onCreateZone() },
                     )
                 },
             )
         },
         bottomBar = {
             ActionRail(
-                onAdd = { haptic.medium(); viewModel.toggleAddDialog(true) },
-                onQuick = { haptic.medium(); viewModel.toggleQuickAddDialog(true) },
+                onAdd = { haptic.medium(); onCreateZone() },
+                onQuick = { haptic.medium(); onBatchCreateZone() },
             )
         },
     ) { padding ->
@@ -122,9 +115,7 @@ fun AreaManagementScreen(
             when {
                 uiState.isLoading -> LoadingPanel()
                 uiState.areas.isEmpty() -> EmptyLedger(onAdd = {
-                    haptic.medium(); viewModel.toggleAddDialog(
-                    true
-                )
+                    haptic.medium(); onCreateZone()
                 })
 
                 else -> LedgerContent(
@@ -134,7 +125,7 @@ fun AreaManagementScreen(
                     rowMenuFor = rowMenuFor,
                     onOpenRowMenu = { rowMenuFor = it },
                     onDismissRowMenu = { rowMenuFor = null },
-                    onEdit = { haptic.light(); viewModel.setEditingArea(it) },
+                    onEdit = { haptic.light(); onEditZone(it.id) },
                     onDelete = { haptic.strong(); viewModel.deleteArea(it) },
                 )
             }
@@ -170,25 +161,6 @@ fun AreaManagementScreen(
         }
     }
 
-    if (uiState.showAddDialog) {
-        AddAreaDialog(
-            onDismiss = { viewModel.toggleAddDialog(false) },
-            onAdd = { name, type, capacity -> viewModel.addArea(name, type, capacity) },
-        )
-    }
-    if (uiState.showQuickAddDialog) {
-        QuickAddAreasDialog(
-            onDismiss = { viewModel.toggleQuickAddDialog(false) },
-            onAdd = { type, count, start -> viewModel.createQuickAreas(type, count, start) },
-        )
-    }
-    uiState.editingArea?.let { area ->
-        EditAreaDialog(
-            area = area,
-            onDismiss = { viewModel.setEditingArea(null) },
-            onUpdate = { viewModel.updateArea(it) },
-        )
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -586,15 +558,17 @@ private fun InkButton(
     inverted: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val ink = MaterialTheme.colorScheme.onBackground
     val paper = MaterialTheme.colorScheme.background
     Box(
         modifier = modifier
             .height(FieldTokens.ToolHeight)
+            .alpha(if (enabled) 1f else 0.35f)
             .border(FieldTokens.Hair, ink)
             .background(if (inverted) ink else paper)
-            .clickable { onClick() },
+            .clickable(enabled = enabled) { onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -718,325 +692,10 @@ private fun LedgerColophon(total: Int, capacity: Int) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Dialogs — FIELD styling (sharp corners come from theme; we set paper bg)
-// ---------------------------------------------------------------------------
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AddAreaDialog(
-    onDismiss: () -> Unit,
-    onAdd: (String, AreaType, Int) -> Unit,
-) {
-    var name by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf<AreaType>(AreaType.SEATING) }
-    var capacity by remember { mutableStateOf("100") }
-    var typeExpanded by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.background,
-        title = {
-            Column {
-                Text(
-                    "NEW · ZONE",
-                    style = MonoTiny,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(4.dp))
-                Text("Add zone", style = MaterialTheme.typography.headlineSmall)
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("ZONE NAME", style = MaterialTheme.typography.labelMedium) },
-                    placeholder = { Text("Bay 1, Baby Room, …") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                    colors = fieldFieldColors(),
-                )
-                ExposedDropdownMenuBox(
-                    expanded = typeExpanded,
-                    onExpandedChange = { typeExpanded = !typeExpanded },
-                ) {
-                    OutlinedTextField(
-                        value = selectedType.displayName,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("TYPE", style = MaterialTheme.typography.labelMedium) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        colors = fieldFieldColors(),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = typeExpanded,
-                        onDismissRequest = { typeExpanded = false },
-                        containerColor = MaterialTheme.colorScheme.background,
-                    ) {
-                        AreaType.entries.forEach { type ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        type.displayName,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                },
-                                onClick = { selectedType = type; typeExpanded = false },
-                            )
-                        }
-                    }
-                }
-                OutlinedTextField(
-                    value = capacity,
-                    onValueChange = { capacity = it.filter { c -> c.isDigit() } },
-                    label = { Text("CAPACITY", style = MaterialTheme.typography.labelMedium) },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = fieldFieldColors(),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val c = capacity.toIntOrNull() ?: 100
-                    onAdd(name, selectedType, c)
-                },
-                enabled = name.isNotBlank(),
-            ) {
-                Text("ADD", style = MaterialTheme.typography.labelMedium)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("CANCEL", style = MaterialTheme.typography.labelMedium)
-            }
-        },
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun QuickAddAreasDialog(
-    onDismiss: () -> Unit,
-    onAdd: (AreaType, Int, Int) -> Unit,
-) {
-    var selectedType by remember { mutableStateOf<AreaType>(AreaType.SEATING) }
-    var count by remember { mutableStateOf("6") }
-    var startNumber by remember { mutableStateOf("1") }
-    var typeExpanded by remember { mutableStateOf(false) }
-
-    val previewText = remember(selectedType, count, startNumber) {
-        val c = count.toIntOrNull() ?: 0
-        val s = startNumber.toIntOrNull() ?: 1
-        if (c <= 0) "" else buildString {
-            append("Creates: ")
-            append((0 until minOf(3, c)).joinToString(", ") { i ->
-                quickNameFor(
-                    selectedType,
-                    s + i
-                )
-            })
-            if (c > 3) append(", …")
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.background,
-        title = {
-            Column {
-                Text(
-                    "QUICK · +N",
-                    style = MonoTiny,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(4.dp))
-                Text("Batch zones", style = MaterialTheme.typography.headlineSmall)
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Auto-number a run of same-typed zones in one step.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                ExposedDropdownMenuBox(
-                    expanded = typeExpanded,
-                    onExpandedChange = { typeExpanded = !typeExpanded },
-                ) {
-                    OutlinedTextField(
-                        value = selectedType.displayName,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("TYPE", style = MaterialTheme.typography.labelMedium) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        colors = fieldFieldColors(),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = typeExpanded,
-                        onDismissRequest = { typeExpanded = false },
-                        containerColor = MaterialTheme.colorScheme.background,
-                    ) {
-                        AreaType.entries.forEach { type ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        type.displayName,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                },
-                                onClick = { selectedType = type; typeExpanded = false },
-                            )
-                        }
-                    }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        value = count,
-                        onValueChange = { count = it.filter { c -> c.isDigit() } },
-                        label = { Text("COUNT", style = MaterialTheme.typography.labelMedium) },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        colors = fieldFieldColors(),
-                    )
-                    OutlinedTextField(
-                        value = startNumber,
-                        onValueChange = { startNumber = it.filter { c -> c.isDigit() } },
-                        label = { Text("START #", style = MaterialTheme.typography.labelMedium) },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        colors = fieldFieldColors(),
-                    )
-                }
-                if (previewText.isNotEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(FieldTokens.Hair, MaterialTheme.colorScheme.onBackground)
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                    ) {
-                        Text(
-                            text = previewText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            textAlign = TextAlign.Start,
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val c = count.toIntOrNull() ?: 0
-                    val s = startNumber.toIntOrNull() ?: 1
-                    if (c > 0) onAdd(selectedType, c, s)
-                },
-                enabled = (count.toIntOrNull() ?: 0) > 0,
-            ) {
-                Text("CREATE", style = MaterialTheme.typography.labelMedium)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("CANCEL", style = MaterialTheme.typography.labelMedium)
-            }
-        },
-    )
-}
-
-@Composable
-fun EditAreaDialog(
-    area: AreaTemplateEntity,
-    onDismiss: () -> Unit,
-    onUpdate: (AreaTemplateEntity) -> Unit,
-) {
-    var name by remember { mutableStateOf(area.name) }
-    var capacity by remember { mutableStateOf(area.capacity.toString()) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.background,
-        title = {
-            Column {
-                Text(
-                    "EDIT · ${AreaType.fromString(area.type).shortTag()}",
-                    style = MonoTiny,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text("Edit zone", style = MaterialTheme.typography.headlineSmall)
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("ZONE NAME", style = MaterialTheme.typography.labelMedium) },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                    colors = fieldFieldColors(),
-                )
-                OutlinedTextField(
-                    value = capacity,
-                    onValueChange = { capacity = it.filter { c -> c.isDigit() } },
-                    label = { Text("CAPACITY", style = MaterialTheme.typography.labelMedium) },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = fieldFieldColors(),
-                )
-                Text(
-                    text = "TYPE · ${AreaType.fromString(area.type).displayName.uppercase()}",
-                    style = MonoTiny,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val c = capacity.toIntOrNull() ?: area.capacity
-                    onUpdate(area.copy(name = name, capacity = c))
-                },
-                enabled = name.isNotBlank(),
-            ) {
-                Text("UPDATE", style = MaterialTheme.typography.labelMedium)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("CANCEL", style = MaterialTheme.typography.labelMedium)
-            }
-        },
-    )
-}
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun fieldFieldColors() = TextFieldDefaults.colors(
-    focusedContainerColor = Color.Transparent,
-    unfocusedContainerColor = Color.Transparent,
-    focusedIndicatorColor = MaterialTheme.colorScheme.onBackground,
-    unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
-    focusedLabelColor = MaterialTheme.colorScheme.onBackground,
-    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    cursorColor = MaterialTheme.colorScheme.onBackground,
-)
 
 private fun AreaType.shortTag(): String = when (this) {
     AreaType.SEATING -> "SEATING"
@@ -1055,25 +714,6 @@ private fun AreaType.shortTag(): String = when (this) {
     AreaType.RESTROOMS -> "WC"
     AreaType.EMERGENCY_EXIT -> "EXIT"
     AreaType.OTHER -> "OTHER"
-}
-
-private fun quickNameFor(type: AreaType, number: Int): String = when (type) {
-    AreaType.SEATING -> "Seating $number"
-    AreaType.STANDING -> "Standing $number"
-    AreaType.VIP -> "VIP $number"
-    AreaType.GENERAL_ADMISSION -> "General Admission $number"
-    AreaType.OVERFLOW -> "Overflow $number"
-    AreaType.PARKING -> "Parking $number"
-    AreaType.REGISTRATION -> "Registration $number"
-    AreaType.LOBBY -> "Lobby $number"
-    AreaType.OUTDOOR -> "Outdoor $number"
-    AreaType.STAGE -> "Stage $number"
-    AreaType.BACKSTAGE -> "Backstage $number"
-    AreaType.CARE_ROOM -> "Care Room $number"
-    AreaType.FOOD_AREA -> "Food Area $number"
-    AreaType.RESTROOMS -> "Restrooms $number"
-    AreaType.EMERGENCY_EXIT -> "Emergency Exit $number"
-    AreaType.OTHER -> "Area $number"
 }
 
 private fun Int.groupedThousands(): String =

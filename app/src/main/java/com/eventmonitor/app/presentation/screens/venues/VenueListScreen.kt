@@ -77,7 +77,9 @@ fun VenueListScreen(
     onVenueIncidents: (String) -> Unit = {},
     onVenueLostAndFound: (String) -> Unit = {},
     onNavigateToReports: () -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onManageVenues: () -> Unit,
+    onManageServiceTypes: () -> Unit,
+    onSeatMapDemo: () -> Unit,
 ) {
     val haptic = rememberHapticFeedback()
     val uiState by viewModel.uiState.collectAsState()
@@ -96,7 +98,11 @@ fun VenueListScreen(
             when (val state = uiState) {
                 is VenueListUiState.Loading -> LoadingPanel()
 
-                is VenueListUiState.Empty -> EmptyState()
+                is VenueListUiState.Empty -> EmptyState(
+                    onManageVenues = { haptic.light(); onManageVenues() },
+                    onManageServiceTypes = { haptic.light(); onManageServiceTypes() },
+                    onSeatMapDemo = { haptic.medium(); onSeatMapDemo() },
+                )
 
                 is VenueListUiState.Success -> HomeContent(
                     venues = state.venues,
@@ -122,7 +128,9 @@ fun VenueListScreen(
                         haptic.medium(); showDeleteDialog = id
                     },
                     onReports = { haptic.light(); onNavigateToReports() },
-                    onSettings = { haptic.light(); onNavigateToSettings() },
+                    onManageVenues = { haptic.light(); onManageVenues() },
+                    onManageServiceTypes = { haptic.light(); onManageServiceTypes() },
+                    onSeatMapDemo = { haptic.medium(); onSeatMapDemo() },
                 )
 
                 is VenueListUiState.Error -> ErrorPanel(state.message)
@@ -223,7 +231,9 @@ private fun HomeContent(
     onEdit: (String) -> Unit,
     onDelete: (String) -> Unit,
     onReports: () -> Unit,
-    onSettings: () -> Unit,
+    onManageVenues: () -> Unit,
+    onManageServiceTypes: () -> Unit,
+    onSeatMapDemo: () -> Unit,
 ) {
     val hero = venues.firstOrNull { it.venue.isActive }
     val activeCount = venues.count { it.venue.isActive }
@@ -279,10 +289,18 @@ private fun HomeContent(
             )
         }
 
-        // 6. Tool rail (Reports · Settings) + colophon
+        // 6. Tool rail (Reports) + always-visible settings panel
         item(key = "tools") {
             Spacer(Modifier.height(20.dp))
-            ToolRail(onReports = onReports, onSettings = onSettings)
+            ToolRail(onReports = onReports)
+        }
+        item(key = "settings-panel") {
+            Spacer(Modifier.height(22.dp))
+            SettingsPanel(
+                onManageVenues = onManageVenues,
+                onManageServiceTypes = onManageServiceTypes,
+                onSeatMapDemo = onSeatMapDemo,
+            )
         }
         item(key = "colophon") {
             Colophon(total = venues.size, live = activeCount)
@@ -655,7 +673,7 @@ private fun FeatureChip(label: String, onClick: () -> Unit, enabled: Boolean) {
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun ToolRail(onReports: () -> Unit, onSettings: () -> Unit) {
+private fun ToolRail(onReports: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -663,7 +681,85 @@ private fun ToolRail(onReports: () -> Unit, onSettings: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         ToolButton(label = "▲ REPORTS", onClick = onReports, modifier = Modifier.weight(1f))
-        ToolButton(label = "⚙ SETTINGS", onClick = onSettings, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun SettingsPanel(
+    onManageVenues: () -> Unit,
+    onManageServiceTypes: () -> Unit,
+    onSeatMapDemo: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "⚙ SETTINGS",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "Always on hand.",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+    }
+    Hairline()
+    SettingsRow(
+        label = "MANAGE VENUES",
+        hint = "LOCATIONS · BRANCHES",
+        onClick = onManageVenues,
+    )
+    Hairline(color = MaterialTheme.colorScheme.outline)
+    SettingsRow(
+        label = "MANAGE EVENT TYPES",
+        hint = "TYPES · SCHEDULES",
+        onClick = onManageServiceTypes,
+    )
+    Hairline(color = MaterialTheme.colorScheme.outline)
+    SettingsRow(
+        label = "SEAT MAP DEMO",
+        hint = "PROTOTYPE · PREVIEW",
+        onClick = onSeatMapDemo,
+    )
+    Hairline(color = MaterialTheme.colorScheme.outline)
+}
+
+@Composable
+private fun SettingsRow(label: String, hint: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontSize = MaterialTheme.typography.headlineSmall.fontSize,
+                ),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = hint,
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 3.dp),
+            )
+        }
+        Text(
+            text = "→",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
     }
 }
 
@@ -760,27 +856,41 @@ private fun LoadingPanel() {
 }
 
 @Composable
-private fun EmptyState() {
-    Column(
+private fun EmptyState(
+    onManageVenues: () -> Unit,
+    onManageServiceTypes: () -> Unit,
+    onSeatMapDemo: () -> Unit,
+) {
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(horizontal = 28.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .navigationBarsPadding(),
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        FieldMasthead(modifier = Modifier.padding(bottom = 24.dp))
-        Text(
-            text = "No venues on the roster.",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = "Add a venue from Settings to begin counting.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        item(key = "masthead") { FieldMasthead() }
+        item(key = "empty-copy") {
+            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp)) {
+                Text(
+                    text = "No venues on the roster.",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "Add a venue from Settings to begin counting.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        item(key = "settings-panel") {
+            SettingsPanel(
+                onManageVenues = onManageVenues,
+                onManageServiceTypes = onManageServiceTypes,
+                onSeatMapDemo = onSeatMapDemo,
+            )
+        }
     }
 }
 

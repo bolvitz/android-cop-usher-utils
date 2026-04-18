@@ -1,665 +1,963 @@
 package com.eventmonitor.app.presentation.screens.eventtypes
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.eventmonitor.core.data.local.entities.EventTypeEntity
 import com.eventmonitor.app.presentation.viewmodels.EventTypeManagementViewModel
+import com.eventmonitor.core.common.theme.MonoTiny
+import com.eventmonitor.core.common.theme.Sage
+import com.eventmonitor.core.common.theme.Signal
+import com.eventmonitor.core.common.ui.FieldAppBar
+import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.Hairline
+import com.eventmonitor.core.common.ui.SevPill
+import com.eventmonitor.core.common.ui.Severity
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
+import com.eventmonitor.core.data.local.entities.EventTypeEntity
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ---------------------------------------------------------------------------
+// Screen
+// ---------------------------------------------------------------------------
+
 @Composable
 fun ServiceTypeManagementScreen(
     viewModel: EventTypeManagementViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
 ) {
     val haptic = rememberHapticFeedback()
     val eventTypes by viewModel.eventTypes.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
 
-    var showAddDialog by remember { mutableStateOf(false) }
-    var showEditDialog by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var selectedServiceType by remember { mutableStateOf<EventTypeEntity?>(null) }
+    var showEditor by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<EventTypeEntity?>(null) }
+    var pendingDelete by remember { mutableStateOf<EventTypeEntity?>(null) }
 
     LaunchedEffect(uiState.message, uiState.error) {
         if (uiState.message != null || uiState.error != null) {
-            kotlinx.coroutines.delay(2000)
+            kotlinx.coroutines.delay(2200)
             viewModel.clearMessage()
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Manage Service Types") },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        haptic.light()
-                        onNavigateBack()
-                    }) {
-                        Icon(Icons.Default.ArrowBack, "Back")
-                    }
-                }
+    val active = eventTypes.count { it.isActive }
+    val archived = eventTypes.size - active
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            FieldAppBar(
+                eyebrow = "§ CATALOG",
+                title = "Event Types",
+                leading = {
+                    FieldAppBarIcon(glyph = "‹", onClick = {
+                        haptic.light(); onNavigateBack()
+                    })
+                },
+                trailing = {
+                    FieldAppBarIcon(glyph = "+", onClick = {
+                        haptic.medium()
+                        editing = null
+                        showEditor = true
+                    })
+                },
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = {
-                haptic.medium()
-                showAddDialog = true
-            }) {
-                Icon(Icons.Default.Add, "Add Service Type")
-            }
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            uiState.message?.let { message ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
-                    Text(
-                        text = message,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
 
-            uiState.error?.let { error ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Text(
-                        text = error,
-                        modifier = Modifier.padding(16.dp),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding(),
+                contentPadding = PaddingValues(bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                item("stats") {
+                    StatStrip(total = eventTypes.size, live = active, archived = archived)
                 }
-            }
 
-            if (eventTypes.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CalendarMonth,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            "No service types configured",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            "Tap + to add your first service type",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                item("roster-head") {
+                    RosterHeader(count = eventTypes.size)
+                }
+
+                if (eventTypes.isEmpty()) {
+                    item("empty") {
+                        EmptyPanel(onAdd = {
+                            haptic.medium(); editing = null; showEditor = true
+                        })
                     }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(eventTypes) { eventType ->
-                        ServiceTypeCard(
-                            eventType = eventType,
+                } else {
+                    items(eventTypes, key = { it.id }) { type ->
+                        EventTypeRow(
+                            type = type,
                             onEdit = {
-                                selectedServiceType = eventType
-                                showEditDialog = true
+                                haptic.light()
+                                editing = type
+                                showEditor = true
                             },
                             onDelete = {
-                                selectedServiceType = eventType
-                                showDeleteDialog = true
-                            },
-                            onToggleStatus = { isActive ->
                                 haptic.medium()
-                                viewModel.toggleServiceTypeStatus(eventType.id, isActive)
-                            }
+                                pendingDelete = type
+                            },
+                            onToggle = { active ->
+                                haptic.medium()
+                                viewModel.toggleServiceTypeStatus(type.id, active)
+                            },
                         )
+                    }
+                    item("colophon") {
+                        Spacer(Modifier.height(20.dp))
+                        Colophon(total = eventTypes.size, live = active)
                     }
                 }
             }
         }
+
+        // Sticky bottom action — ink slab.
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.navigationBars),
+        ) {
+            AddSlab(onClick = {
+                haptic.medium(); editing = null; showEditor = true
+            })
+        }
+
+        // Toast-style banner for messages.
+        AnimatedVisibility(
+            visible = uiState.message != null || uiState.error != null,
+            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
+            FieldBanner(
+                message = uiState.message ?: uiState.error.orEmpty(),
+                isError = uiState.error != null,
+            )
+        }
     }
 
-    if (showAddDialog) {
-        AddServiceTypeDialog(
-            onDismiss = { showAddDialog = false },
-            onConfirm = { name, dayType, time, description ->
-                viewModel.createServiceType(name, dayType, time, description)
-                showAddDialog = false
-            }
-        )
-    }
-
-    if (showEditDialog && selectedServiceType != null) {
-        EditServiceTypeDialog(
-            eventType = selectedServiceType!!,
-            onDismiss = {
-                showEditDialog = false
-                selectedServiceType = null
+    if (showEditor) {
+        EventTypeEditorSheet(
+            existing = editing,
+            onDismiss = { showEditor = false; editing = null },
+            onSave = { name, day, time, desc ->
+                editing?.let {
+                    viewModel.updateServiceType(
+                        it.copy(name = name, dayType = day, time = time, description = desc),
+                    )
+                } ?: viewModel.createServiceType(name, day, time, desc)
+                showEditor = false
+                editing = null
             },
-            onConfirm = { updatedServiceType ->
-                viewModel.updateServiceType(updatedServiceType)
-                showEditDialog = false
-                selectedServiceType = null
-            }
         )
     }
 
-    if (showDeleteDialog && selectedServiceType != null) {
+    pendingDelete?.let { target ->
         AlertDialog(
-            onDismissRequest = {
-                showDeleteDialog = false
-                selectedServiceType = null
+            onDismissRequest = { pendingDelete = null },
+            containerColor = MaterialTheme.colorScheme.background,
+            title = {
+                Column {
+                    Text(
+                        "DELETE · EVENT TYPE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Are you sure?",
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                }
             },
-            title = { Text("Delete Service Type") },
             text = {
-                Text("Are you sure you want to delete \"${selectedServiceType?.name}\"?")
+                Text(
+                    "\"${target.name}\" will be removed from the catalog. You can't undo this.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteServiceType(selectedServiceType!!.id)
-                        showDeleteDialog = false
-                        selectedServiceType = null
-                    }
-                ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = {
+                    haptic.strong()
+                    viewModel.deleteServiceType(target.id)
+                    pendingDelete = null
+                }) {
+                    Text("DELETE", color = Signal, style = MaterialTheme.typography.labelMedium)
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteDialog = false
-                        selectedServiceType = null
-                    }
-                ) {
-                    Text("Cancel")
+                TextButton(onClick = { haptic.light(); pendingDelete = null }) {
+                    Text("CANCEL", style = MaterialTheme.typography.labelMedium)
                 }
-            }
+            },
         )
     }
 }
 
+// ---------------------------------------------------------------------------
+// Stat strip
+// ---------------------------------------------------------------------------
+
 @Composable
-fun ServiceTypeCard(
-    eventType: EventTypeEntity,
+private fun StatStrip(total: Int, live: Int, archived: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 14.dp, bottom = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        StatCell(label = "TOTAL", value = total.toString())
+        StatDivider()
+        StatCell(label = "LIVE", value = live.toString(), accent = live > 0)
+        StatDivider()
+        StatCell(label = "ARCHIVED", value = archived.toString())
+    }
+    Hairline(color = MaterialTheme.colorScheme.outline)
+}
+
+@Composable
+private fun StatCell(label: String, value: String, accent: Boolean = false) {
+    Column {
+        Text(
+            text = label,
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            if (accent) {
+                Spacer(Modifier.width(6.dp))
+                Box(
+                    Modifier
+                        .background(Signal)
+                        .width(7.dp)
+                        .height(7.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatDivider() {
+    Box(
+        Modifier
+            .width(FieldTokens.Hair)
+            .height(32.dp)
+            .background(MaterialTheme.colorScheme.outline),
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Roster header / empty
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun RosterHeader(count: Int) {
+    Spacer(Modifier.height(20.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "§§ ROSTER",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "Curate the catalog.",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+        Text(
+            text = "$count ENTRIES",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    Hairline()
+}
+
+@Composable
+private fun EmptyPanel(onAdd: () -> Unit) {
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
+        Text(
+            text = "No event types yet.",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "Add your first type to begin scheduling events across venues.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(16.dp))
+        InkButton(label = "+ ADD FIRST TYPE", onClick = onAdd)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Row
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun EventTypeRow(
+    type: EventTypeEntity,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onToggleStatus: (Boolean) -> Unit
+    onToggle: (Boolean) -> Unit,
 ) {
-    val haptic = rememberHapticFeedback()
+    var menuOpen by remember { mutableStateOf(false) }
+    val isActive = type.isActive
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (eventType.isActive) {
-                MaterialTheme.colorScheme.surface
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            }
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = if (eventType.isActive) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.error
-            }
-        )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onEdit() }
+            .padding(horizontal = 20.dp, vertical = 14.dp),
     ) {
-        Column(
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = type.name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = if (isActive) MaterialTheme.colorScheme.onBackground
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "${type.dayType.uppercase()} · ${type.time.uppercase()}",
+                    style = MonoTiny,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (type.description.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = type.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                if (isActive) {
+                    SevPill(severity = Severity.LOW, label = "LIVE")
+                } else {
+                    SevPill(severity = Severity.NEUTRAL, label = "IDLE")
+                }
+            }
+            Box {
+                Text(
+                    text = "⋯",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier
+                        .padding(start = 12.dp)
+                        .clickable { menuOpen = true },
+                )
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = { menuOpen = false },
+                    containerColor = MaterialTheme.colorScheme.background,
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("EDIT", style = MaterialTheme.typography.labelMedium) },
+                        onClick = { menuOpen = false; onEdit() },
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                if (isActive) "ARCHIVE" else "REINSTATE",
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        },
+                        onClick = { menuOpen = false; onToggle(!isActive) },
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "DELETE",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Signal,
+                            )
+                        },
+                        onClick = { menuOpen = false; onDelete() },
+                    )
+                }
+            }
+        }
+    }
+    Hairline(color = MaterialTheme.colorScheme.outline)
+}
+
+// ---------------------------------------------------------------------------
+// Add slab + ink button + banner + colophon
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun AddSlab(onClick: () -> Unit) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    Column {
+        Hairline(color = ink)
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .background(ink)
+                .clickable { onClick() }
+                .padding(horizontal = 20.dp, vertical = 18.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
+                Column {
                     Text(
-                        text = eventType.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (eventType.isActive) {
-                            MaterialTheme.colorScheme.onSurface
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        "NEW",
+                        style = MonoTiny,
+                        color = paper.copy(alpha = 0.6f),
                     )
-                    Surface(
-                        color = if (eventType.isActive) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.errorContainer
-                        },
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text(
-                            text = if (eventType.isActive) "Active" else "Inactive",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (eventType.isActive) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.error
-                            }
-                        )
-                    }
+                    Text(
+                        "Add event type",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = paper,
+                    )
                 }
-                Switch(
-                    checked = eventType.isActive,
-                    onCheckedChange = {
-                        onToggleStatus(it)
-                    }
+                Text(
+                    text = "+",
+                    style = MaterialTheme.typography.displaySmall,
+                    color = paper,
                 )
             }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(8.dp))
+@Composable
+private fun InkButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    Box(
+        modifier = modifier
+            .height(FieldTokens.ToolHeight)
+            .border(FieldTokens.Hair, ink)
+            .clickable { onClick() }
+            .padding(horizontal = 18.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = ink,
+        )
+    }
+}
 
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+@Composable
+private fun FieldBanner(message: String, isError: Boolean) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .background(if (isError) Signal else ink)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = if (isError) "ERR ·" else "OK ·",
+            style = MaterialTheme.typography.labelMedium,
+            color = paper,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = paper,
+        )
+    }
+}
+
+@Composable
+private fun Colophon(total: Int, live: Int) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Hairline(color = MaterialTheme.colorScheme.outline)
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("CATALOG · IN SYNC", style = MonoTiny, color = Sage)
+            Text(
+                "$total ENTRIES · $live LIVE",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                "com.eventmonitor.app",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text("― FIELD ―", style = MonoTiny, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Editor sheet (Add + Edit, full-bleed)
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun EventTypeEditorSheet(
+    existing: EventTypeEntity?,
+    onDismiss: () -> Unit,
+    onSave: (name: String, day: String, time: String, description: String) -> Unit,
+) {
+    val haptic = rememberHapticFeedback()
+    val isEdit = existing != null
+
+    var name by remember { mutableStateOf(existing?.name.orEmpty()) }
+    var day by remember { mutableStateOf(existing?.dayType ?: "Sunday") }
+    var description by remember { mutableStateOf(existing?.description.orEmpty()) }
+    val (initialHour, initialMinute) = remember(existing) {
+        existing?.let { parseTime(it.time) } ?: (9 to 0)
+    }
+    var hour by remember { mutableStateOf(initialHour) }
+    var minute by remember { mutableStateOf(initialMinute) }
+    var dayMenuOpen by remember { mutableStateOf(false) }
+    var showTimeDialog by remember { mutableStateOf(false) }
+
+    val timeString = remember(hour, minute) { formatTime(hour, minute) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnClickOutside = false,
+        ),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                FieldAppBar(
+                    eyebrow = if (isEdit) "§ EDIT · ENTRY" else "§ NEW · ENTRY",
+                    title = if (isEdit) "Edit Type" else "Add Type",
+                    leading = {
+                        FieldAppBarIcon(glyph = "✕", onClick = {
+                            haptic.light(); onDismiss()
+                        })
+                    },
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 88.dp)
+                        .imePadding(),
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CalendarToday,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = eventType.dayType,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AccessTime,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = eventType.time,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (eventType.description.isNotEmpty()) {
-                    Text(
-                        text = eventType.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // Lane: Name
+                    FieldLane(label = "NAME", hint = "Required") {
+                        InkInput(
+                            value = name,
+                            onValueChange = { name = it },
+                            placeholder = "e.g. Sunday Morning Service",
+                            capitalization = KeyboardCapitalization.Words,
+                            singleLine = true,
+                        )
+                    }
+                    Hairline(color = MaterialTheme.colorScheme.outline)
+
+                    // Lane: Day (dropdown)
+                    FieldLane(label = "DAY", hint = "Of the week") {
+                        Box {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { dayMenuOpen = true },
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = day,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                )
+                                Text(
+                                    text = "▾",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = dayMenuOpen,
+                                onDismissRequest = { dayMenuOpen = false },
+                                containerColor = MaterialTheme.colorScheme.background,
+                            ) {
+                                DAYS.forEach { d ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                d.uppercase(),
+                                                style = MaterialTheme.typography.labelMedium,
+                                            )
+                                        },
+                                        onClick = {
+                                            haptic.selection()
+                                            day = d
+                                            dayMenuOpen = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Hairline(color = MaterialTheme.colorScheme.outline)
+
+                    // Lane: Time (opens picker)
+                    FieldLane(label = "TIME", hint = "Tap to set") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    haptic.light()
+                                    showTimeDialog = true
+                                },
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = timeString,
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                            Text(
+                                text = "◷",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    Hairline(color = MaterialTheme.colorScheme.outline)
+
+                    // Lane: Description
+                    FieldLane(label = "NOTES", hint = "Optional") {
+                        InkInput(
+                            value = description,
+                            onValueChange = { description = it },
+                            placeholder = "Additional details…",
+                            capitalization = KeyboardCapitalization.Sentences,
+                            singleLine = false,
+                        )
+                    }
+                    Hairline(color = MaterialTheme.colorScheme.outline)
+
+                    if (existing != null) {
+                        Spacer(Modifier.height(20.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = "ID · ${existing.id.take(8).uppercase()}",
+                                style = MonoTiny,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                text = if (existing.isActive) "STATUS · LIVE" else "STATUS · IDLE",
+                                style = MonoTiny,
+                                color = if (existing.isActive) Sage
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            // Sticky save slab
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .imePadding(),
+            ) {
+                SaveSlab(
+                    label = if (isEdit) "Save changes" else "Create entry",
+                    enabled = name.isNotBlank(),
+                    onClick = {
+                        haptic.success()
+                        onSave(name.trim(), day, timeString, description.trim())
+                    },
+                )
+            }
+        }
+    }
 
+    if (showTimeDialog) {
+        TimePickerDialog(
+            onDismiss = { showTimeDialog = false },
+            onConfirm = { h, m ->
+                haptic.selection()
+                hour = h
+                minute = m
+                showTimeDialog = false
+            },
+            initialHour = hour,
+            initialMinute = minute,
+        )
+    }
+}
+
+@Composable
+private fun FieldLane(
+    label: String,
+    hint: String,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = "§ $label",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = hint.uppercase(),
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        content()
+    }
+}
+
+@Composable
+private fun InkInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    capitalization: KeyboardCapitalization,
+    singleLine: Boolean,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val style = MaterialTheme.typography.headlineSmall.copy(color = ink)
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        if (value.isEmpty()) {
+            Text(
+                text = placeholder,
+                style = style.copy(color = muted.copy(alpha = 0.55f)),
+            )
+        }
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = singleLine,
+            textStyle = style,
+            cursorBrush = SolidColor(ink),
+            keyboardOptions = KeyboardOptions(capitalization = capitalization),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun SaveSlab(label: String, enabled: Boolean, onClick: () -> Unit) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    val bg = if (enabled) ink else MaterialTheme.colorScheme.outline
+    Column {
+        Hairline(color = ink)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(bg)
+                .clickable(enabled = enabled) { onClick() }
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = {
-                    haptic.light()
-                    onEdit()
-                }) {
-                    Icon(Icons.Default.Edit, "Edit")
+                Column {
+                    Text(
+                        text = if (enabled) "READY" else "NEEDS NAME",
+                        style = MonoTiny,
+                        color = paper.copy(alpha = 0.6f),
+                    )
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = paper,
+                    )
                 }
-                IconButton(onClick = {
-                    haptic.medium()
-                    onDelete()
-                }) {
-                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
-                }
+                Text(
+                    text = "→",
+                    style = MaterialTheme.typography.displaySmall,
+                    color = paper,
+                )
             }
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Time picker
+// ---------------------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddServiceTypeDialog(
+private fun TimePickerDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String, String) -> Unit
+    onConfirm: (hour: Int, minute: Int) -> Unit,
+    initialHour: Int = 9,
+    initialMinute: Int = 0,
 ) {
-    val haptic = rememberHapticFeedback()
-    val daysOfWeek = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
-
-    var name by remember { mutableStateOf("") }
-    var dayType by remember { mutableStateOf(daysOfWeek[0]) }
-    var dayExpanded by remember { mutableStateOf(false) }
-    var showTimePicker by remember { mutableStateOf(false) }
-    var selectedHour by remember { mutableStateOf(9) }
-    var selectedMinute by remember { mutableStateOf(0) }
-    var description by remember { mutableStateOf("") }
-
-    val timeString = remember(selectedHour, selectedMinute) {
-        val period = if (selectedHour >= 12) "PM" else "AM"
-        val displayHour = if (selectedHour == 0) 12 else if (selectedHour > 12) selectedHour - 12 else selectedHour
-        String.format("%d:%02d %s", displayHour, selectedMinute, period)
-    }
+    val state = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = false,
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Service Type") },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Service Name") },
-                    placeholder = { Text("e.g., Sunday Morning Service") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Words
-                    )
-                )
-
-                // Day dropdown
-                ExposedDropdownMenuBox(
-                    expanded = dayExpanded,
-                    onExpandedChange = { dayExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = dayType,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Day") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayExpanded) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = dayExpanded,
-                        onDismissRequest = { dayExpanded = false }
-                    ) {
-                        daysOfWeek.forEach { day ->
-                            DropdownMenuItem(
-                                text = { Text(day) },
-                                onClick = {
-                                    haptic.selection()
-                                    dayType = day
-                                    dayExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // Time picker button
-                OutlinedTextField(
-                    value = timeString,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Time") },
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            haptic.light()
-                            showTimePicker = true
-                        }) {
-                            Icon(Icons.Default.Schedule, "Select time")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description (Optional)") },
-                    placeholder = { Text("Additional details...") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 2,
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences
-                    )
-                )
-            }
+        containerColor = MaterialTheme.colorScheme.background,
+        title = {
+            Text(
+                "§ SET TIME",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         },
+        text = { TimePicker(state = state) },
         confirmButton = {
-            Button(
-                onClick = {
-                    haptic.success()
-                    onConfirm(name.trim(), dayType, timeString, description.trim())
-                },
-                enabled = name.isNotBlank()
-            ) {
-                Text("Add")
+            TextButton(onClick = { onConfirm(state.hour, state.minute) }) {
+                Text("CONFIRM", style = MaterialTheme.typography.labelMedium)
             }
         },
         dismissButton = {
-            TextButton(onClick = {
-                haptic.light()
-                onDismiss()
-            }) {
-                Text("Cancel")
-            }
-        }
-    )
-
-    if (showTimePicker) {
-        TimePickerDialog(
-            onDismiss = { showTimePicker = false },
-            onConfirm = { hour, minute ->
-                haptic.selection()
-                selectedHour = hour
-                selectedMinute = minute
-                showTimePicker = false
-            },
-            initialHour = selectedHour,
-            initialMinute = selectedMinute
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EditServiceTypeDialog(
-    eventType: EventTypeEntity,
-    onDismiss: () -> Unit,
-    onConfirm: (EventTypeEntity) -> Unit
-) {
-    val haptic = rememberHapticFeedback()
-    val daysOfWeek = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
-
-    var name by remember { mutableStateOf(eventType.name) }
-    var dayType by remember { mutableStateOf(eventType.dayType) }
-    var dayExpanded by remember { mutableStateOf(false) }
-    var showTimePicker by remember { mutableStateOf(false) }
-
-    // Parse existing time
-    val (initialHour, initialMinute) = remember(eventType.time) {
-        parseTime(eventType.time)
-    }
-    var selectedHour by remember { mutableStateOf(initialHour) }
-    var selectedMinute by remember { mutableStateOf(initialMinute) }
-    var description by remember { mutableStateOf(eventType.description) }
-
-    val timeString = remember(selectedHour, selectedMinute) {
-        val period = if (selectedHour >= 12) "PM" else "AM"
-        val displayHour = if (selectedHour == 0) 12 else if (selectedHour > 12) selectedHour - 12 else selectedHour
-        String.format("%d:%02d %s", displayHour, selectedMinute, period)
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Edit Service Type") },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Service Name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Words
-                    )
-                )
-
-                // Day dropdown
-                ExposedDropdownMenuBox(
-                    expanded = dayExpanded,
-                    onExpandedChange = { dayExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = dayType,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Day") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayExpanded) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = dayExpanded,
-                        onDismissRequest = { dayExpanded = false }
-                    ) {
-                        daysOfWeek.forEach { day ->
-                            DropdownMenuItem(
-                                text = { Text(day) },
-                                onClick = {
-                                    haptic.selection()
-                                    dayType = day
-                                    dayExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // Time picker button
-                OutlinedTextField(
-                    value = timeString,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Time") },
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            haptic.light()
-                            showTimePicker = true
-                        }) {
-                            Icon(Icons.Default.Schedule, "Select time")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description (Optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 2,
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences
-                    )
-                )
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", style = MaterialTheme.typography.labelMedium)
             }
         },
-        confirmButton = {
-            Button(
-                onClick = {
-                    haptic.success()
-                    onConfirm(
-                        eventType.copy(
-                            name = name.trim(),
-                            dayType = dayType,
-                            time = timeString,
-                            description = description.trim()
-                        )
-                    )
-                },
-                enabled = name.isNotBlank()
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = {
-                haptic.light()
-                onDismiss()
-            }) {
-                Text("Cancel")
-            }
-        }
     )
-
-    if (showTimePicker) {
-        TimePickerDialog(
-            onDismiss = { showTimePicker = false },
-            onConfirm = { hour, minute ->
-                haptic.selection()
-                selectedHour = hour
-                selectedMinute = minute
-                showTimePicker = false
-            },
-            initialHour = selectedHour,
-            initialMinute = selectedMinute
-        )
-    }
 }
 
-/**
- * Parse time string like "9:00 AM" or "7:30 PM" to hour and minute
- */
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+private val DAYS = listOf(
+    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+)
+
+private fun formatTime(hour: Int, minute: Int): String {
+    val period = if (hour >= 12) "PM" else "AM"
+    val display = when {
+        hour == 0 -> 12
+        hour > 12 -> hour - 12
+        else -> hour
+    }
+    return String.format("%d:%02d %s", display, minute, period)
+}
+
 private fun parseTime(timeString: String): Pair<Int, Int> {
     return try {
         val parts = timeString.trim().split(" ")
@@ -674,42 +972,8 @@ private fun parseTime(timeString: String): Pair<Int, Int> {
             else -> hour
         }
 
-        Pair(hour24, minute)
+        hour24 to minute
     } catch (e: Exception) {
-        Pair(9, 0) // Default to 9:00 AM if parsing fails
+        9 to 0
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TimePickerDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (hour: Int, minute: Int) -> Unit,
-    initialHour: Int = 9,
-    initialMinute: Int = 0
-) {
-    val timePickerState = rememberTimePickerState(
-        initialHour = initialHour,
-        initialMinute = initialMinute,
-        is24Hour = false
-    )
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                onConfirm(timePickerState.hour, timePickerState.minute)
-            }) {
-                Text("OK")
-            }
-        },
-        text = {
-            TimePicker(state = timePickerState)
-        }
-    )
 }

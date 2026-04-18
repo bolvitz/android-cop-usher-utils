@@ -1,36 +1,85 @@
 package com.eventmonitor.feature.lostandfound.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.eventmonitor.core.common.theme.Amber
+import com.eventmonitor.core.common.theme.MonoTiny
+import com.eventmonitor.core.common.theme.Navy
+import com.eventmonitor.core.common.theme.Sage
+import com.eventmonitor.core.common.theme.Signal
+import com.eventmonitor.core.common.ui.FieldAppBar
+import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.Hairline
+import com.eventmonitor.core.common.ui.HairlineSoft
+import com.eventmonitor.core.common.ui.ZoneChip
+import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import com.eventmonitor.core.data.local.entities.LostItemEntity
+import com.eventmonitor.core.domain.models.ItemCategory
 import com.eventmonitor.core.domain.models.ItemStatus
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ═════════════════════════════════════════════════════════════════════════════
+// CASE LEDGER — editorial redesign for the Lost & Found main screen.
+//   1. FieldAppBar   — venue eyebrow + "CASES" title, [←] / [⌕] / [+] glyphs
+//   2. Headline      — "§ CASE LEDGER" + editorial lede + oversize case count
+//   3. Status strip  — HOLDING / CLAIMED / DONATED / DISPOSED counts
+//   4. Filter rail   — status chip row + category chip row + search inline
+//   5. Section heads — "§ HOLDING · 08" with oversize count
+//   6. Case rows     — fractional index, status dot, 180-day tick strip
+//   7. Bottom rail   — [+ NEW CASE] [⌕ FIND]
+// ═════════════════════════════════════════════════════════════════════════════
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LostAndFoundScreen(
     locationId: String?,
@@ -43,481 +92,1164 @@ fun LostAndFoundScreen(
     val selectedStatus by viewModel.selectedStatus.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
 
-    var showFilterDialog by remember { mutableStateOf(false) }
-    var showClaimDialog by remember { mutableStateOf<String?>(null) }
+    var selectedCategory by remember { mutableStateOf<ItemCategory?>(null) }
+    var searchOpen by remember { mutableStateOf(false) }
+    var claimTarget by remember { mutableStateOf<LostItemEntity?>(null) }
+    val haptic = rememberHapticFeedback()
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = { Text("Lost & Found") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
-                    }
+            FieldAppBar(
+                title = "CASES",
+                eyebrow = "LOST · FOUND",
+                leading = {
+                    FieldAppBarIcon(glyph = "←", onClick = {
+                        haptic.light(); onNavigateBack()
+                    })
                 },
-                actions = {
-                    IconButton(onClick = { showFilterDialog = true }) {
-                        Icon(Icons.Default.FilterList, "Filter")
-                    }
-                }
+                trailing = {
+                    FieldAppBarIcon(
+                        glyph = if (searchOpen) "×" else "⌕",
+                        onClick = {
+                            haptic.light()
+                            if (searchOpen) viewModel.searchItems("")
+                            searchOpen = !searchOpen
+                        },
+                    )
+                },
             )
         },
-        floatingActionButton = {
+        bottomBar = {
             if (locationId != null) {
-                FloatingActionButton(onClick = { onNavigateToAddItem(locationId) }) {
-                    Icon(Icons.Default.Add, "Add Item")
-                }
+                CaseActionRail(
+                    onAdd = {
+                        haptic.medium(); onNavigateToAddItem(locationId)
+                    },
+                    onFind = {
+                        haptic.light(); searchOpen = !searchOpen
+                        if (!searchOpen) viewModel.searchItems("")
+                    },
+                )
             }
-        }
+        },
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
             when (val state = uiState) {
-                is LostAndFoundUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                is LostAndFoundUiState.Empty -> {
-                    EmptyState(modifier = Modifier.align(Alignment.Center))
-                }
-                is LostAndFoundUiState.Success -> {
-                    ItemList(
-                        items = state.items,
-                        onItemClick = onNavigateToItemDetail,
-                        onClaimItem = { showClaimDialog = it },
-                        onUpdateStatus = viewModel::updateItemStatus,
-                        onDeleteItem = viewModel::deleteItem
-                    )
-                }
-                is LostAndFoundUiState.Error -> {
-                    ErrorState(
-                        message = state.message,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
+                is LostAndFoundUiState.Loading -> LoadingPanel()
+                is LostAndFoundUiState.Empty -> EmptyLedger(
+                    hasFilter = selectedStatus != null || selectedCategory != null || searchQuery.isNotBlank(),
+                    onAdd = { locationId?.let { onNavigateToAddItem(it) } },
+                    onClearFilters = {
+                        selectedCategory = null
+                        viewModel.filterByStatus(null)
+                        viewModel.searchItems("")
+                        searchOpen = false
+                    },
+                )
+
+                is LostAndFoundUiState.Success -> CaseLedger(
+                    items = state.items,
+                    selectedStatus = selectedStatus,
+                    selectedCategory = selectedCategory,
+                    searchQuery = searchQuery,
+                    searchOpen = searchOpen,
+                    onStatusFilter = { viewModel.filterByStatus(it) },
+                    onCategoryFilter = { selectedCategory = it },
+                    onSearch = viewModel::searchItems,
+                    onItemClick = onNavigateToItemDetail,
+                    onClaim = { claimTarget = it },
+                    onDonate = { viewModel.updateItemStatus(it.id, ItemStatus.DONATED.name) },
+                )
+
+                is LostAndFoundUiState.Error -> ErrorPanel(state.message)
             }
         }
     }
 
-    if (showFilterDialog) {
-        FilterDialog(
-            currentStatus = selectedStatus,
-            onDismiss = { showFilterDialog = false },
-            onSelectStatus = {
-                viewModel.filterByStatus(it)
-                showFilterDialog = false
-            }
+    claimTarget?.let { item ->
+        ClaimCaseSheet(
+            item = item,
+            onDismiss = { claimTarget = null },
+            onClaim = { name, contact, notes ->
+                viewModel.claimItem(item.id, name, contact, notes)
+                claimTarget = null
+            },
         )
     }
+}
 
-    showClaimDialog?.let { itemId ->
-        ClaimItemDialog(
-            onDismiss = { showClaimDialog = null },
-            onClaim = { name, contact, notes ->
-                viewModel.claimItem(itemId, name, contact, notes)
-                showClaimDialog = null
+// ---------------------------------------------------------------------------
+// Ledger body
+// ---------------------------------------------------------------------------
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CaseLedger(
+    items: List<LostItemEntity>,
+    selectedStatus: String?,
+    selectedCategory: ItemCategory?,
+    searchQuery: String,
+    searchOpen: Boolean,
+    onStatusFilter: (String?) -> Unit,
+    onCategoryFilter: (ItemCategory?) -> Unit,
+    onSearch: (String) -> Unit,
+    onItemClick: (String) -> Unit,
+    onClaim: (LostItemEntity) -> Unit,
+    onDonate: (LostItemEntity) -> Unit,
+) {
+    val counts = remember(items) {
+        ItemStatus.entries.associateWith { s -> items.count { it.status == s.name } }
+    }
+    val catCounts = remember(items) {
+        items.groupingBy { ItemCategory.fromString(it.category) }.eachCount()
+    }
+    val visible = items
+        .filter { selectedCategory == null || ItemCategory.fromString(it.category) == selectedCategory }
+    val grouped = visible
+        .sortedByDescending { it.foundDate }
+        .groupBy { ItemStatus.fromString(it.status) }
+    val statusOrder =
+        listOf(ItemStatus.PENDING, ItemStatus.CLAIMED, ItemStatus.DONATED, ItemStatus.DISPOSED)
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .navigationBarsPadding(),
+        contentPadding = PaddingValues(bottom = 32.dp),
+    ) {
+        item(key = "headline") { LedgerHeadline(total = items.size) }
+        item(key = "strip") { StatusStrip(counts = counts) }
+        item(key = "status-filter") {
+            StatusFilterRail(
+                selected = selectedStatus,
+                counts = counts,
+                onSelect = onStatusFilter,
+            )
+        }
+        if (catCounts.isNotEmpty()) {
+            item(key = "cat-filter") {
+                CategoryFilterRail(
+                    selected = selectedCategory,
+                    counts = catCounts,
+                    onSelect = onCategoryFilter,
+                )
             }
+        }
+        if (searchOpen) {
+            item(key = "search") {
+                InlineSearch(query = searchQuery, onChange = onSearch)
+            }
+        }
+
+        statusOrder.forEach { status ->
+            val group = grouped[status].orEmpty()
+            if (group.isNotEmpty()) {
+                item(key = "sect-${status.name}") {
+                    StatusSectionHeader(status = status, count = group.size)
+                }
+                group.forEachIndexed { idx, item ->
+                    item(key = "row-${item.id}") {
+                        CaseLedgerRow(
+                            item = item,
+                            rowIndex = idx + 1,
+                            total = group.size,
+                            onClick = { onItemClick(item.id) },
+                            onClaim = { onClaim(item) },
+                            onDonate = { onDonate(item) },
+                        )
+                    }
+                }
+            }
+        }
+
+        item(key = "colophon") { LedgerColophon(total = items.size, visible = visible.size) }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Headline + status strip
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun LedgerHeadline(total: Int) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 18.dp, bottom = 10.dp),
+    ) {
+        Text(
+            "§ CASE LEDGER",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(
+                "Found on the floor.",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = total.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Every case enters as HOLDING — 180 days of custody before it tips to DONATE. Tap a row to read its file.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
 
 @Composable
-fun ItemList(
-    items: List<LostItemEntity>,
-    onItemClick: (String) -> Unit,
-    onClaimItem: (String) -> Unit,
-    onUpdateStatus: (String, String) -> Unit,
-    onDeleteItem: (String) -> Unit
-) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+private fun StatusStrip(counts: Map<ItemStatus, Int>) {
+    Hairline()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 12.dp, bottom = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        items(items, key = { it.id }) { item ->
-            LostItemCard(
-                item = item,
-                onClick = { onItemClick(item.id) },
-                onClaim = { onClaimItem(item.id) },
-                onUpdateStatus = { status -> onUpdateStatus(item.id, status) },
-                onDelete = { onDeleteItem(item.id) }
+        StripCell("HOLD", (counts[ItemStatus.PENDING] ?: 0).toString(), Amber, Modifier.weight(1f))
+        StripDivider()
+        StripCell("CLAIM", (counts[ItemStatus.CLAIMED] ?: 0).toString(), Sage, Modifier.weight(1f))
+        StripDivider()
+        StripCell("DONATE", (counts[ItemStatus.DONATED] ?: 0).toString(), Navy, Modifier.weight(1f))
+        StripDivider()
+        StripCell(
+            "PURGE",
+            (counts[ItemStatus.DISPOSED] ?: 0).toString(),
+            Signal,
+            Modifier.weight(1f)
+        )
+    }
+    Hairline()
+}
+
+@Composable
+private fun StripCell(label: String, value: String, tone: Color, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(6.dp)
+                    .background(tone),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                label,
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+    }
+}
+
+@Composable
+private fun StripDivider() {
+    Box(
+        Modifier
+            .width(FieldTokens.Hair)
+            .height(30.dp)
+            .background(MaterialTheme.colorScheme.outline),
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Filter rails
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun StatusFilterRail(
+    selected: String?,
+    counts: Map<ItemStatus, Int>,
+    onSelect: (String?) -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 14.dp, bottom = 6.dp),
+        ) {
+            Text(
+                "STATUS /",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            val total = counts.values.sum()
+            ZoneChip(
+                label = "ALL · $total",
+                selected = selected == null,
+                onClick = { onSelect(null) },
+            )
+            ItemStatus.entries.forEach { status ->
+                val count = counts[status] ?: 0
+                ZoneChip(
+                    label = "${shortTag(status)} · $count",
+                    selected = selected == status.name,
+                    onClick = { onSelect(if (selected == status.name) null else status.name) },
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CategoryFilterRail(
+    selected: ItemCategory?,
+    counts: Map<ItemCategory, Int>,
+    onSelect: (ItemCategory?) -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 6.dp, bottom = 6.dp),
+        ) {
+            Text(
+                "KIND /",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            ZoneChip(
+                label = "ANY",
+                selected = selected == null,
+                onClick = { onSelect(null) },
+            )
+            counts.entries
+                .sortedByDescending { it.value }
+                .forEach { (cat, n) ->
+                    ZoneChip(
+                        label = "${cat.shortTag()} · $n",
+                        selected = selected == cat,
+                        onClick = { onSelect(if (selected == cat) null else cat) },
+                    )
+                }
+        }
+        HairlineSoft()
+    }
+}
+
+@Composable
+private fun InlineSearch(query: String, onChange: (String) -> Unit) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 14.dp, bottom = 14.dp),
+    ) {
+        Text(
+            "⌕  SEARCH CASES",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(6.dp))
+        BasicTextField(
+            value = query,
+            onValueChange = onChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.headlineSmall.copy(color = ink),
+            cursorBrush = SolidColor(ink),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 44.dp),
+            decorationBox = { inner ->
+                Column {
+                    Box(Modifier.padding(vertical = 6.dp)) {
+                        if (query.isEmpty()) {
+                            Text(
+                                "wallet, black backpack, keys…",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        inner()
+                    }
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(FieldTokens.Hair)
+                            .background(ink),
+                    )
+                }
+            },
+        )
+    }
+    HairlineSoft()
+}
+
+// ---------------------------------------------------------------------------
+// Section header + case row
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun StatusSectionHeader(status: ItemStatus, count: Int) {
+    val tone = statusTone(status)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 24.dp, bottom = 6.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier
+                        .size(8.dp)
+                        .background(tone))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "§ ${shortTag(status)} · ${count.toString().padStart(2, '0')}",
+                        style = MonoTiny,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    sectionTitle(status),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
+            Text(
+                text = count.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
     }
+    Hairline()
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LostItemCard(
+private fun CaseLedgerRow(
     item: LostItemEntity,
+    rowIndex: Int,
+    total: Int,
     onClick: () -> Unit,
     onClaim: () -> Unit,
-    onUpdateStatus: (String) -> Unit,
-    onDelete: () -> Unit
+    onDonate: () -> Unit,
 ) {
-    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val status = ItemStatus.fromString(item.status)
+    val category = ItemCategory.fromString(item.category)
+    val tone = statusTone(status)
 
-    // Calculate if 6 months have passed since item was found
-    val currentTime = System.currentTimeMillis()
-    val sixMonthsInMillis = 6L * 30L * 24L * 60L * 60L * 1000L // Approximately 6 months (180 days)
-    val timeSinceFound = currentTime - item.foundDate
-    val canDonate = timeSinceFound >= sixMonthsInMillis
+    val dateFmt = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
+    val yearFmt = remember { SimpleDateFormat("yyyy", Locale.getDefault()) }
 
-    // Calculate days remaining and progress
-    val totalDays = 180
-    val daysElapsed = (timeSinceFound / (24L * 60L * 60L * 1000L)).toInt()
-    val daysRemaining = (totalDays - daysElapsed).coerceAtLeast(0)
-    val donationProgress = (daysElapsed.toFloat() / totalDays).coerceIn(0f, 1f)
+    val daysElapsed =
+        ((System.currentTimeMillis() - item.foundDate) / 86_400_000L).toInt().coerceAtLeast(0)
+    val daysRemaining = (180 - daysElapsed).coerceAtLeast(0)
+    val canDonate = daysElapsed >= 180
 
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .clickable { onClick() }
+            .padding(horizontal = 20.dp, vertical = 14.dp),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Header with description and status
+        Row(verticalAlignment = Alignment.Top) {
+            // Fractional index column
+            Column(modifier = Modifier.width(54.dp)) {
+                Text(
+                    text = rowIndex.toString().padStart(2, '0'),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontFamily = MonoTiny.fontFamily,
+                    ),
+                    color = ink,
+                )
+                Text(
+                    text = "/ ${total.toString().padStart(2, '0')}",
+                    style = MonoTiny,
+                    color = muted,
+                )
+            }
+
+            // Description + meta
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.description.ifBlank { "—" },
+                    style = MaterialTheme.typography.titleLarge,
+                    color = ink,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = buildString {
+                        append(item.foundZone.ifBlank { "—" }.uppercase())
+                        append("   ·   ")
+                        append(dateFmt.format(Date(item.foundDate)).uppercase())
+                        append("   ·   ")
+                        append(category.shortTag())
+                    },
+                    style = MonoTiny,
+                    color = muted,
+                )
+                if (item.color.isNotBlank() || item.brand.isNotBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = listOf(item.color, item.brand).filter { it.isNotBlank() }
+                            .joinToString(" · ").uppercase(),
+                        style = MonoTiny,
+                        color = muted,
+                    )
+                }
+            }
+
+            // Status dot + case id
+            Column(
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier.width(92.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier
+                        .size(8.dp)
+                        .background(tone))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = shortTag(status),
+                        style = MonoTiny,
+                        color = ink,
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "ID ${item.id.take(6).uppercase()}",
+                    style = MonoTiny,
+                    color = muted,
+                )
+                Text(
+                    text = yearFmt.format(Date(item.foundDate)),
+                    style = MonoTiny,
+                    color = muted,
+                )
+            }
+        }
+
+        // Custody tick-strip — only for HOLDING cases
+        if (status == ItemStatus.PENDING) {
+            Spacer(Modifier.height(12.dp))
+            CustodyTickStrip(
+                daysElapsed = daysElapsed,
+                ready = canDonate,
+            )
+            Spacer(Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    text = if (canDonate) "CUSTODY ELAPSED · READY TO DONATE" else "D+${
+                        daysElapsed.toString().padStart(3, '0')
+                    } · $daysRemaining DAY${if (daysRemaining == 1) "" else "S"} LEFT",
+                    style = MonoTiny,
+                    color = if (canDonate) Sage else muted,
+                )
+                Text(
+                    text = "${daysElapsed.coerceAtMost(180).toString().padStart(3, '0')} / 180",
+                    style = MonoTiny,
+                    color = muted,
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                CaseActionChip(label = "CLAIM", primary = true, onClick = onClaim)
+                CaseActionChip(
+                    label = "DONATE",
+                    primary = false,
+                    enabled = canDonate,
+                    onClick = onDonate,
+                )
+                CaseActionChip(label = "OPEN FILE", primary = false, onClick = onClick)
+            }
+        } else if (status == ItemStatus.CLAIMED && item.claimedBy.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "↳ CLAIMED BY ${item.claimedBy.uppercase()}",
+                style = MonoTiny,
+                color = Sage,
+            )
+        }
+    }
+    HairlineSoft()
+}
+
+@Composable
+private fun CustodyTickStrip(daysElapsed: Int, ready: Boolean) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.outline
+    val ticks = 30 // 180 days / 6 per tick
+    val filled = ((daysElapsed / 6f).coerceIn(0f, 30f)).toInt()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(14.dp)
+            .border(FieldTokens.Hair, ink)
+            .padding(1.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(ticks) { i ->
+            val isFilled = i < filled
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .height(12.dp)
+                    .background(
+                        when {
+                            ready && isFilled -> Sage
+                            isFilled -> ink
+                            else -> Color.Transparent
+                        },
+                    ),
+            )
+            if (i < ticks - 1) {
+                Box(
+                    Modifier
+                        .width(FieldTokens.Hair)
+                        .height(6.dp)
+                        .background(muted),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CaseActionChip(
+    label: String,
+    primary: Boolean,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    Box(
+        modifier = Modifier
+            .alpha(if (enabled) 1f else 0.35f)
+            .border(FieldTokens.Hair, ink)
+            .background(if (primary) ink else paper)
+            .clickable(enabled = enabled) { onClick() }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (primary) paper else ink,
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Bottom rail
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun CaseActionRail(onAdd: () -> Unit, onFind: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .windowInsetsPadding(WindowInsets.navigationBars),
+    ) {
+        Hairline()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            RailButton(
+                label = "+  NEW CASE",
+                inverted = true,
+                onClick = onAdd,
+                modifier = Modifier.weight(1f),
+            )
+            RailButton(
+                label = "⌕  FIND",
+                inverted = false,
+                onClick = onFind,
+                modifier = Modifier.width(120.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RailButton(
+    label: String,
+    inverted: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    Box(
+        modifier = modifier
+            .height(FieldTokens.ToolHeight)
+            .border(FieldTokens.Hair, ink)
+            .background(if (inverted) ink else paper)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (inverted) paper else ink,
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Empty / loading / error / colophon
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun EmptyLedger(
+    hasFilter: Boolean,
+    onAdd: () -> Unit,
+    onClearFilters: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+    ) {
+        Text(
+            "§ CASE LEDGER",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            if (hasFilter) "No matches." else "No cases filed.",
+            style = MaterialTheme.typography.displaySmall,
+            color = ink,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            if (hasFilter) "Loosen the filters or widen the search window."
+            else "A case opens the moment an item is found. Tap + below to file the first.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(22.dp))
+        Hairline()
+        Spacer(Modifier.height(22.dp))
+
+        if (hasFilter) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(FieldTokens.Hair, ink)
+                    .clickable { onClearFilters() }
+                    .padding(vertical = 18.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "CLEAR FILTERS",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = ink,
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(ink)
+                    .clickable { onAdd() }
+                    .padding(horizontal = 18.dp, vertical = 20.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("START", style = MonoTiny, color = paper.copy(alpha = 0.55f))
+                        Text(
+                            "File first case",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = paper,
+                        )
+                    }
+                    Text(
+                        "+",
+                        style = MaterialTheme.typography.displaySmall,
+                        color = paper,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingPanel() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.onBackground,
+                strokeWidth = 2.dp,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "READING CASE FILES…",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ErrorPanel(message: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("§ ERROR", style = MonoTiny, color = Signal)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            message,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun LedgerColophon(total: Int, visible: Int) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Hairline(color = MaterialTheme.colorScheme.outline)
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("LEDGER CLOSED", style = MonoTiny, color = Sage)
+            Text(
+                "$visible / $total CASES SHOWN",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            "― FIELD · LOST & FOUND ―",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Claim sheet — ink-bordered bottom sheet in FIELD grammar
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun ClaimCaseSheet(
+    item: LostItemEntity,
+    onDismiss: () -> Unit,
+    onClaim: (String, String, String) -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    var contact by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .border(FieldTokens.HairStrong, ink)
+                .background(paper),
+        ) {
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = item.description,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                    )
-                    Text(
-                        text = "Found ${dateFormat.format(Date(item.foundDate))} at ${timeFormat.format(Date(item.foundDate))}",
-                        style = MaterialTheme.typography.bodySmall,
+                        "§ CLAIM · CASE",
+                        style = MonoTiny,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-                AssistChip(
-                    onClick = {},
-                    label = { Text(status.displayName) },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = Color(android.graphics.Color.parseColor(status.color)).copy(alpha = 0.2f),
-                        labelColor = Color(android.graphics.Color.parseColor(status.color))
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        "Release custody",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = ink,
                     )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Item details section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
-            ) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    // Location
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.LocationOn,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = item.foundZone,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
-                        )
-                    }
-
-                    // Color and Brand if available
-                    if (item.color.isNotBlank() || item.brand.isNotBlank()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            if (item.color.isNotBlank()) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Default.Palette,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
-                                        tint = MaterialTheme.colorScheme.secondary
-                                    )
-                                    Text(
-                                        text = item.color,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-                            }
-                            if (item.brand.isNotBlank()) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Default.Business,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
-                                        tint = MaterialTheme.colorScheme.secondary
-                                    )
-                                    Text(
-                                        text = item.brand,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Identifying marks if available
-                    if (item.identifyingMarks.isNotBlank()) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Icon(
-                                Icons.Default.Info,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.tertiary
-                            )
-                            Text(
-                                text = item.identifyingMarks,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Donation countdown section (only for pending items)
-            if (item.status == ItemStatus.PENDING.name) {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Donation Progress Card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (canDonate)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.secondaryContainer
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        "ID ${item.id.take(6).uppercase()} · ${item.description.uppercase()}",
+                        style = MonoTiny,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(FieldTokens.AppBarIconSize)
+                        .border(FieldTokens.Hair, ink)
+                        .clickable { onDismiss() },
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    if (canDonate) Icons.Default.CheckCircle else Icons.Default.Schedule,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp),
-                                    tint = if (canDonate)
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                                Text(
-                                    text = if (canDonate) "Ready for Donation" else "Holding Period",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    color = if (canDonate)
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                            }
-                            Text(
-                                text = if (canDonate) "180/180 days" else "$daysElapsed/180 days",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (canDonate)
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                else
-                                    MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Progress bar
-                        LinearProgressIndicator(
-                            progress = { donationProgress },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp),
-                            color = if (canDonate)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.secondary,
-                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                        )
-
-                        if (!canDonate) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "$daysRemaining days remaining until donation eligibility",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Action buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = onClaim,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Claim")
-                    }
-                    OutlinedButton(
-                        onClick = { onUpdateStatus(ItemStatus.DONATED.name) },
-                        enabled = canDonate,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Donate")
-                    }
+                    Text(
+                        "×",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = ink,
+                    )
                 }
             }
-        }
-    }
-}
+            Hairline()
 
-@Composable
-fun EmptyState(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            Icons.Default.Search,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.outline
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("No items found", style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-@Composable
-fun ErrorState(message: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            Icons.Default.Warning,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.error
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(message, style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-@Composable
-fun FilterDialog(
-    currentStatus: String?,
-    onDismiss: () -> Unit,
-    onSelectStatus: (String?) -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Filter by Status") },
-        text = {
-            Column {
-                TextButton(onClick = { onSelectStatus(null) }) {
-                    Text("All Items")
-                }
-                ItemStatus.entries.forEach { status ->
-                    TextButton(onClick = { onSelectStatus(status.name) }) {
-                        Text(status.displayName)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
-        }
-    )
-}
-
-@Composable
-fun ClaimItemDialog(
-    onDismiss: () -> Unit,
-    onClaim: (String, String, String) -> Unit
-) {
-    var claimerName by remember { mutableStateOf("") }
-    var contact by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Claim Item") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = claimerName,
-                    onValueChange = { claimerName = it },
-                    label = { Text("Claimer Name") },
-                    singleLine = true
+            SheetStep(index = "01", label = "CLAIMER", hint = "Legal name on the record.") {
+                SheetField(
+                    value = name,
+                    onValueChange = { name = it },
+                    placeholder = "Full name",
+                    capitalization = KeyboardCapitalization.Words,
                 )
-                OutlinedTextField(
+            }
+            HairlineSoft()
+            SheetStep(index = "02", label = "CONTACT", hint = "Phone or email to verify later.") {
+                SheetField(
                     value = contact,
                     onValueChange = { contact = it },
-                    label = { Text("Contact (Phone/Email)") },
-                    singleLine = true
+                    placeholder = "+1 555 · name@email",
                 )
-                OutlinedTextField(
+            }
+            HairlineSoft()
+            SheetStep(index = "03", label = "VERIFY", hint = "What proof was shown?") {
+                SheetField(
                     value = notes,
                     onValueChange = { notes = it },
-                    label = { Text("Verification Notes") },
-                    maxLines = 3
+                    placeholder = "Photo ID · described scratch · receipt",
+                    capitalization = KeyboardCapitalization.Sentences,
+                    singleLine = false,
+                )
+            }
+            Hairline()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                RailButton(
+                    label = "CANCEL",
+                    inverted = false,
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(FieldTokens.ToolHeight)
+                        .alpha(if (name.isNotBlank()) 1f else 0.35f)
+                        .border(FieldTokens.Hair, ink)
+                        .background(ink)
+                        .clickable(enabled = name.isNotBlank()) {
+                            onClaim(name, contact, notes)
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "RELEASE CASE",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = paper,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SheetStep(
+    index: String,
+    label: String,
+    hint: String,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = index,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontFamily = MonoTiny.fontFamily,
+                ),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "/ $label",
+                    style = MonoTiny,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        content()
+    }
+}
+
+@Composable
+private fun SheetField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    capitalization: KeyboardCapitalization = KeyboardCapitalization.None,
+    singleLine: Boolean = true,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = singleLine,
+        textStyle = MaterialTheme.typography.titleLarge.copy(color = ink),
+        cursorBrush = SolidColor(ink),
+        keyboardOptions = KeyboardOptions(capitalization = capitalization),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = if (singleLine) 40.dp else 72.dp),
+        decorationBox = { inner ->
+            Column {
+                Box(Modifier.padding(vertical = 4.dp)) {
+                    if (value.isEmpty()) {
+                        Text(
+                            placeholder,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    inner()
+                }
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(FieldTokens.Hair)
+                        .background(ink),
                 )
             }
         },
-        confirmButton = {
-            Button(
-                onClick = { onClaim(claimerName, contact, notes) },
-                enabled = claimerName.isNotBlank()
-            ) {
-                Text("Claim")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
     )
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+private fun shortTag(status: ItemStatus): String = when (status) {
+    ItemStatus.PENDING -> "HOLD"
+    ItemStatus.CLAIMED -> "CLAIM"
+    ItemStatus.DONATED -> "GIVE"
+    ItemStatus.DISPOSED -> "PURGE"
+}
+
+private fun sectionTitle(status: ItemStatus): String = when (status) {
+    ItemStatus.PENDING -> "In custody"
+    ItemStatus.CLAIMED -> "Released"
+    ItemStatus.DONATED -> "Given away"
+    ItemStatus.DISPOSED -> "Discarded"
+}
+
+private fun statusTone(status: ItemStatus): Color = when (status) {
+    ItemStatus.PENDING -> Amber
+    ItemStatus.CLAIMED -> Sage
+    ItemStatus.DONATED -> Navy
+    ItemStatus.DISPOSED -> Signal
+}
+
+internal fun ItemCategory.shortTag(): String = when (this) {
+    ItemCategory.ELECTRONICS -> "TECH"
+    ItemCategory.CLOTHING -> "WEAR"
+    ItemCategory.DOCUMENTS -> "DOCS"
+    ItemCategory.ACCESSORIES -> "ACC"
+    ItemCategory.BAGS -> "BAGS"
+    ItemCategory.PERSONAL_ITEMS -> "PERS"
+    ItemCategory.KEYS -> "KEYS"
+    ItemCategory.WALLETS -> "WLLT"
+    ItemCategory.JEWELRY -> "JWLR"
+    ItemCategory.TOYS -> "TOYS"
+    ItemCategory.BOOKS -> "BOOK"
+    ItemCategory.SPORTS_EQUIPMENT -> "SPRT"
+    ItemCategory.OTHER -> "OTHR"
 }

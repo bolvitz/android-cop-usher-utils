@@ -1,567 +1,991 @@
 package com.eventmonitor.feature.headcounter.screens
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.TrendingDown
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.eventmonitor.core.common.theme.Amber
+import com.eventmonitor.core.common.theme.Sage
+import com.eventmonitor.core.common.theme.Signal
+import com.eventmonitor.core.common.ui.FieldAppBar
+import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.Hairline
+import com.eventmonitor.core.common.ui.HairlineSoft
+import com.eventmonitor.core.common.ui.SparkBar
+import com.eventmonitor.core.common.ui.capacityToneFor
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import kotlin.math.abs
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrendsScreen(
     viewModel: TrendsViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
 ) {
     val haptic = rememberHapticFeedback()
     val uiState by viewModel.uiState.collectAsState()
     val selectedPeriod by viewModel.selectedPeriod.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Attendance Trends")
-                        if (uiState.venueName.isNotEmpty()) {
-                            Text(
-                                text = uiState.venueName,
-                                style = MaterialTheme.typography.bodySmall
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        FieldAppBar(
+            title = "Almanac",
+            eyebrow = if (uiState.venueName.isNotEmpty())
+                "Trends · ${uiState.venueName}".uppercase()
+            else "Attendance Trends",
+            leading = {
+                FieldAppBarIcon(glyph = "‹", onClick = {
+                    haptic.light()
+                    onNavigateBack()
+                })
+            },
+        )
+
+        Box(modifier = Modifier.weight(1f)) {
+            when {
+                uiState.isLoading -> Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) { CircularProgressIndicator(strokeWidth = 2.dp) }
+
+                uiState.isEmpty -> EmptyAlmanac()
+
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 48.dp),
+                ) {
+                    item(key = "mast") {
+                        AlmanacMasthead(
+                            state = uiState,
+                            period = selectedPeriod,
+                        )
+                    }
+                    item(key = "period") {
+                        PeriodStrip(
+                            selected = selectedPeriod,
+                            onSelect = {
+                                haptic.selection()
+                                viewModel.selectPeriod(it)
+                            },
+                        )
+                    }
+                    item(key = "chart") {
+                        ChartSection(
+                            dataPoints = uiState.attendanceOverTime,
+                            averageAttendance = uiState.averageAttendance.toFloat(),
+                        )
+                    }
+                    item(key = "peak-low") {
+                        PeakLowSpread(state = uiState)
+                    }
+                    item(key = "capacity") {
+                        CapacitySection(
+                            capacityPct = uiState.avgCapacityUtilization,
+                            totalEvents = uiState.totalEvents,
+                        )
+                    }
+                    if (uiState.eventTypeBreakdown.isNotEmpty()) {
+                        item(key = "type-head") { SectionRule("By Event Type", "COLUMN IV") }
+                        items(
+                            items = uiState.eventTypeBreakdown.withIndex().toList(),
+                            key = { it.value.typeName + it.index },
+                        ) { (index, breakdown) ->
+                            EventTypeRow(
+                                rank = index + 1,
+                                breakdown = breakdown,
+                                maxAvg = uiState.eventTypeBreakdown.maxOf { it.avgAttendance }
+                                    .coerceAtLeast(1),
                             )
+                            Hairline(color = MaterialTheme.colorScheme.outlineVariant)
                         }
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        haptic.light()
-                        onNavigateBack()
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
+                    item(key = "foot") { AlmanacFooter(uiState.totalEvents) }
                 }
+            }
+        }
+    }
+}
+
+// region ── Masthead ───────────────────────────────────────────────────────
+
+@Composable
+private fun AlmanacMasthead(state: TrendsUiState, period: TrendPeriod) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val rangeLabel = remember(period) { buildRangeLabel(period) }
+    val volume = remember(period) { romanNumeral(period.ordinal + 1) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 20.dp, bottom = 18.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = "VOLUME $volume",
+                style = MaterialTheme.typography.labelSmall,
+                color = muted,
+            )
+            Text(
+                text = rangeLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = muted,
             )
         }
-    ) { paddingValues ->
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
 
-            uiState.isEmpty -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.TrendingUp,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-                        Text(
-                            "No data yet",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            "Start counting to see trends",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
+        Spacer(Modifier.height(10.dp))
+        Hairline()
+        Spacer(Modifier.height(12.dp))
 
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Period selector
-                    item {
-                        PeriodSelector(
-                            selectedPeriod = selectedPeriod,
-                            onPeriodSelected = { viewModel.selectPeriod(it) }
-                        )
-                    }
-
-                    // Summary stats row
-                    item {
-                        SummaryStatsRow(uiState)
-                    }
-
-                    // Attendance chart
-                    item {
-                        AttendanceChart(
-                            dataPoints = uiState.attendanceOverTime,
-                            averageAttendance = uiState.averageAttendance.toFloat()
-                        )
-                    }
-
-                    // Growth indicator
-                    item {
-                        GrowthCard(
-                            growthPercentage = uiState.growthPercentage,
-                            avgCapacity = uiState.avgCapacityUtilization
-                        )
-                    }
-
-                    // Event type breakdown
-                    if (uiState.eventTypeBreakdown.isNotEmpty()) {
-                        item {
-                            Text(
-                                "By Event Type",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        items(uiState.eventTypeBreakdown) { breakdown ->
-                            EventTypeCard(breakdown)
-                        }
-                    }
-
-                    // Bottom spacing
-                    item { Spacer(modifier = Modifier.height(16.dp)) }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun PeriodSelector(
-    selectedPeriod: TrendPeriod,
-    onPeriodSelected: (TrendPeriod) -> Unit
-) {
-    val haptic = rememberHapticFeedback()
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        TrendPeriod.entries.forEachIndexed { index, period ->
-            SegmentedButton(
-                selected = period == selectedPeriod,
-                onClick = {
-                    haptic.selection()
-                    onPeriodSelected(period)
-                },
-                shape = SegmentedButtonDefaults.itemShape(
-                    index = index,
-                    count = TrendPeriod.entries.size
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(
+                text = state.averageAttendance.toString(),
+                style = MaterialTheme.typography.displayLarge.copy(
+                    fontSize = 104.sp,
+                    lineHeight = 92.sp,
+                    fontWeight = FontWeight.Light,
+                    letterSpacing = (-5).sp,
+                ),
+                color = ink,
+            )
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.padding(bottom = 14.dp)) {
+                Text(
+                    text = "Average",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontStyle = FontStyle.Italic,
+                    ),
+                    color = ink,
                 )
-            ) {
-                Text(period.label, style = MaterialTheme.typography.labelMedium)
+                Text(
+                    text = "attendance".uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = muted,
+                )
             }
         }
+
+        Spacer(Modifier.height(14.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            GrowthChip(pct = state.growthPercentage)
+            Spacer(Modifier.width(10.dp))
+            HairlineSoft(modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = "N = ${state.totalEvents}",
+                style = MaterialTheme.typography.labelMedium,
+                color = ink,
+            )
+        }
     }
+    Hairline()
 }
 
 @Composable
-fun SummaryStatsRow(state: TrendsUiState) {
+private fun GrowthChip(pct: Int) {
+    val positive = pct >= 0
+    val tone = when {
+        pct > 0 -> Sage
+        pct < 0 -> Signal
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val arrow = when {
+        pct > 0 -> "▲"
+        pct < 0 -> "▼"
+        else -> "—"
+    }
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier
+            .border(FieldTokens.Hair, tone)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        StatCard(
-            label = "Events",
-            value = state.totalEvents.toString(),
-            icon = Icons.Default.Event,
-            modifier = Modifier.weight(1f)
+        Text(arrow, style = MaterialTheme.typography.labelSmall, color = tone)
+        Text(
+            text = "${if (positive && pct != 0) "+" else ""}${abs(pct)}%",
+            style = MaterialTheme.typography.labelMedium,
+            color = tone,
         )
-        StatCard(
-            label = "Average",
-            value = state.averageAttendance.toString(),
-            icon = Icons.Default.People,
-            modifier = Modifier.weight(1f)
-        )
-        StatCard(
-            label = "Peak",
-            value = state.peakAttendance.toString(),
-            icon = Icons.AutoMirrored.Filled.TrendingUp,
-            modifier = Modifier.weight(1f)
+        Text(
+            text = "vs prior half".uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
 
+// endregion
+
+// region ── Period strip ──────────────────────────────────────────────────
+
 @Composable
-fun StatCard(
-    label: String,
-    value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    modifier: Modifier = Modifier
+private fun PeriodStrip(
+    selected: TrendPeriod,
+    onSelect: (TrendPeriod) -> Unit,
 ) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-            )
+            TrendPeriod.entries.forEachIndexed { index, period ->
+                if (index > 0) {
+                    Box(
+                        Modifier
+                            .width(FieldTokens.Hair)
+                            .height(22.dp)
+                            .background(MaterialTheme.colorScheme.outline)
+                            .align(Alignment.CenterVertically),
+                    )
+                }
+                PeriodTab(
+                    label = period.strip,
+                    selected = period == selected,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onSelect(period) },
+                )
+            }
         }
+        Hairline()
     }
 }
 
 @Composable
-fun AttendanceChart(
+private fun PeriodTab(
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Column(
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) ink else muted,
+        )
+        Spacer(Modifier.height(6.dp))
+        Box(
+            Modifier
+                .fillMaxWidth(if (selected) 0.6f else 0f)
+                .height(FieldTokens.HairStrong)
+                .background(ink),
+        )
+    }
+}
+
+// endregion
+
+// region ── Chart ─────────────────────────────────────────────────────────
+
+@Composable
+private fun ChartSection(
     dataPoints: List<TrendDataPoint>,
-    averageAttendance: Float
+    averageAttendance: Float,
 ) {
     if (dataPoints.isEmpty()) return
 
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val tertiaryColor = MaterialTheme.colorScheme.tertiary
-    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
-    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val outline = MaterialTheme.colorScheme.outline
+    val outlineSoft = MaterialTheme.colorScheme.outlineVariant
+    val paper = MaterialTheme.colorScheme.background
     val textMeasurer = rememberTextMeasurer()
-    val labelStyle = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
+    val labelStyle = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp)
 
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    val max = dataPoints.maxOf { it.value }
+    val peakIdx = dataPoints.indexOfFirst { it.value == max }
+    val animProgress by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(durationMillis = 700),
+        label = "chartReveal",
+    )
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        SectionRule("Attendance over time", "COLUMN I")
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 8.dp, bottom = 20.dp),
+        ) {
             Text(
-                "Attendance Over Time",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                text = "Tracked across ${dataPoints.size} event${if (dataPoints.size == 1) "" else "s"}.",
+                style = MaterialTheme.typography.bodySmall,
+                color = muted,
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
             Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
+                    .height(210.dp),
             ) {
-                val maxValue = dataPoints.maxOf { it.value } * 1.15f
-                val minValue = 0f
-                val range = maxValue - minValue
+                val topPad = 18f
+                val leftPad = 52f
+                val bottomPad = 32f
+                val rightPad = 12f
+                val chartW = size.width - leftPad - rightPad
+                val chartH = size.height - topPad - bottomPad
+                val yMax = max * 1.15f
+                val range = if (yMax <= 0f) 1f else yMax
 
-                val leftPadding = 40f
-                val bottomPadding = 30f
-                val chartWidth = size.width - leftPadding
-                val chartHeight = size.height - bottomPadding
-
-                // Draw grid lines
+                // Grid rules (hairlines)
                 val gridLines = 4
                 for (i in 0..gridLines) {
-                    val y = chartHeight * (1 - i.toFloat() / gridLines)
+                    val y = topPad + chartH * (1 - i.toFloat() / gridLines)
                     drawLine(
-                        color = surfaceVariant,
-                        start = Offset(leftPadding, y),
-                        end = Offset(size.width, y),
-                        strokeWidth = 1f
+                        color = if (i == 0) ink else outlineSoft,
+                        start = Offset(leftPad, y),
+                        end = Offset(size.width - rightPad, y),
+                        strokeWidth = if (i == 0) 1.2f else 0.8f,
                     )
-                    // Y-axis label
-                    val labelValue = (minValue + range * i / gridLines).toInt()
+                    val value = (range * i / gridLines).toInt()
+                    val layout = textMeasurer.measure(
+                        text = value.toString(),
+                        style = labelStyle.copy(color = muted),
+                    )
                     drawText(
-                        textMeasurer = textMeasurer,
-                        text = labelValue.toString(),
-                        topLeft = Offset(0f, y - 8f),
-                        style = labelStyle.copy(color = onSurfaceVariant.copy(alpha = 0.6f))
+                        textLayoutResult = layout,
+                        topLeft = Offset(
+                            leftPad - layout.size.width - 8f,
+                            y - layout.size.height / 2f
+                        ),
                     )
                 }
 
-                // Draw average line (dashed)
-                if (averageAttendance > 0) {
-                    val avgY = chartHeight * (1 - (averageAttendance - minValue) / range)
+                // Axis ticks on left
+                drawLine(
+                    color = ink,
+                    start = Offset(leftPad, topPad),
+                    end = Offset(leftPad, topPad + chartH),
+                    strokeWidth = 1.2f,
+                )
+
+                // Average reference line
+                if (averageAttendance > 0f) {
+                    val avgY = topPad + chartH * (1 - (averageAttendance / range))
                     drawLine(
-                        color = tertiaryColor.copy(alpha = 0.5f),
-                        start = Offset(leftPadding, avgY),
-                        end = Offset(size.width, avgY),
-                        strokeWidth = 2f,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
+                        color = outline,
+                        start = Offset(leftPad, avgY),
+                        end = Offset(size.width - rightPad, avgY),
+                        strokeWidth = 1f,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f)),
+                    )
+                    val avgLabel = textMeasurer.measure(
+                        text = "AVG ${averageAttendance.toInt()}",
+                        style = labelStyle.copy(color = muted),
+                    )
+                    drawRect(
+                        color = paper,
+                        topLeft = Offset(
+                            size.width - rightPad - avgLabel.size.width - 6f,
+                            avgY - avgLabel.size.height / 2f - 2f
+                        ),
+                        size = Size(avgLabel.size.width + 6f, avgLabel.size.height + 4f),
+                    )
+                    drawText(
+                        textLayoutResult = avgLabel,
+                        topLeft = Offset(
+                            size.width - rightPad - avgLabel.size.width - 3f,
+                            avgY - avgLabel.size.height / 2f
+                        ),
                     )
                 }
 
-                if (dataPoints.size == 1) {
-                    // Single point - draw a dot
-                    val x = leftPadding + chartWidth / 2
-                    val y = chartHeight * (1 - (dataPoints[0].value - minValue) / range)
-                    drawCircle(primaryColor, radius = 8f, center = Offset(x, y))
+                // Build line path
+                val pointCount = dataPoints.size
+                val stepX = if (pointCount > 1) chartW / (pointCount - 1) else 0f
+                val shownCount =
+                    (pointCount * animProgress).toInt().coerceAtLeast(if (pointCount > 0) 1 else 0)
+
+                if (pointCount == 1) {
+                    val x = leftPad + chartW / 2f
+                    val y = topPad + chartH * (1 - (dataPoints[0].value / range))
+                    drawCircle(ink, radius = 6f, center = Offset(x, y))
+                    drawCircle(paper, radius = 2.5f, center = Offset(x, y))
                 } else {
-                    // Draw line chart
                     val path = Path()
-                    val stepX = chartWidth / (dataPoints.size - 1)
+                    dataPoints.forEachIndexed { i, p ->
+                        if (i > shownCount) return@forEachIndexed
+                        val x = leftPad + stepX * i
+                        val y = topPad + chartH * (1 - (p.value / range))
+                        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                    }
+                    drawPath(
+                        path = path,
+                        color = ink,
+                        style = Stroke(width = 2.4f, cap = StrokeCap.Round),
+                    )
 
-                    dataPoints.forEachIndexed { index, point ->
-                        val x = leftPadding + stepX * index
-                        val y = chartHeight * (1 - (point.value - minValue) / range)
-
-                        if (index == 0) {
-                            path.moveTo(x, y)
+                    // Dots
+                    dataPoints.forEachIndexed { i, p ->
+                        if (i > shownCount) return@forEachIndexed
+                        val x = leftPad + stepX * i
+                        val y = topPad + chartH * (1 - (p.value / range))
+                        val isPeak = i == peakIdx
+                        val r = if (isPeak) 6f else 3.5f
+                        drawCircle(ink, radius = r, center = Offset(x, y))
+                        if (isPeak) {
+                            drawCircle(Signal, radius = 3f, center = Offset(x, y))
                         } else {
-                            path.lineTo(x, y)
+                            drawCircle(paper, radius = 1.6f, center = Offset(x, y))
                         }
                     }
 
-                    // Draw the line
-                    drawPath(
-                        path = path,
-                        color = primaryColor,
-                        style = Stroke(width = 3f, cap = StrokeCap.Round)
-                    )
-
-                    // Draw dots at data points
-                    dataPoints.forEachIndexed { index, point ->
-                        val x = leftPadding + stepX * index
-                        val y = chartHeight * (1 - (point.value - minValue) / range)
-                        drawCircle(primaryColor, radius = 5f, center = Offset(x, y))
-                        drawCircle(Color.White, radius = 2.5f, center = Offset(x, y))
-                    }
-
-                    // X-axis labels (show first, middle, last)
+                    // X-axis labels (sparse)
                     val labelIndices = when {
-                        dataPoints.size <= 3 -> dataPoints.indices.toList()
-                        dataPoints.size <= 7 -> listOf(0, dataPoints.size / 2, dataPoints.size - 1)
+                        pointCount <= 3 -> dataPoints.indices.toList()
+                        pointCount <= 7 -> listOf(0, pointCount / 2, pointCount - 1)
                         else -> listOf(
                             0,
-                            dataPoints.size / 4,
-                            dataPoints.size / 2,
-                            dataPoints.size * 3 / 4,
-                            dataPoints.size - 1
+                            pointCount / 4,
+                            pointCount / 2,
+                            pointCount * 3 / 4,
+                            pointCount - 1
                         )
                     }
-                    labelIndices.forEach { index ->
-                        val x = leftPadding + stepX * index
+                    labelIndices.forEach { i ->
+                        val x = leftPad + stepX * i
+                        // Tiny tick
+                        drawLine(
+                            color = ink,
+                            start = Offset(x, topPad + chartH),
+                            end = Offset(x, topPad + chartH + 4f),
+                            strokeWidth = 1f,
+                        )
+                        val layout = textMeasurer.measure(
+                            text = dataPoints[i].label.uppercase(),
+                            style = labelStyle.copy(color = muted),
+                        )
                         drawText(
-                            textMeasurer = textMeasurer,
-                            text = dataPoints[index].label,
-                            topLeft = Offset(x - 15f, chartHeight + 8f),
-                            style = labelStyle.copy(color = onSurfaceVariant.copy(alpha = 0.6f))
+                            textLayoutResult = layout,
+                            topLeft = Offset(x - layout.size.width / 2f, topPad + chartH + 8f),
                         )
                     }
                 }
             }
 
-            // Legend
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(primaryColor)
-                    )
-                    Text(
-                        "Attendance",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp, 2.dp)
-                            .background(tertiaryColor.copy(alpha = 0.5f))
-                    )
-                    Text(
-                        "Avg (${averageAttendance.toInt()})",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                LegendSwatch("Series", ink, solid = true)
+                LegendSwatch("Peak", Signal, solid = true)
+                LegendSwatch("Average", outline, dashed = true)
             }
         }
+        Hairline()
     }
 }
 
 @Composable
-fun GrowthCard(
-    growthPercentage: Int,
-    avgCapacity: Int
+private fun LegendSwatch(
+    label: String,
+    color: Color,
+    solid: Boolean = false,
+    dashed: Boolean = false,
 ) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(width = 14.dp, height = 2.dp)
+                .background(if (dashed) Color.Transparent else color),
+        ) {
+            if (dashed) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    repeat(3) {
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(horizontal = 0.5.dp)
+                                .background(color),
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.width(6.dp))
+        if (solid) {
+            Box(
+                Modifier
+                    .size(4.dp)
+                    .background(color),
+            )
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-    ) {
+    }
+}
+
+// endregion
+
+// region ── Peak / Low spread ─────────────────────────────────────────────
+
+@Composable
+private fun PeakLowSpread(state: TrendsUiState) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        SectionRule("Dispatches", "COLUMN II")
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .padding(horizontal = 20.dp)
+                .padding(top = 10.dp, bottom = 18.dp),
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = if (growthPercentage >= 0)
-                        Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
-                    contentDescription = null,
-                    tint = if (growthPercentage >= 0)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${if (growthPercentage >= 0) "+" else ""}$growthPercentage%",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = if (growthPercentage >= 0)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.error
-                )
-                Text(
-                    "Growth Trend",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
-                )
-            }
-
-            HorizontalDivider(
-                modifier = Modifier
-                    .height(60.dp)
-                    .width(1.dp),
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f)
+            PeakLowCell(
+                modifier = Modifier.weight(1f),
+                kicker = "Peak",
+                value = state.peakAttendance,
+                subject = state.peakEventName.ifBlank { "—" },
+                dateMs = state.peakEventDate,
+                accent = Signal,
             )
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.Default.PieChart,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "$avgCapacity%",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-                Text(
-                    "Avg Capacity",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
-                )
-            }
+            Box(
+                Modifier
+                    .width(FieldTokens.Hair)
+                    .height(118.dp)
+                    .background(MaterialTheme.colorScheme.outline),
+            )
+            PeakLowCell(
+                modifier = Modifier.weight(1f),
+                kicker = "Low",
+                value = state.lowestAttendance,
+                subject = "Lowest count",
+                dateMs = 0L,
+                accent = Sage,
+                alignEnd = true,
+            )
         }
+        Hairline()
     }
 }
 
 @Composable
-fun EventTypeCard(breakdown: EventTypeBreakdown) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+private fun PeakLowCell(
+    modifier: Modifier = Modifier,
+    kicker: String,
+    value: Int,
+    subject: String,
+    dateMs: Long,
+    accent: Color,
+    alignEnd: Boolean = false,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val dateFmt = remember { SimpleDateFormat("MMM d · yyyy", Locale.getDefault()) }
+    Column(
+        modifier = modifier.padding(
+            start = if (alignEnd) 14.dp else 0.dp,
+            end = if (alignEnd) 0.dp else 14.dp,
+        ),
+        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start,
     ) {
-        Row(
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier
+                .size(6.dp)
+                .background(accent))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = kicker.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = accent,
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = value.toString(),
+            style = MaterialTheme.typography.displayMedium.copy(
+                fontSize = 56.sp,
+                lineHeight = 52.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = (-2).sp,
+            ),
+            color = ink,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = subject,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontStyle = FontStyle.Italic,
+                fontWeight = FontWeight.Normal,
+            ),
+            color = ink,
+            maxLines = 2,
+            textAlign = if (alignEnd) TextAlign.End else TextAlign.Start,
+        )
+        if (dateMs > 0) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = dateFmt.format(Date(dateMs)).uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = muted,
+            )
+        }
+    }
+}
+
+// endregion
+
+// region ── Capacity ──────────────────────────────────────────────────────
+
+@Composable
+private fun CapacitySection(capacityPct: Int, totalEvents: Int) {
+    val tone = capacityToneFor(capacityPct / 100f)
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val ink = MaterialTheme.colorScheme.onBackground
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        SectionRule("Capacity utilization", "COLUMN III")
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 20.dp)
+                .padding(top = 12.dp, bottom = 18.dp),
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = capacityPct.toString(),
+                        style = MaterialTheme.typography.displayMedium.copy(
+                            fontSize = 72.sp,
+                            lineHeight = 66.sp,
+                            fontWeight = FontWeight.Light,
+                            letterSpacing = (-3).sp,
+                        ),
+                        color = ink,
+                    )
+                    Text(
+                        text = "%",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontStyle = FontStyle.Italic,
+                        ),
+                        color = tone,
+                        modifier = Modifier.padding(bottom = 8.dp, start = 2.dp),
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = totalEvents.toString().padStart(2, '0'),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = ink,
+                    )
+                    Text(
+                        text = "events sampled".uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = muted,
+                    )
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            SparkBar(progress = capacityPct / 100f, height = 6.dp)
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("0%", style = MaterialTheme.typography.labelSmall, color = muted)
+                Text(
+                    text = capacityDescriptor(capacityPct).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = tone,
+                )
+                Text("100%", style = MaterialTheme.typography.labelSmall, color = muted)
+            }
+        }
+        Hairline()
+    }
+}
+
+private fun capacityDescriptor(pct: Int): String = when {
+    pct >= 95 -> "At capacity"
+    pct >= 80 -> "Heavy load"
+    pct >= 50 -> "Steady flow"
+    pct > 0 -> "Light turnout"
+    else -> "Uncharted"
+}
+
+// endregion
+
+// region ── Event type rows ───────────────────────────────────────────────
+
+@Composable
+private fun EventTypeRow(rank: Int, breakdown: EventTypeBreakdown, maxAvg: Int) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val pct = (breakdown.avgAttendance.toFloat() / maxAvg).coerceIn(0f, 1f)
+    val barTone = when (rank) {
+        1 -> Signal
+        2 -> Amber
+        else -> ink
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = rank.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.labelMedium,
+                color = muted,
+                modifier = Modifier.width(28.dp),
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = breakdown.typeName,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+                    style = MaterialTheme.typography.titleMedium,
+                    color = ink,
+                    maxLines = 1,
                 )
                 Text(
-                    text = "${breakdown.count} events",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "${breakdown.count} event${if (breakdown.count == 1) "" else "s"}".uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = muted,
                 )
             }
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.primaryContainer
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = breakdown.avgAttendance.toString(),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = ink,
+                )
+                Text(
+                    text = "avg".uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = muted,
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Spacer(Modifier.width(28.dp))
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(4.dp)
+                    .background(MaterialTheme.colorScheme.outlineVariant),
             ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = breakdown.avgAttendance.toString(),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        text = "avg",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
-                }
+                Box(
+                    Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(pct)
+                        .background(barTone),
+                )
             }
         }
     }
 }
+
+// endregion
+
+// region ── Helpers ───────────────────────────────────────────────────────
+
+@Composable
+private fun SectionRule(title: String, tag: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 22.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontStyle = FontStyle.Italic,
+                ),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = tag,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+        }
+        Hairline()
+    }
+}
+
+@Composable
+private fun EmptyAlmanac() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp),
+        ) {
+            Text(
+                text = "—",
+                style = MaterialTheme.typography.displayLarge.copy(
+                    fontSize = 96.sp,
+                    fontWeight = FontWeight.Light,
+                ),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "No dispatches on file",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontStyle = FontStyle.Italic,
+                ),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "start counting to populate the almanac".uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AlmanacFooter(totalEvents: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = "— END OF REPORT —",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = "$totalEvents REC",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+private fun buildRangeLabel(period: TrendPeriod): String {
+    val fmt = SimpleDateFormat("MMM d", Locale.getDefault())
+    val end = Calendar.getInstance()
+    val start = (end.clone() as Calendar).apply {
+        add(Calendar.DAY_OF_YEAR, -period.days)
+    }
+    return "${fmt.format(start.time).uppercase()} – ${fmt.format(end.time).uppercase()}"
+}
+
+private fun romanNumeral(n: Int): String {
+    val table = listOf(
+        1000 to "M", 900 to "CM", 500 to "D", 400 to "CD",
+        100 to "C", 90 to "XC", 50 to "L", 40 to "XL",
+        10 to "X", 9 to "IX", 5 to "V", 4 to "IV", 1 to "I",
+    )
+    var x = n
+    val sb = StringBuilder()
+    for ((v, s) in table) {
+        while (x >= v) {
+            sb.append(s); x -= v
+        }
+    }
+    return sb.toString()
+}
+
+// endregion

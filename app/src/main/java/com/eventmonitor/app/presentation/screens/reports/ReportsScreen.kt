@@ -1,28 +1,64 @@
 package com.eventmonitor.app.presentation.screens.reports
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.eventmonitor.core.common.utils.HapticFeedbackHelper
+import com.eventmonitor.core.common.theme.MonoTiny
+import com.eventmonitor.core.common.theme.Signal
+import com.eventmonitor.core.common.ui.FieldAppBar
+import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.Hairline
+import com.eventmonitor.core.common.ui.HairlineSoft
+import com.eventmonitor.core.common.ui.SparkBar
+import com.eventmonitor.core.common.ui.capacityToneFor
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportsScreen(
     viewModel: ReportsViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
 ) {
     val haptic = rememberHapticFeedback()
     val selectedPeriod by viewModel.selectedPeriod.collectAsState()
@@ -32,486 +68,713 @@ fun ReportsScreen(
     val selectedVenue by viewModel.selectedVenue.collectAsState()
     val selectedServiceType by viewModel.selectedServiceType.collectAsState()
 
-    var showPeriodMenu by remember { mutableStateOf(false) }
-    var showBranchMenu by remember { mutableStateOf(false) }
-    var showServiceTypeMenu by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        FieldAppBar(
+            title = "Reports",
+            eyebrow = "Analytics · Dossier",
+            leading = {
+                FieldAppBarIcon(glyph = "‹", onClick = {
+                    haptic.light()
+                    onNavigateBack()
+                })
+            },
+        )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Reports & Analytics") },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        haptic.light()
-                        onNavigateBack()
-                    }) {
-                        Icon(Icons.Default.ArrowBack, "Back")
-                    }
-                },
-                actions = {
-                    // Period selector
-                    Box {
-                        TextButton(onClick = {
-                            haptic.light()
-                            showPeriodMenu = true
-                        }) {
-                            Text(selectedPeriod.displayName)
-                            Icon(Icons.Default.ArrowDropDown, "Select period", modifier = Modifier.size(20.dp))
-                        }
-                        DropdownMenu(
-                            expanded = showPeriodMenu,
-                            onDismissRequest = { showPeriodMenu = false }
-                        ) {
-                            ReportPeriod.entries.forEach { period ->
-                                DropdownMenuItem(
-                                    text = { Text(period.displayName) },
-                                    onClick = {
-                                        haptic.selection()
-                                        viewModel.selectPeriod(period)
-                                        showPeriodMenu = false
-                                    },
-                                    leadingIcon = if (period == selectedPeriod) {
-                                        { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
-                                    } else null
-                                )
-                            }
-                        }
-                    }
+        // Period segmented strip — always visible, tap to switch
+        PeriodStrip(
+            selected = selectedPeriod,
+            onSelect = {
+                haptic.selection()
+                viewModel.selectPeriod(it)
+            },
+        )
+        Hairline()
+
+        // Filter row: Venue + Type
+        FilterRow(
+            venueLabel = selectedVenue?.let { id ->
+                venues.find { it.id == id }?.name
+            } ?: "All Venues",
+            typeLabel = selectedServiceType?.let { id ->
+                eventTypes.find { it.id == id }?.name
+            } ?: "All Types",
+            venueMenu = {
+                DropdownMenuItem(
+                    text = { Text("All Venues") },
+                    onClick = {
+                        haptic.selection()
+                        viewModel.selectVenue(null)
+                        it()
+                    },
+                )
+                venues.forEach { v ->
+                    DropdownMenuItem(
+                        text = { Text(v.name) },
+                        onClick = {
+                            haptic.selection()
+                            viewModel.selectVenue(v.id)
+                            it()
+                        },
+                    )
                 }
-            )
-        }
-    ) { paddingValues ->
+            },
+            typeMenu = {
+                DropdownMenuItem(
+                    text = { Text("All Types") },
+                    onClick = {
+                        haptic.selection()
+                        viewModel.selectServiceType(null)
+                        it()
+                    },
+                )
+                eventTypes.forEach { t ->
+                    DropdownMenuItem(
+                        text = { Text(t.name) },
+                        onClick = {
+                            haptic.selection()
+                            viewModel.selectServiceType(t.id)
+                            it()
+                        },
+                    )
+                }
+            },
+        )
+        Hairline()
+
         if (reportData.totalEvents == 0) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Analytics,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                    )
-                    Text(
-                        "No data for selected period",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        "Try selecting a different time range",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            EmptyReportPanel(selectedPeriod)
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 32.dp),
             ) {
-                // Filter section
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Branch filter
-                        Box(modifier = Modifier.weight(1f)) {
-                            OutlinedButton(
-                                onClick = {
-                                    haptic.light()
-                                    showBranchMenu = true
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.LocationOn,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = selectedVenue?.let { branchId ->
-                                        venues.find { it.id == branchId }?.name ?: "All Branches"
-                                    } ?: "All Branches",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Icon(
-                                    Icons.Default.ArrowDropDown,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showBranchMenu,
-                                onDismissRequest = { showBranchMenu = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("All Branches") },
-                                    onClick = {
-                                        haptic.selection()
-                                        viewModel.selectVenue(null)
-                                        showBranchMenu = false
-                                    },
-                                    leadingIcon = if (selectedVenue == null) {
-                                        { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
-                                    } else null
-                                )
-                                venues.forEach { branch ->
-                                    DropdownMenuItem(
-                                        text = { Text(branch.name) },
-                                        onClick = {
-                                            haptic.selection()
-                                            viewModel.selectVenue(branch.id)
-                                            showBranchMenu = false
-                                        },
-                                        leadingIcon = if (selectedVenue == branch.id) {
-                                            { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
-                                        } else null
-                                    )
-                                }
-                            }
-                        }
-
-                        // Service type filter
-                        Box(modifier = Modifier.weight(1f)) {
-                            OutlinedButton(
-                                onClick = {
-                                    haptic.light()
-                                    showServiceTypeMenu = true
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Event,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = selectedServiceType?.let { eventTypeId ->
-                                        eventTypes.find { it.id == eventTypeId }?.name ?: "All Services"
-                                    } ?: "All Services",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Icon(
-                                    Icons.Default.ArrowDropDown,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showServiceTypeMenu,
-                                onDismissRequest = { showServiceTypeMenu = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("All Services") },
-                                    onClick = {
-                                        haptic.selection()
-                                        viewModel.selectServiceType(null)
-                                        showServiceTypeMenu = false
-                                    },
-                                    leadingIcon = if (selectedServiceType == null) {
-                                        { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
-                                    } else null
-                                )
-                                eventTypes.forEach { eventType ->
-                                    DropdownMenuItem(
-                                        text = { Text(eventType.name) },
-                                        onClick = {
-                                            haptic.selection()
-                                            viewModel.selectServiceType(eventType.id)
-                                            showServiceTypeMenu = false
-                                        },
-                                        leadingIcon = if (selectedServiceType == eventType.id) {
-                                            { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
-                                        } else null
-                                    )
-                                }
-                            }
-                        }
-                    }
+                item(key = "masthead") {
+                    ReportMasthead(
+                        period = selectedPeriod,
+                        totalEvents = reportData.totalEvents,
+                        totalAttendance = reportData.totalAttendance,
+                        averageAttendance = reportData.averageAttendance,
+                    )
+                    Hairline()
                 }
 
-                // Summary cards
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        SummaryCard(
-                            title = "Total\nServices",
-                            value = reportData.totalEvents.toString(),
-                            icon = Icons.Default.Event,
-                            modifier = Modifier.weight(1f)
+                if (reportData.areaStatistics.isNotEmpty()) {
+                    item(key = "section-areas") {
+                        SectionRule(title = "Area Index", note = "BY ZONE")
+                    }
+
+                    itemsIndexed(reportData.areaStatistics) { index, stat ->
+                        AreaIndexRow(
+                            index = index + 1,
+                            stat = stat,
+                            onToggle = { haptic.light() },
                         )
-                        SummaryCard(
-                            title = "Total\nAttendance",
-                            value = reportData.totalAttendance.toString(),
-                            icon = Icons.Default.People,
-                            modifier = Modifier.weight(1f)
-                        )
-                        SummaryCard(
-                            title = "Average\nAttendance",
-                            value = reportData.averageAttendance.toString(),
-                            icon = Icons.Default.TrendingUp,
-                            modifier = Modifier.weight(1f)
+                        Hairline(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+
+                    item(key = "area-footer") {
+                        AreaIndexFooter(
+                            count = reportData.areaStatistics.size,
+                            totalEvents = reportData.totalEvents,
                         )
                     }
-                }
-
-                // Area breakdown section header
-                item {
-                    Text(
-                        "Area Breakdown",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-
-                // Area statistics cards - EMPHASIZED
-                items(reportData.areaStatistics) { areaStat ->
-                    AreaStatisticsCard(
-                        areaStatistics = areaStat,
-                        haptic = haptic
-                    )
                 }
             }
         }
     }
 }
 
+// region ── Period strip ─────────────────────────────────────────────────
+
+private data class PeriodSpec(val period: ReportPeriod, val short: String, val long: String)
+
+private val PeriodSpecs = listOf(
+    PeriodSpec(ReportPeriod.LAST_7_DAYS, "7D", "Last 7 Days"),
+    PeriodSpec(ReportPeriod.LAST_30_DAYS, "30D", "Last 30 Days"),
+    PeriodSpec(ReportPeriod.LAST_90_DAYS, "90D", "Last 90 Days"),
+    PeriodSpec(ReportPeriod.THIS_YEAR, "YTD", "This Year"),
+    PeriodSpec(ReportPeriod.ALL_TIME, "ALL", "All Time"),
+)
+
 @Composable
-fun SummaryCard(
-    title: String,
-    value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    modifier: Modifier = Modifier
+private fun PeriodStrip(
+    selected: ReportPeriod,
+    onSelect: (ReportPeriod) -> Unit,
 ) {
-    Card(
-        modifier = modifier
-            .height(170.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        Text(
+            text = "RANGE",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.width(12.dp))
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            PeriodSpecs.forEachIndexed { i, spec ->
+                PeriodPill(
+                    label = spec.short,
+                    selected = spec.period == selected,
+                    onClick = { onSelect(spec.period) },
+                )
+                if (i < PeriodSpecs.lastIndex) Spacer(Modifier.width(6.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PeriodPill(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    val bg by animateColorAsState(if (selected) ink else paper, label = "periodBg")
+    val fg by animateColorAsState(if (selected) paper else ink, label = "periodFg")
+    val interaction = remember { MutableInteractionSource() }
+
+    Box(
+        modifier = Modifier
+            .border(FieldTokens.Hair, ink)
+            .background(bg)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(color = fg),
+        )
+    }
+}
+
+// endregion
+
+// region ── Filter row ───────────────────────────────────────────────────
+
+@Composable
+private fun FilterRow(
+    venueLabel: String,
+    typeLabel: String,
+    venueMenu: @Composable ((dismiss: () -> Unit) -> Unit),
+    typeMenu: @Composable ((dismiss: () -> Unit) -> Unit),
+) {
+    var showVenue by remember { mutableStateOf(false) }
+    var showType by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FilterSlot(
+            eyebrow = "VENUE",
+            value = venueLabel,
+            onClick = { showVenue = true },
+            modifier = Modifier.weight(1f),
+        ) {
+            DropdownMenu(expanded = showVenue, onDismissRequest = { showVenue = false }) {
+                venueMenu { showVenue = false }
+            }
+        }
+        VerticalHair(heightDp = 36)
+        FilterSlot(
+            eyebrow = "TYPE",
+            value = typeLabel,
+            onClick = { showType = true },
+            modifier = Modifier.weight(1f),
+        ) {
+            DropdownMenu(expanded = showType, onDismissRequest = { showType = false }) {
+                typeMenu { showType = false }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterSlot(
+    eyebrow: String,
+    value: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    menu: @Composable () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    Box(modifier = modifier) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+                .fillMaxWidth()
+                .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 4.dp),
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(36.dp),
-                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            Text(
+                text = eyebrow,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
+            Spacer(Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    value,
-                    style = MaterialTheme.typography.displayMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    text = value,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f),
                 )
                 Text(
-                    title,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    fontWeight = FontWeight.Medium,
-                    lineHeight = MaterialTheme.typography.bodySmall.fontSize * 1.3
+                    text = "▾",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
             }
+        }
+        menu()
+    }
+}
+
+// endregion
+
+// region ── Masthead + stat strip ────────────────────────────────────────
+
+@Composable
+private fun ReportMasthead(
+    period: ReportPeriod,
+    totalEvents: Int,
+    totalAttendance: Int,
+    averageAttendance: Int,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val periodLabel = PeriodSpecs.firstOrNull { it.period == period }?.long ?: period.displayName
+    val perEvent = if (totalEvents > 0) totalAttendance / totalEvents else 0
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 20.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = totalEvents.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.displayLarge.copy(
+                    fontSize = 96.sp,
+                    lineHeight = 86.sp,
+                    fontWeight = FontWeight.Light,
+                    letterSpacing = (-4).sp,
+                ),
+                color = ink,
+            )
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.padding(bottom = 10.dp)) {
+                Text(
+                    text = "Records",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontStyle = FontStyle.Italic),
+                    color = ink,
+                )
+                Text(
+                    text = "in range".uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = muted,
+                )
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "§ $periodLabel".uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = muted,
+            )
+            Box(
+                modifier = Modifier
+                    .size(width = 6.dp, height = 6.dp)
+                    .background(Signal),
+            )
+        }
+
+        Spacer(Modifier.height(18.dp))
+        HairlineSoft()
+        Spacer(Modifier.height(14.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            StatCell(
+                label = "Attendance",
+                value = formatCompact(totalAttendance),
+                modifier = Modifier.weight(1f),
+            )
+            VerticalHair()
+            StatCell(
+                label = "Avg / Event",
+                value = averageAttendance.toString(),
+                modifier = Modifier.weight(1f),
+            )
+            VerticalHair()
+            StatCell(
+                label = "Per-Event",
+                value = perEvent.toString(),
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
 
 @Composable
-fun AreaStatisticsCard(
-    areaStatistics: AreaStatistics,
-    haptic: HapticFeedbackHelper
+private fun StatCell(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.padding(horizontal = 10.dp)) {
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+    }
+}
+
+@Composable
+private fun VerticalHair(heightDp: Int = 42) {
+    Box(
+        Modifier
+            .width(FieldTokens.Hair)
+            .height(heightDp.dp)
+            .background(MaterialTheme.colorScheme.outline),
+    )
+}
+
+// endregion
+
+// region ── Section rule ─────────────────────────────────────────────────
+
+@Composable
+private fun SectionRule(title: String, note: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 20.dp, bottom = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineMedium.copy(fontStyle = FontStyle.Italic),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = note,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+        }
+        Hairline()
+    }
+}
+
+// endregion
+
+// region ── Area index row ───────────────────────────────────────────────
+
+@Composable
+private fun AreaIndexRow(
+    index: Int,
+    stat: AreaStatistics,
+    onToggle: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val interaction = remember { MutableInteractionSource() }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            // Area name and counts in compact layout
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Area name
-                Text(
-                    text = areaStatistics.areaName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f)
-                )
+    val pct = if (stat.capacity > 0) {
+        (stat.averageCount.toFloat() / stat.capacity).coerceIn(0f, 1f)
+    } else 0f
+    val pctInt = (pct * 100).toInt()
+    val pctTone = capacityToneFor(pct)
 
-                // Average count - EMPHASIZED
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = areaStatistics.averageCount.toString(),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "avg",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+    val animatedPct by animateFloatAsState(
+        targetValue = pct,
+        animationSpec = tween(durationMillis = 560),
+        label = "areaPct",
+    )
 
-                    // Total count - smaller
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = areaStatistics.totalCount.toString(),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Text(
-                                text = "total",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Capacity utilization bar
-            if (areaStatistics.capacity > 0) {
-                val utilizationPercentage = (areaStatistics.averageCount.toFloat() / areaStatistics.capacity * 100).toInt()
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    LinearProgressIndicator(
-                        progress = (utilizationPercentage / 100f).coerceIn(0f, 1f),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(6.dp),
-                        color = when {
-                            utilizationPercentage < 50 -> MaterialTheme.colorScheme.tertiary
-                            utilizationPercentage < 80 -> MaterialTheme.colorScheme.primary
-                            else -> MaterialTheme.colorScheme.error
-                        },
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                    Text(
-                        text = "$utilizationPercentage%",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = when {
-                            utilizationPercentage < 50 -> MaterialTheme.colorScheme.tertiary
-                            utilizationPercentage < 80 -> MaterialTheme.colorScheme.primary
-                            else -> MaterialTheme.colorScheme.error
-                        }
-                    )
-                }
-            }
-
-            // Expandable details section
-            if (expanded) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Divider()
-                Spacer(modifier = Modifier.height(8.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    DetailRow("Services counted", areaStatistics.eventsCount.toString())
-                    DetailRow("Highest count", areaStatistics.maxCount.toString())
-                    DetailRow("Lowest count", areaStatistics.minCount.toString())
-                    DetailRow("Capacity", areaStatistics.capacity.toString())
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-
-            // Expand/collapse button
-            TextButton(
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
                 onClick = {
-                    haptic.light()
                     expanded = !expanded
+                    onToggle()
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(0.dp),
-                contentPadding = PaddingValues(4.dp)
-            ) {
+            )
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            // Index column
+            Column(modifier = Modifier.width(40.dp)) {
                 Text(
-                    if (expanded) "Less" else "More",
-                    style = MaterialTheme.typography.labelSmall
+                    text = index.toString().padStart(2, '0'),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = muted,
                 )
-                Icon(
-                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
+                Spacer(Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .width(10.dp)
+                        .height(FieldTokens.HairStrong)
+                        .background(ink),
                 )
             }
+
+            Spacer(Modifier.width(8.dp))
+
+            // Name + capacity row
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stat.areaName,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = ink,
+                    maxLines = 2,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = buildString {
+                        append("CAP ${stat.capacity}")
+                        append("   ·   ")
+                        append("${stat.eventsCount} EVT")
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = muted,
+                )
+
+                if (stat.capacity > 0) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SparkBar(
+                            progress = animatedPct,
+                            modifier = Modifier.weight(1f),
+                            height = 3.dp,
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = "$pctInt%".padStart(4, ' '),
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                            color = pctTone,
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            // Avg — big serif
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = stat.averageCount.toString(),
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontSize = 44.sp,
+                        lineHeight = 42.sp,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    color = ink,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "AVG",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = muted,
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn(tween(180)) + expandVertically(tween(200)),
+            exit = fadeOut(tween(120)) + shrinkVertically(tween(160)),
+        ) {
+            Column(modifier = Modifier.padding(start = 48.dp, top = 14.dp)) {
+                HairlineSoft()
+                Spacer(Modifier.height(10.dp))
+                DetailGrid(stat)
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 48.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = if (expanded) "◂ COLLAPSE" else "EXPAND ▸",
+                style = MoreAffordance,
+                color = muted,
+            )
+            Text(
+                text = "TOTAL ${formatCompact(stat.totalCount)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = muted,
+            )
         }
     }
 }
 
+private val MoreAffordance = MonoTiny
+
 @Composable
-fun DetailRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+private fun DetailGrid(stat: AreaStatistics) {
+    Column {
+        DetailLine(
+            "Peak count",
+            stat.maxCount.toString(),
+            hot = stat.capacity > 0 && stat.maxCount >= stat.capacity
         )
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold
+        HairlineSoft()
+        DetailLine("Low count", stat.minCount.toString())
+        HairlineSoft()
+        DetailLine("Events logged", stat.eventsCount.toString())
+        HairlineSoft()
+        DetailLine("Capacity", stat.capacity.toString())
+        HairlineSoft()
+        DetailLine(
+            label = "Headroom",
+            value = (stat.capacity - stat.averageCount).let { if (it < 0) "—${-it}" else "$it" },
         )
     }
 }
+
+@Composable
+private fun DetailLine(label: String, value: String, hot: Boolean = false) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            color = if (hot) Signal else MaterialTheme.colorScheme.onBackground,
+            fontWeight = if (hot) FontWeight.SemiBold else FontWeight.Medium,
+        )
+    }
+}
+
+// endregion
+
+// region ── Index footer + empty ─────────────────────────────────────────
+
+@Composable
+private fun AreaIndexFooter(count: Int, totalEvents: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .navigationBarsPadding(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = "END · ${count.toString().padStart(2, '0')} ZONES",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = "${totalEvents.toString().padStart(2, '0')} EVENTS OBSERVED",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun EmptyReportPanel(period: ReportPeriod) {
+    val periodLabel = PeriodSpecs.firstOrNull { it.period == period }?.long ?: period.displayName
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 28.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.Start,
+    ) {
+        Text(
+            text = "No records\nin range.",
+            style = MaterialTheme.typography.displaySmall.copy(
+                fontStyle = FontStyle.Italic,
+                fontSize = 40.sp,
+                lineHeight = 42.sp,
+            ),
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Spacer(Modifier.height(16.dp))
+        HairlineSoft()
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = "§ ${periodLabel.uppercase()}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "Widen the range or change the venue · type filters to pull in more data.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+// endregion
+
+// region ── Helpers ──────────────────────────────────────────────────────
+
+private fun formatCompact(value: Int): String = when {
+    value >= 1_000_000 -> "%.1fM".format(value / 1_000_000f).removeSuffix(".0M").let {
+        if (it.endsWith("M")) it else "${it}M"
+    }
+
+    value >= 10_000 -> "${value / 1_000}K"
+    value >= 1_000 -> "%.1fK".format(value / 1_000f).removeSuffix(".0K").let {
+        if (it.endsWith("K")) it else "${it}K"
+    }
+
+    else -> value.toString()
+}
+
+// endregion
