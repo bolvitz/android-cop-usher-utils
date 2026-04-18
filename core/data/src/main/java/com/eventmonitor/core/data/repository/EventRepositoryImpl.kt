@@ -3,22 +3,26 @@ package com.eventmonitor.core.data.repository
 import androidx.room.withTransaction
 import com.eventmonitor.core.data.local.dao.AreaCountDao
 import com.eventmonitor.core.data.local.dao.AreaTemplateDao
-import com.eventmonitor.core.data.local.dao.VenueDao
 import com.eventmonitor.core.data.local.dao.EventDao
+import com.eventmonitor.core.data.local.dao.VenueDao
 import com.eventmonitor.core.data.local.database.AppDatabase
 import com.eventmonitor.core.data.local.entities.AreaCountEntity
 import com.eventmonitor.core.data.local.entities.EventEntity
-import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.data.local.entities.EventWithAreaCounts
+import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.data.models.CountHistoryItem
-import com.eventmonitor.core.domain.models.ServiceType
 import com.eventmonitor.core.data.repository.interfaces.EventRepository
+import com.eventmonitor.core.domain.models.ServiceType
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
 
 class EventRepositoryImpl @Inject constructor(
@@ -192,8 +196,8 @@ class EventRepositoryImpl @Inject constructor(
         eventDao.deleteEventById(eventId)
     }
 
-    override suspend fun exportEventReport(eventId: String): String {
-        val eventWithDetails = eventDao.getEventById(eventId).first() ?: return ""
+    override suspend fun exportEventReport(eventId: String): String = withContext(Dispatchers.IO) {
+        val eventWithDetails = eventDao.getEventById(eventId).first() ?: return@withContext ""
 
         val event = eventWithDetails.event
         val venue = eventWithDetails.venue
@@ -212,7 +216,7 @@ class EventRepositoryImpl @Inject constructor(
             (totalCount.toFloat() / totalCapacity * 100).toInt()
         } else 0
 
-        return buildString {
+        buildString {
             // Header
             appendLine("HEAD COUNT REPORT")
             appendLine(venue.name.uppercase())
@@ -289,7 +293,7 @@ class EventRepositoryImpl @Inject constructor(
         venueIds: List<String>,
         startDate: Long,
         endDate: Long
-    ): String {
+    ): String = withContext(Dispatchers.IO) {
         val venues = venueIds.mapNotNull { venueId ->
             venueDao.getVenueById(venueId).first()
         }
@@ -304,7 +308,7 @@ class EventRepositoryImpl @Inject constructor(
 
         val dateFormat = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
 
-        return buildString {
+        buildString {
             appendLine("MULTI-VENUE ATTENDANCE COMPARISON")
             appendLine("=".repeat(60))
             appendLine("Period: ${dateFormat.format(Date(startDate))} - ${dateFormat.format(Date(endDate))}")

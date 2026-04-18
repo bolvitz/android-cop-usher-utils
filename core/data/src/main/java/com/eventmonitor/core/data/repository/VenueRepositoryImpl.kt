@@ -1,20 +1,19 @@
 package com.eventmonitor.core.data.repository
 
 import com.eventmonitor.core.data.local.dao.AreaTemplateDao
-import com.eventmonitor.core.data.local.dao.VenueDao
 import com.eventmonitor.core.data.local.dao.EventDao
+import com.eventmonitor.core.data.local.dao.VenueDao
 import com.eventmonitor.core.data.local.entities.AreaTemplateEntity
 import com.eventmonitor.core.data.local.entities.VenueEntity
 import com.eventmonitor.core.data.local.entities.VenueWithAreas
+import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import com.eventmonitor.core.domain.common.AppError
 import com.eventmonitor.core.domain.common.Result
 import com.eventmonitor.core.domain.common.resultOf
 import com.eventmonitor.core.domain.models.AreaType
-import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import com.eventmonitor.core.domain.validation.DomainValidators
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import java.util.UUID
 import javax.inject.Inject
 
@@ -152,7 +151,7 @@ class VenueRepositoryImpl @Inject constructor(
             return Result.Error(
                 AppError.HasDependencies(
                     resource = "Venue",
-                    dependencyCount = eventDao.getRecentEventsByVenue(venueId, 999).first().size,
+                    dependencyCount = eventDao.countByVenueId(venueId),
                     dependencyType = "events"
                 )
             )

@@ -3,42 +3,79 @@ package com.eventmonitor.feature.incidents.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.eventmonitor.core.common.theme.Amber
+import com.eventmonitor.core.common.theme.MonoTiny
+import com.eventmonitor.core.common.theme.Navy
+import com.eventmonitor.core.common.theme.Sage
+import com.eventmonitor.core.common.theme.Signal
+import com.eventmonitor.core.common.ui.FieldAppBar
+import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.Hairline
+import com.eventmonitor.core.common.ui.HairlineSoft
+import com.eventmonitor.core.common.ui.ZoneChip
+import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import com.eventmonitor.core.data.local.entities.IncidentEntity
 import com.eventmonitor.core.domain.models.IncidentSeverity
 import com.eventmonitor.core.domain.models.IncidentStatus
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ═════════════════════════════════════════════════════════════════════════════
+// INCIDENT DESK — editorial redesign for the Incident Reports screen.
+//   1. FieldAppBar     — [←] eyebrow "INCIDENTS" title "DESK" trailing [⌕]
+//   2. Headline        — "§ INCIDENT DESK" · "Record what went wrong." · count
+//   3. Severity strip  — CRIT / HIGH / MED / LOW colour counts
+//   4. Filter rails    — STATUS rail, then SEVERITY rail, then optional inline search
+//   5. Section heads   — grouped by status ("§ OPEN · 04" + oversize count)
+//   6. Incident rows   — fractional index + severity stripe + title/meta + sev pill
+//   7. Bottom rail     — [+ NEW INCIDENT] [⌕ FIND]
+// ═════════════════════════════════════════════════════════════════════════════
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun IncidentListScreen(
     onNavigateBack: () -> Unit,
@@ -52,557 +89,911 @@ fun IncidentListScreen(
     val selectedStatus by viewModel.selectedStatus.collectAsState()
     val selectedSeverity by viewModel.selectedSeverity.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
 
-    var showFilterMenu by remember { mutableStateOf(false) }
-    var searchText by remember { mutableStateOf("") }
+    var searchOpen by remember { mutableStateOf(false) }
+    val haptic = rememberHapticFeedback()
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = { Text("Incident Reports") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
-                    }
+            FieldAppBar(
+                title = "DESK",
+                eyebrow = "§ INCIDENTS",
+                leading = {
+                    FieldAppBarIcon(glyph = "←", onClick = {
+                        haptic.light(); onNavigateBack()
+                    })
                 },
-                actions = {
-                    IconButton(onClick = { showFilterMenu = true }) {
-                        Icon(Icons.Default.FilterList, "Filter")
-                        if (selectedStatus != null || selectedSeverity != null) {
-                            Badge()
-                        }
-                    }
-                }
+                trailing = {
+                    FieldAppBarIcon(
+                        glyph = if (searchOpen) "×" else "⌕",
+                        onClick = {
+                            haptic.light()
+                            if (searchOpen) viewModel.searchIncidents("")
+                            searchOpen = !searchOpen
+                        },
+                    )
+                },
             )
         },
-        floatingActionButton = {
+        bottomBar = {
             if (venueId != null) {
-                FloatingActionButton(
-                    onClick = { onNavigateToAddIncident(venueId) }
-                ) {
-                    Icon(Icons.Default.Add, "Report Incident")
-                }
+                DeskActionRail(
+                    onAdd = {
+                        haptic.medium(); onNavigateToAddIncident(venueId)
+                    },
+                    onFind = {
+                        haptic.light(); searchOpen = !searchOpen
+                        if (!searchOpen) viewModel.searchIncidents("")
+                    },
+                )
             }
-        }
+        },
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(padding),
         ) {
-            // Search bar
-            OutlinedTextField(
-                value = searchText,
-                onValueChange = {
-                    searchText = it
-                    viewModel.searchIncidents(it)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                placeholder = { Text("Search incidents...") },
-                leadingIcon = { Icon(Icons.Default.Search, "Search") },
-                trailingIcon = {
-                    if (searchText.isNotEmpty()) {
-                        IconButton(onClick = {
-                            searchText = ""
-                            viewModel.searchIncidents("")
-                        }) {
-                            Icon(Icons.Default.Clear, "Clear")
-                        }
-                    }
-                },
-                singleLine = true
-            )
-
-            // Active filters
-            if (selectedStatus != null || selectedSeverity != null) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    selectedStatus?.let { status ->
-                        FilterChip(
-                            selected = true,
-                            onClick = { viewModel.filterByStatus(null) },
-                            label = { Text(IncidentStatus.fromString(status).displayName) },
-                            trailingIcon = { Icon(Icons.Default.Close, "Remove") }
-                        )
-                    }
-                    selectedSeverity?.let { severity ->
-                        FilterChip(
-                            selected = true,
-                            onClick = { viewModel.filterBySeverity(null) },
-                            label = { Text(IncidentSeverity.fromString(severity).displayName) },
-                            trailingIcon = { Icon(Icons.Default.Close, "Remove") }
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            // Content
             when (val state = uiState) {
-                is IncidentListUiState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-                is IncidentListUiState.Empty -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.outline
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                "No incidents found",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
-                    }
-                }
-                is IncidentListUiState.Success -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(state.incidents) { incident ->
-                            IncidentCard(
-                                incident = incident,
-                                onClick = { onNavigateToIncidentDetail(incident.id) },
-                                onEdit = {
-                                    venueId?.let { onNavigateToEditIncident(it, incident.id) }
-                                }
-                            )
-                        }
-                    }
-                }
-                is IncidentListUiState.Error -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            state.message,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-        }
-
-        // Filter menu
-        if (showFilterMenu) {
-            FilterDialog(
-                selectedStatus = selectedStatus,
-                selectedSeverity = selectedSeverity,
-                onDismiss = { showFilterMenu = false },
-                onFilterByStatus = {
-                    viewModel.filterByStatus(it)
-                    showFilterMenu = false
-                },
-                onFilterBySeverity = {
-                    viewModel.filterBySeverity(it)
-                    showFilterMenu = false
-                }
-            )
-        }
-
-        // Error snackbar
-        errorMessage?.let { error ->
-            Snackbar(
-                modifier = Modifier.padding(16.dp),
-                action = {
-                    TextButton(onClick = { viewModel.clearError() }) {
-                        Text("Dismiss")
-                    }
-                }
-            ) {
-                Text(error)
-            }
-        }
-    }
-}
-
-@Composable
-fun IncidentCard(
-    incident: IncidentEntity,
-    onClick: () -> Unit,
-    onEdit: () -> Unit = {}
-) {
-    val severity = IncidentSeverity.fromString(incident.severity)
-    val status = IncidentStatus.fromString(incident.status)
-    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-    val severityColor = Color(android.graphics.Color.parseColor(severity.color))
-    val statusColor = Color(android.graphics.Color.parseColor(status.color))
-
-    // Can only edit if not resolved or closed
-    val canEdit = status != IncidentStatus.RESOLVED && status != IncidentStatus.CLOSED
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Colored left border indicating severity
-            Box(
-                modifier = Modifier
-                    .width(6.dp)
-                    .height(IntrinsicSize.Min)
-                    .background(severityColor)
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                // Header: Title with severity icon and badge
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Severity icon
-                        Icon(
-                            imageVector = when (severity) {
-                                IncidentSeverity.CRITICAL -> Icons.Default.Error
-                                IncidentSeverity.HIGH -> Icons.Default.Warning
-                                IncidentSeverity.MEDIUM -> Icons.Default.Info
-                                IncidentSeverity.LOW -> Icons.Default.CheckCircle
-                            },
-                            contentDescription = null,
-                            tint = severityColor,
-                            modifier = Modifier.size(24.dp)
-                        )
-
-                        Text(
-                            text = incident.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    SeverityBadge(severity)
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Description with better styling
-                Text(
-                    text = incident.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 3,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
+                is IncidentListUiState.Loading -> LoadingPanel()
+                is IncidentListUiState.Empty -> EmptyDesk(
+                    hasFilter = selectedStatus != null || selectedSeverity != null || searchQuery.isNotBlank(),
+                    onAdd = { venueId?.let { onNavigateToAddIncident(it) } },
+                    onClearFilters = {
+                        viewModel.filterByStatus(null)
+                        viewModel.filterBySeverity(null)
+                        viewModel.searchIncidents("")
+                        searchOpen = false
+                    },
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                is IncidentListUiState.Success -> IncidentDesk(
+                    incidents = state.incidents,
+                    selectedStatus = selectedStatus,
+                    selectedSeverity = selectedSeverity,
+                    searchQuery = searchQuery,
+                    searchOpen = searchOpen,
+                    onStatusFilter = { viewModel.filterByStatus(it) },
+                    onSeverityFilter = { viewModel.filterBySeverity(it) },
+                    onSearch = viewModel::searchIncidents,
+                    onRowClick = onNavigateToIncidentDetail,
+                    onEdit = { id -> venueId?.let { onNavigateToEditIncident(it, id) } },
+                )
 
-                // Info section with cards
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Location card
-                    if (incident.location.isNotEmpty()) {
-                        Surface(
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.LocationOn,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                Column {
-                                    Text(
-                                        text = "Location",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = incident.location,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Category card
-                    if (incident.category.isNotEmpty()) {
-                        Surface(
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Category,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.secondary
-                                )
-                                Column {
-                                    Text(
-                                        text = "Category",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = incident.category,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Reporter and date info
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Reporter
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.outline
-                        )
-                        Text(
-                            text = if (incident.reportedBy.isNotEmpty()) incident.reportedBy else "Anonymous",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    // Date and time
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Schedule,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.outline
-                        )
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = dateFormat.format(Date(incident.reportedAt)),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = timeFormat.format(Date(incident.reportedAt)),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                        }
-                    }
-                }
-
-                // Status badge at bottom
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    StatusBadge(status)
-
-                    // Edit button or resolved time
-                    if (canEdit) {
-                        IconButton(
-                            onClick = onEdit,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "Edit",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    } else {
-                        // Resolved time if applicable
-                        incident.resolvedAt?.let { resolvedAt ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = statusColor
-                                )
-                                Text(
-                                    text = "Resolved ${dateFormat.format(Date(resolvedAt))}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = statusColor,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-                }
+                is IncidentListUiState.Error -> ErrorPanel(state.message)
             }
         }
     }
 }
 
-@Composable
-fun SeverityBadge(severity: IncidentSeverity) {
-    val color = Color(android.graphics.Color.parseColor(severity.color))
-
-    Surface(
-        color = color.copy(alpha = 0.2f),
-        shape = RoundedCornerShape(4.dp),
-        modifier = Modifier.border(1.dp, color, RoundedCornerShape(4.dp))
-    ) {
-        Text(
-            text = severity.displayName,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = color,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-fun StatusBadge(status: IncidentStatus) {
-    val color = Color(android.graphics.Color.parseColor(status.color))
-
-    Surface(
-        color = color.copy(alpha = 0.2f),
-        shape = RoundedCornerShape(4.dp),
-        modifier = Modifier.border(1.dp, color, RoundedCornerShape(4.dp))
-    ) {
-        Text(
-            text = status.displayName,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = color,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
+// ---------------------------------------------------------------------------
+// Desk body
+// ---------------------------------------------------------------------------
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun FilterDialog(
+private fun IncidentDesk(
+    incidents: List<IncidentEntity>,
     selectedStatus: String?,
     selectedSeverity: String?,
-    onDismiss: () -> Unit,
-    onFilterByStatus: (String?) -> Unit,
-    onFilterBySeverity: (String?) -> Unit
+    searchQuery: String,
+    searchOpen: Boolean,
+    onStatusFilter: (String?) -> Unit,
+    onSeverityFilter: (String?) -> Unit,
+    onSearch: (String) -> Unit,
+    onRowClick: (String) -> Unit,
+    onEdit: (String) -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Filter Incidents") },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text("By Status:", style = MaterialTheme.typography.titleSmall)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = selectedStatus == null,
-                        onClick = { onFilterByStatus(null) },
-                        label = { Text("All") }
-                    )
-                    IncidentStatus.entries.forEach { status ->
-                        FilterChip(
-                            selected = selectedStatus == status.name,
-                            onClick = { onFilterByStatus(status.name) },
-                            label = { Text(status.displayName) }
-                        )
-                    }
-                }
+    val statusCounts = remember(incidents) {
+        IncidentStatus.entries.associateWith { s -> incidents.count { it.status == s.name } }
+    }
+    val sevCounts = remember(incidents) {
+        IncidentSeverity.entries.associateWith { s -> incidents.count { it.severity == s.name } }
+    }
 
-                Spacer(modifier = Modifier.height(8.dp))
+    val grouped = incidents
+        .sortedByDescending { it.reportedAt }
+        .groupBy { IncidentStatus.fromString(it.status) }
+    val statusOrder = listOf(
+        IncidentStatus.REPORTED,
+        IncidentStatus.INVESTIGATING,
+        IncidentStatus.IN_PROGRESS,
+        IncidentStatus.RESOLVED,
+        IncidentStatus.CLOSED,
+    )
 
-                Text("By Severity:", style = MaterialTheme.typography.titleSmall)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = selectedSeverity == null,
-                        onClick = { onFilterBySeverity(null) },
-                        label = { Text("All") }
-                    )
-                    IncidentSeverity.entries.forEach { severity ->
-                        FilterChip(
-                            selected = selectedSeverity == severity.name,
-                            onClick = { onFilterBySeverity(severity.name) },
-                            label = { Text(severity.displayName) }
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .navigationBarsPadding(),
+        contentPadding = PaddingValues(bottom = 32.dp),
+    ) {
+        item(key = "headline") { DeskHeadline(total = incidents.size) }
+        item(key = "strip") { SeverityStrip(counts = sevCounts) }
+        item(key = "status-rail") {
+            StatusFilterRail(
+                selected = selectedStatus,
+                counts = statusCounts,
+                onSelect = onStatusFilter,
+            )
+        }
+        item(key = "sev-rail") {
+            SeverityFilterRail(
+                selected = selectedSeverity,
+                counts = sevCounts,
+                onSelect = onSeverityFilter,
+            )
+        }
+        if (searchOpen) {
+            item(key = "search") {
+                InlineSearch(query = searchQuery, onChange = onSearch)
             }
         }
+
+        statusOrder.forEach { status ->
+            val group = grouped[status].orEmpty()
+            if (group.isNotEmpty()) {
+                item(key = "sect-${status.name}") {
+                    StatusSectionHeader(status = status, count = group.size)
+                }
+                group.forEachIndexed { idx, inc ->
+                    item(key = "row-${inc.id}") {
+                        IncidentRow(
+                            incident = inc,
+                            rowIndex = idx + 1,
+                            total = group.size,
+                            onClick = { onRowClick(inc.id) },
+                            onEdit = { onEdit(inc.id) },
+                        )
+                    }
+                }
+            }
+        }
+
+        item(key = "colophon") {
+            DeskColophon(total = incidents.size, visible = incidents.size)
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Headline + severity strip
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun DeskHeadline(total: Int) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 18.dp, bottom = 10.dp),
+    ) {
+        Text(
+            "§ INCIDENT DESK",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(
+                "Record what went wrong.",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = total.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Every report lands here first. Triage by status, filter by severity, tap a row to read the file.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun SeverityStrip(counts: Map<IncidentSeverity, Int>) {
+    Hairline()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 12.dp, bottom = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        StripCell(
+            "CRIT",
+            (counts[IncidentSeverity.CRITICAL] ?: 0).toString(),
+            Signal,
+            Modifier.weight(1f)
+        )
+        StripDivider()
+        StripCell(
+            "HIGH",
+            (counts[IncidentSeverity.HIGH] ?: 0).toString(),
+            Amber,
+            Modifier.weight(1f)
+        )
+        StripDivider()
+        StripCell(
+            "MED",
+            (counts[IncidentSeverity.MEDIUM] ?: 0).toString(),
+            Navy,
+            Modifier.weight(1f)
+        )
+        StripDivider()
+        StripCell("LOW", (counts[IncidentSeverity.LOW] ?: 0).toString(), Sage, Modifier.weight(1f))
+    }
+    Hairline()
+}
+
+@Composable
+private fun StripCell(label: String, value: String, tone: Color, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier
+                .size(6.dp)
+                .background(tone))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                label,
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+    }
+}
+
+@Composable
+private fun StripDivider() {
+    Box(
+        Modifier
+            .width(FieldTokens.Hair)
+            .height(30.dp)
+            .background(MaterialTheme.colorScheme.outline),
     )
+}
+
+// ---------------------------------------------------------------------------
+// Filter rails
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun StatusFilterRail(
+    selected: String?,
+    counts: Map<IncidentStatus, Int>,
+    onSelect: (String?) -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 14.dp, bottom = 6.dp),
+        ) {
+            Text(
+                "STATUS /",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            val total = counts.values.sum()
+            ZoneChip(
+                label = "ALL · $total",
+                selected = selected == null,
+                onClick = { onSelect(null) },
+            )
+            IncidentStatus.entries.forEach { status ->
+                val n = counts[status] ?: 0
+                ZoneChip(
+                    label = "${statusTag(status)} · $n",
+                    selected = selected == status.name,
+                    onClick = { onSelect(if (selected == status.name) null else status.name) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SeverityFilterRail(
+    selected: String?,
+    counts: Map<IncidentSeverity, Int>,
+    onSelect: (String?) -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 4.dp, bottom = 6.dp),
+        ) {
+            Text(
+                "SEVERITY /",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            ZoneChip(
+                label = "ANY",
+                selected = selected == null,
+                onClick = { onSelect(null) },
+            )
+            IncidentSeverity.entries.reversed().forEach { sev ->
+                val n = counts[sev] ?: 0
+                ZoneChip(
+                    label = "${severityTag(sev)} · $n",
+                    selected = selected == sev.name,
+                    onClick = { onSelect(if (selected == sev.name) null else sev.name) },
+                )
+            }
+        }
+        HairlineSoft()
+    }
+}
+
+@Composable
+private fun InlineSearch(query: String, onChange: (String) -> Unit) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 14.dp, bottom = 14.dp),
+    ) {
+        Text(
+            "⌕  SEARCH INCIDENTS",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(6.dp))
+        BasicTextField(
+            value = query,
+            onValueChange = onChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.headlineSmall.copy(color = ink),
+            cursorBrush = SolidColor(ink),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 44.dp),
+            decorationBox = { inner ->
+                Column {
+                    Box(Modifier.padding(vertical = 6.dp)) {
+                        if (query.isEmpty()) {
+                            Text(
+                                "slip, fire alarm, medical…",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        inner()
+                    }
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(FieldTokens.Hair)
+                            .background(ink),
+                    )
+                }
+            },
+        )
+    }
+    HairlineSoft()
+}
+
+// ---------------------------------------------------------------------------
+// Section header + incident row
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun StatusSectionHeader(status: IncidentStatus, count: Int) {
+    val tone = statusTone(status)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 24.dp, bottom = 6.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier
+                        .size(8.dp)
+                        .background(tone))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "§ ${statusTag(status)} · ${count.toString().padStart(2, '0')}",
+                        style = MonoTiny,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    sectionTitle(status),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
+            Text(
+                text = count.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+    }
+    Hairline()
+}
+
+@Composable
+private fun IncidentRow(
+    incident: IncidentEntity,
+    rowIndex: Int,
+    total: Int,
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val severity = IncidentSeverity.fromString(incident.severity)
+    val status = IncidentStatus.fromString(incident.status)
+    val sevTone = severityTone(severity)
+    val statusT = statusTone(status)
+
+    val dateFmt = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
+    val timeFmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    val canEdit = status != IncidentStatus.RESOLVED && status != IncidentStatus.CLOSED
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .clickable { onClick() },
+    ) {
+        // Severity stripe — the only hard colour on the page, aligned with CaseLedger restraint
+        Box(
+            modifier = Modifier
+                .width(FieldTokens.Lane)
+                .fillMaxWidth()
+                .background(sevTone),
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 17.dp, vertical = 14.dp),
+        ) {
+            Row(verticalAlignment = Alignment.Top) {
+                Column(modifier = Modifier.width(54.dp)) {
+                    Text(
+                        text = rowIndex.toString().padStart(2, '0'),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = MonoTiny.fontFamily,
+                        ),
+                        color = ink,
+                    )
+                    Text(
+                        text = "/ ${total.toString().padStart(2, '0')}",
+                        style = MonoTiny,
+                        color = muted,
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = incident.title.ifBlank { "—" },
+                        style = MaterialTheme.typography.titleLarge,
+                        color = ink,
+                    )
+                    if (incident.description.isNotBlank()) {
+                        Spacer(Modifier.height(3.dp))
+                        Text(
+                            text = incident.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = muted,
+                            maxLines = 2,
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = buildString {
+                            append(incident.location.ifBlank { "—" }.uppercase())
+                            append("   ·   ")
+                            append(dateFmt.format(Date(incident.reportedAt)).uppercase())
+                            append(" ")
+                            append(timeFmt.format(Date(incident.reportedAt)))
+                            if (incident.category.isNotBlank()) {
+                                append("   ·   ")
+                                append(incident.category.uppercase())
+                            }
+                        },
+                        style = MonoTiny,
+                        color = muted,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "FILED · ${if (incident.reportedBy.isBlank()) "ANON" else incident.reportedBy.uppercase()}",
+                        style = MonoTiny,
+                        color = muted,
+                    )
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    modifier = Modifier.width(92.dp),
+                ) {
+                    SeverityPill(severity)
+                    Spacer(Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier
+                            .size(8.dp)
+                            .background(statusT))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = statusTag(status),
+                            style = MonoTiny,
+                            color = ink,
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "ID ${incident.id.take(6).uppercase()}",
+                        style = MonoTiny,
+                        color = muted,
+                    )
+                }
+            }
+
+            // Action chips
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (canEdit) {
+                    RowActionChip(label = "EDIT", primary = true, onClick = onEdit)
+                }
+                RowActionChip(label = "OPEN FILE", primary = false, onClick = onClick)
+                if (status == IncidentStatus.RESOLVED || status == IncidentStatus.CLOSED) {
+                    incident.resolvedAt?.let { resolved ->
+                        Spacer(Modifier.width(2.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(start = 4.dp),
+                        ) {
+                            Text("↳ ", style = MonoTiny, color = Sage)
+                            Text(
+                                "RESOLVED ${dateFmt.format(Date(resolved)).uppercase()}",
+                                style = MonoTiny,
+                                color = Sage,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+    HairlineSoft()
+}
+
+@Composable
+private fun RowActionChip(
+    label: String,
+    primary: Boolean,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    Box(
+        modifier = Modifier
+            .alpha(if (enabled) 1f else 0.35f)
+            .border(FieldTokens.Hair, ink)
+            .background(if (primary) ink else paper)
+            .clickable(enabled = enabled) { onClick() }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (primary) paper else ink,
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Bottom rail · empty · loading · error · colophon
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun DeskActionRail(onAdd: () -> Unit, onFind: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .windowInsetsPadding(WindowInsets.navigationBars),
+    ) {
+        Hairline()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            RailButton(
+                label = "+  NEW INCIDENT",
+                inverted = true,
+                onClick = onAdd,
+                modifier = Modifier.weight(1f),
+            )
+            RailButton(
+                label = "⌕  FIND",
+                inverted = false,
+                onClick = onFind,
+                modifier = Modifier.width(120.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RailButton(
+    label: String,
+    inverted: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    Box(
+        modifier = modifier
+            .height(FieldTokens.ToolHeight)
+            .border(FieldTokens.Hair, ink)
+            .background(if (inverted) ink else paper)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (inverted) paper else ink,
+        )
+    }
+}
+
+@Composable
+private fun EmptyDesk(
+    hasFilter: Boolean,
+    onAdd: () -> Unit,
+    onClearFilters: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+    ) {
+        Text(
+            "§ INCIDENT DESK",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            if (hasFilter) "No matches." else "Desk is clear.",
+            style = MaterialTheme.typography.displaySmall,
+            color = ink,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            if (hasFilter) "Loosen the filters or widen the search window."
+            else "Nothing has been reported. Tap + below to file the first incident.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(22.dp))
+        Hairline()
+        Spacer(Modifier.height(22.dp))
+
+        if (hasFilter) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(FieldTokens.Hair, ink)
+                    .clickable { onClearFilters() }
+                    .padding(vertical = 18.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("CLEAR FILTERS", style = MaterialTheme.typography.labelMedium, color = ink)
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(ink)
+                    .clickable { onAdd() }
+                    .padding(horizontal = 18.dp, vertical = 20.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("START", style = MonoTiny, color = paper.copy(alpha = 0.55f))
+                        Text(
+                            "File first incident",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = paper,
+                        )
+                    }
+                    Text(
+                        "+",
+                        style = MaterialTheme.typography.displaySmall,
+                        color = paper,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingPanel() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.onBackground,
+                strokeWidth = 2.dp,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "OPENING INCIDENT DESK…",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ErrorPanel(message: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("§ ERROR", style = MonoTiny, color = Signal)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            message,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun DeskColophon(total: Int, visible: Int) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Hairline(color = MaterialTheme.colorScheme.outline)
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("DESK CLOSED", style = MonoTiny, color = Sage)
+            Text(
+                "$visible / $total REPORTS SHOWN",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            "― FIELD · INCIDENTS ―",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Shared severity / status helpers
+// ---------------------------------------------------------------------------
+
+@Composable
+internal fun SeverityPill(severity: IncidentSeverity) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    val tone = severityTone(severity)
+    val filled = severity == IncidentSeverity.CRITICAL || severity == IncidentSeverity.HIGH
+    Box(
+        modifier = Modifier
+            .border(FieldTokens.Hair, if (filled) tone else ink)
+            .background(if (filled) tone else paper)
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+    ) {
+        Text(
+            text = severityTag(severity),
+            style = MaterialTheme.typography.labelMedium,
+            color = if (filled) paper else ink,
+        )
+    }
+}
+
+internal fun severityTag(sev: IncidentSeverity): String = when (sev) {
+    IncidentSeverity.CRITICAL -> "CRIT"
+    IncidentSeverity.HIGH -> "HIGH"
+    IncidentSeverity.MEDIUM -> "MED"
+    IncidentSeverity.LOW -> "LOW"
+}
+
+internal fun severityTone(sev: IncidentSeverity): Color = when (sev) {
+    IncidentSeverity.CRITICAL -> Signal
+    IncidentSeverity.HIGH -> Amber
+    IncidentSeverity.MEDIUM -> Navy
+    IncidentSeverity.LOW -> Sage
+}
+
+internal fun statusTag(status: IncidentStatus): String = when (status) {
+    IncidentStatus.REPORTED -> "REP"
+    IncidentStatus.INVESTIGATING -> "INV"
+    IncidentStatus.IN_PROGRESS -> "PROG"
+    IncidentStatus.RESOLVED -> "RES"
+    IncidentStatus.CLOSED -> "CLS"
+}
+
+internal fun statusTone(status: IncidentStatus): Color = when (status) {
+    IncidentStatus.REPORTED -> Signal
+    IncidentStatus.INVESTIGATING -> Amber
+    IncidentStatus.IN_PROGRESS -> Navy
+    IncidentStatus.RESOLVED -> Sage
+    IncidentStatus.CLOSED -> Color(0xFF78716C)
+}
+
+private fun sectionTitle(status: IncidentStatus): String = when (status) {
+    IncidentStatus.REPORTED -> "Open reports"
+    IncidentStatus.INVESTIGATING -> "Under investigation"
+    IncidentStatus.IN_PROGRESS -> "In progress"
+    IncidentStatus.RESOLVED -> "Resolved"
+    IncidentStatus.CLOSED -> "Closed"
 }

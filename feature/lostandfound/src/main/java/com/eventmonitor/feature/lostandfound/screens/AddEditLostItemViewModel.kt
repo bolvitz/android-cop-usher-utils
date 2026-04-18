@@ -3,15 +3,16 @@ package com.eventmonitor.feature.lostandfound.screens
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.eventmonitor.core.domain.common.Result
-import com.eventmonitor.core.domain.models.ItemCategory
 import com.eventmonitor.core.data.local.dao.EventDao
 import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.data.repository.interfaces.LostItemRepository
+import com.eventmonitor.core.domain.common.Result
+import com.eventmonitor.core.domain.models.ItemCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -150,25 +151,25 @@ class AddEditLostItemViewModel @Inject constructor(
 
             val result = if (itemId != null) {
                 // Update existing item
-                lostItemRepository.getItemById(itemId).collect { item ->
-                    item?.let {
-                        lostItemRepository.updateItem(
-                            it.copy(
-                                description = _description.value,
-                                category = _category.value,
-                                foundZone = _foundZone.value,
-                                photoUri = _photoUri.value,
-                                color = _color.value,
-                                brand = _brand.value,
-                                identifyingMarks = _identifyingMarks.value,
-                                reportedBy = _reportedBy.value,
-                                notes = _notes.value,
-                                eventId = _selectedEventId.value
-                            )
+                val item = lostItemRepository.getItemById(itemId).first()
+                if (item != null) {
+                    lostItemRepository.updateItem(
+                        item.copy(
+                            description = _description.value,
+                            category = _category.value,
+                            foundZone = _foundZone.value,
+                            photoUri = _photoUri.value,
+                            color = _color.value,
+                            brand = _brand.value,
+                            identifyingMarks = _identifyingMarks.value,
+                            reportedBy = _reportedBy.value,
+                            notes = _notes.value,
+                            eventId = _selectedEventId.value
                         )
-                    }
+                    )
+                } else {
+                    Result.Success(Unit)
                 }
-                Result.Success(Unit)
             } else {
                 // Create new item
                 lostItemRepository.createItem(

@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -53,6 +54,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Size
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
@@ -547,7 +550,10 @@ private fun PhotoPanel(
     ) {
         if (photoUri.isNotBlank()) {
             AsyncImage(
-                model = photoUri,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(photoUri)
+                    .size(Size(512, 512))
+                    .build(),
                 contentDescription = "Case photo",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,

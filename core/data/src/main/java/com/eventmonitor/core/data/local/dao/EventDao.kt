@@ -1,9 +1,15 @@
 package com.eventmonitor.core.data.local.dao
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Transaction
+import androidx.room.Update
 import com.eventmonitor.core.data.local.entities.EventEntity
-import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.data.local.entities.EventWithAreaCounts
+import com.eventmonitor.core.data.local.entities.EventWithDetails
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -88,4 +94,10 @@ interface EventDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM events WHERE eventTypeId = :eventTypeId LIMIT 1)")
     suspend fun hasEventsWithType(eventTypeId: String): Boolean
+
+    @Query("SELECT COUNT(*) FROM events WHERE eventTypeId = :eventTypeId")
+    suspend fun countByEventTypeId(eventTypeId: String): Int
+
+    @Query("SELECT COUNT(*) FROM events WHERE venueId = :venueId")
+    suspend fun countByVenueId(venueId: String): Int
 }

@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.eventmonitor.core.data.repository.interfaces.EventRepository
 import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -32,6 +34,8 @@ class TrendsViewModel @Inject constructor(
     private val _selectedPeriod = MutableStateFlow(TrendPeriod.LAST_30_DAYS)
     val selectedPeriod: StateFlow<TrendPeriod> = _selectedPeriod.asStateFlow()
 
+    private var loadTrendsJob: Job? = null
+
     init {
         loadTrends()
     }
@@ -42,7 +46,8 @@ class TrendsViewModel @Inject constructor(
     }
 
     private fun loadTrends() {
-        viewModelScope.launch {
+        loadTrendsJob?.cancel()
+        loadTrendsJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
             val period = _selectedPeriod.value
@@ -57,10 +62,10 @@ class TrendsViewModel @Inject constructor(
                 eventRepository.getEventsAcrossVenues(startDate, endDate)
             }
 
-            eventsFlow.collect { events ->
+            eventsFlow.collectLatest { events ->
                 if (events.isEmpty()) {
                     _uiState.update { it.copy(isLoading = false, isEmpty = true) }
-                    return@collect
+                    return@collectLatest
                 }
 
                 val sortedEvents = events.sortedBy { it.event.date }

@@ -3,10 +3,10 @@ package com.eventmonitor.core.data.repository
 import com.eventmonitor.core.data.local.dao.EventDao
 import com.eventmonitor.core.data.local.dao.EventTypeDao
 import com.eventmonitor.core.data.local.entities.EventTypeEntity
+import com.eventmonitor.core.data.repository.interfaces.EventTypeRepository
 import com.eventmonitor.core.domain.common.AppError
 import com.eventmonitor.core.domain.common.Result
 import com.eventmonitor.core.domain.common.resultOf
-import com.eventmonitor.core.data.repository.interfaces.EventTypeRepository
 import com.eventmonitor.core.domain.validation.DomainValidators
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -119,7 +119,7 @@ class EventTypeRepositoryImpl @Inject constructor(
             return Result.Error(
                 AppError.HasDependencies(
                     resource = "Service type",
-                    dependencyCount = eventDao.getRecentEvents(999).first().count { it.event.eventTypeId == id },
+                    dependencyCount = eventDao.countByEventTypeId(id),
                     dependencyType = "events"
                 )
             )

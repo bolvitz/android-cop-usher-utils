@@ -9,9 +9,28 @@ plugins {
     // id("com.google.gms.google-services")
 }
 
+import java . util . Properties
+
 android {
     namespace = "com.eventmonitor.app"
     compileSdk = 35
+
+    val localProps = Properties().also { props ->
+        val localPropsFile = rootProject.file("local.properties")
+        if (localPropsFile.exists()) props.load(localPropsFile.inputStream())
+    }
+    val hasKeystore = localProps.containsKey("storeFile")
+
+    signingConfigs {
+        if (hasKeystore) {
+            create("release") {
+                storeFile = file(localProps.getProperty("storeFile"))
+                storePassword = localProps.getProperty("storePassword", "")
+                keyAlias = localProps.getProperty("keyAlias", "")
+                keyPassword = localProps.getProperty("keyPassword", "")
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.eventmonitor.app"
@@ -37,6 +56,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (hasKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         debug {
             applicationIdSuffix = ".debug"

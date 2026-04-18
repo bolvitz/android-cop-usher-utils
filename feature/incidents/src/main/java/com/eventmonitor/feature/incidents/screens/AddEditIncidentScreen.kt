@@ -3,37 +3,86 @@ package com.eventmonitor.feature.incidents.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddAPhoto
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Size
+import com.eventmonitor.core.common.theme.MonoTiny
+import com.eventmonitor.core.common.theme.Sage
+import com.eventmonitor.core.common.theme.Signal
+import com.eventmonitor.core.common.ui.FieldAppBar
+import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.Hairline
+import com.eventmonitor.core.common.ui.HairlineSoft
+import com.eventmonitor.core.common.ui.ZoneChip
+import com.eventmonitor.core.common.utils.rememberHapticFeedback
+import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.domain.models.IncidentSeverity
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ═════════════════════════════════════════════════════════════════════════════
+// LOG INCIDENT — editorial redesign for the Add / Edit Incident screen.
+//   · FieldAppBar     — [←] "LOG INCIDENT" · eyebrow "§ INCIDENT · NEW / AMEND" · [✓]
+//   · Headline        — "File the report." + fraction "04 / 08 FILLED"
+//   · Progress strip  — 8 ticks, filled as steps land
+//   · Numbered steps  — 01 EVIDENCE · 02 HEADLINE · 03 BRIEF · 04 SEVERITY ·
+//                       05 EVENT · 06 LOCUS · 07 CREDITS · 08 PREVIEW
+//   · Action rail     — [CANCEL] [FILE / SAVE INCIDENT] inverted primary
+// ═════════════════════════════════════════════════════════════════════════════
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddEditIncidentScreen(
     venueId: String,
@@ -55,441 +104,1045 @@ fun AddEditIncidentScreen(
     val events by viewModel.events.collectAsState()
     val selectedEventId by viewModel.selectedEventId.collectAsState()
 
-    var showSeverityDialog by remember { mutableStateOf(false) }
+    val haptic = rememberHapticFeedback()
     var showPhotoOptions by remember { mutableStateOf(false) }
-    var showEventDropdown by remember { mutableStateOf(false) }
-    val focusManager = LocalFocusManager.current
 
-    // Gallery launcher
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let {
-            viewModel.updatePhotoUri(it.toString())
-        }
+        uri?.let { viewModel.updatePhotoUri(it.toString()) }
     }
 
     LaunchedEffect(saveSuccess) {
-        if (saveSuccess) {
-            onNavigateBack()
-        }
+        if (saveSuccess) onNavigateBack()
+    }
+
+    val canSave = title.isNotBlank() && description.isNotBlank() && !isSaving
+
+    val filledSteps = remember(
+        title, description, severity, category, location,
+        photoUri, reportedBy, notes, selectedEventId,
+    ) {
+        var n = 0
+        if (photoUri.isNotBlank()) n++                                    // 01 evidence
+        if (title.isNotBlank()) n++                                       // 02 headline
+        if (description.isNotBlank()) n++                                 // 03 brief
+        if (severity.isNotBlank()) n++                                    // 04 severity (default LOW counts)
+        if (selectedEventId != null) n++                                  // 05 event
+        if (location.isNotBlank() || category.isNotBlank()) n++           // 06 locus
+        if (reportedBy.isNotBlank() || notes.isNotBlank()) n++            // 07 credits
+        if (canSave) n++                                                  // 08 preview ready
+        n
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = { Text(if (incidentId == null) "Report Incident" else "Edit Incident") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
-                    }
-                }
+            FieldAppBar(
+                title = if (incidentId == null) "LOG INCIDENT" else "EDIT INCIDENT",
+                eyebrow = "§ INCIDENT · " + if (incidentId == null) "NEW" else "AMEND",
+                leading = {
+                    FieldAppBarIcon(glyph = "←", onClick = {
+                        haptic.light(); onNavigateBack()
+                    })
+                },
+                trailing = {
+                    FieldAppBarIcon(
+                        glyph = "✓",
+                        enabled = canSave,
+                        onClick = {
+                            haptic.medium(); viewModel.saveIncident()
+                        },
+                    )
+                },
             )
-        }
+        },
+        bottomBar = {
+            LogActionRail(
+                primaryLabel = when {
+                    isSaving -> "FILING…"
+                    incidentId == null -> "FILE INCIDENT"
+                    else -> "SAVE INCIDENT"
+                },
+                primaryEnabled = canSave,
+                onCancel = { haptic.light(); onNavigateBack() },
+                onPrimary = { haptic.medium(); viewModel.saveIncident() },
+            )
+        },
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .navigationBarsPadding(),
         ) {
-            // Photo Section
-            Text(
-                text = "Photo Evidence",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
+            // Headline
+            LogHeadline(
+                filledSteps = filledSteps,
+                totalSteps = 8,
+                isEdit = incidentId != null,
             )
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .clickable { showPhotoOptions = true },
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+
+            // Progress tick strip
+            LogProgressStrip(filled = filledSteps, total = 8)
+            Hairline()
+
+            // 01 / EVIDENCE
+            CaseStep(
+                index = "01",
+                label = "EVIDENCE",
+                hint = "Photo of the scene — first frame for the file.",
+                fulfilled = photoUri.isNotBlank(),
             ) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    if (photoUri.isNotBlank()) {
-                        AsyncImage(
-                            model = photoUri,
-                            contentDescription = "Incident Photo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                        IconButton(
-                            onClick = { showPhotoOptions = true },
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "Change Photo",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        Column(
-                            modifier = Modifier.align(Alignment.Center),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                Icons.Default.AddAPhoto,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Tap to add photo evidence", color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
+                EvidencePanel(
+                    photoUri = photoUri,
+                    onEdit = { showPhotoOptions = true },
+                    onClear = { viewModel.updatePhotoUri("") },
+                )
+            }
+            HairlineSoft()
+
+            // 02 / HEADLINE (required)
+            CaseStep(
+                index = "02",
+                label = "HEADLINE",
+                hint = "One clear sentence. What happened?",
+                required = true,
+                fulfilled = title.isNotBlank(),
+            ) {
+                InkField(
+                    value = title,
+                    onValueChange = viewModel::updateTitle,
+                    placeholder = "Slip and fall near Row 5",
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Next,
+                )
+            }
+            HairlineSoft()
+
+            // 03 / BRIEF (required)
+            CaseStep(
+                index = "03",
+                label = "BRIEF",
+                hint = "Who · when · what — two or three lines.",
+                required = true,
+                fulfilled = description.isNotBlank(),
+            ) {
+                InkField(
+                    value = description,
+                    onValueChange = viewModel::updateDescription,
+                    placeholder = "Guest slipped on wet floor at approximately 19:40…",
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Next,
+                    singleLine = false,
+                )
+            }
+            HairlineSoft()
+
+            // 04 / SEVERITY (required-ish, default LOW)
+            CaseStep(
+                index = "04",
+                label = "SEVERITY",
+                hint = "How serious is this? Four tones, pick one.",
+                required = true,
+                fulfilled = true, // always has a default
+            ) {
+                SeverityGrid(
+                    selected = IncidentSeverity.fromString(severity),
+                    onSelect = { viewModel.updateSeverity(it.name) },
+                )
+            }
+            HairlineSoft()
+
+            // 05 / EVENT (optional — only if events exist)
+            if (events.isNotEmpty()) {
+                CaseStep(
+                    index = "05",
+                    label = "EVENT",
+                    hint = "Optional — link this report to a specific session.",
+                    fulfilled = selectedEventId != null,
+                ) {
+                    EventPicker(
+                        events = events,
+                        selected = selectedEventId,
+                        onSelect = viewModel::updateSelectedEvent,
+                    )
                 }
+                HairlineSoft()
             }
 
-            // Basic Information Section
-            Text(
-                text = "Incident Details",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            // Event Selection (Optional)
-            ExposedDropdownMenuBox(
-                expanded = showEventDropdown,
-                onExpandedChange = { showEventDropdown = it }
+            // 06 / LOCUS
+            CaseStep(
+                index = if (events.isNotEmpty()) "06" else "05",
+                label = "LOCUS",
+                hint = "Where exactly · what kind of incident.",
+                fulfilled = location.isNotBlank() || category.isNotBlank(),
             ) {
-                OutlinedTextField(
-                    value = selectedEventId?.let { id ->
-                        events.find { it.event.id == id }?.let { event ->
-                            "${event.eventType?.name ?: "Event"} - ${java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(java.util.Date(event.event.date))}"
-                        }
-                    } ?: "None",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Event (Optional)") },
-                    supportingText = { Text("Link this incident to a specific event") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = showEventDropdown)
-                    },
+                Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    SubField(
+                        caption = "A / LOCATION",
+                        value = location,
+                        onValueChange = viewModel::updateLocation,
+                        placeholder = "Main Hall · Row 5 · Parking A",
+                        capitalization = KeyboardCapitalization.Words,
+                    )
+                    SubField(
+                        caption = "B / CATEGORY",
+                        value = category,
+                        onValueChange = viewModel::updateCategory,
+                        placeholder = "Safety · Security · Medical",
+                        capitalization = KeyboardCapitalization.Words,
+                    )
+                }
+            }
+            HairlineSoft()
+
+            // 07 / CREDITS
+            CaseStep(
+                index = if (events.isNotEmpty()) "07" else "06",
+                label = "CREDITS",
+                hint = "Who filed this and any side notes.",
+                fulfilled = reportedBy.isNotBlank() || notes.isNotBlank(),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    SubField(
+                        caption = "FILED BY",
+                        value = reportedBy,
+                        onValueChange = viewModel::updateReportedBy,
+                        placeholder = "Staff name or initials",
+                        capitalization = KeyboardCapitalization.Words,
+                    )
+                    SubField(
+                        caption = "NOTES",
+                        value = notes,
+                        onValueChange = viewModel::updateNotes,
+                        placeholder = "Anything else worth knowing",
+                        capitalization = KeyboardCapitalization.Sentences,
+                        singleLine = false,
+                    )
+                }
+            }
+            HairlineSoft()
+
+            // 08 / PREVIEW
+            CaseStep(
+                index = if (events.isNotEmpty()) "08" else "07",
+                label = "PREVIEW",
+                hint = "How this report will read on the desk.",
+                fulfilled = canSave,
+            ) {
+                PreviewRow(
+                    title = title.ifBlank { "—" },
+                    brief = description,
+                    severity = IncidentSeverity.fromString(severity),
+                    location = location,
+                    category = category,
+                )
+            }
+
+            // Error
+            errorMessage?.let {
+                Spacer(Modifier.height(8.dp))
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(),
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
-                )
-
-                ExposedDropdownMenu(
-                    expanded = showEventDropdown,
-                    onDismissRequest = { showEventDropdown = false }
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                        .border(FieldTokens.Hair, Signal)
+                        .padding(12.dp),
                 ) {
-                    // None option
-                    DropdownMenuItem(
-                        text = { Text("None") },
-                        onClick = {
-                            viewModel.updateSelectedEvent(null)
-                            showEventDropdown = false
-                        }
+                    Text("ERR ·", style = MonoTiny, color = Signal)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Signal,
+                        modifier = Modifier.weight(1f),
                     )
-
-                    if (events.isNotEmpty()) {
-                        HorizontalDivider()
-                    }
-
-                    // Event options
-                    events.forEach { eventWithDetails ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(
-                                        text = eventWithDetails.eventType?.name ?: "Event",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                    Text(
-                                        text = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
-                                            .format(java.util.Date(eventWithDetails.event.date)),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            onClick = {
-                                viewModel.updateSelectedEvent(eventWithDetails.event.id)
-                                showEventDropdown = false
-                            }
-                        )
+                    TextButton(onClick = { viewModel.clearError() }) {
+                        Text("OK", style = MaterialTheme.typography.labelMedium, color = Signal)
                     }
                 }
             }
 
-            // Title (Required)
-            OutlinedTextField(
-                value = title,
-                onValueChange = viewModel::updateTitle,
-                label = { Text("Incident Title *") },
-                placeholder = { Text("e.g., Slip and fall, Fire alarm") },
-                supportingText = { Text("Brief summary of the incident") },
-                modifier = Modifier.fillMaxWidth(),
-                isError = title.isBlank(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                )
-            )
+            Spacer(Modifier.height(8.dp))
+            Colophon(isEdit = incidentId != null)
+        }
+    }
 
-            // Description (Required)
-            OutlinedTextField(
-                value = description,
-                onValueChange = viewModel::updateDescription,
-                label = { Text("Description *") },
-                placeholder = { Text("Detailed description of what happened") },
-                supportingText = { Text("What happened? When did it occur?") },
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 5,
-                isError = description.isBlank(),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Next
+    if (showPhotoOptions) {
+        EvidenceOptionsSheet(
+            hasPhoto = photoUri.isNotBlank(),
+            onDismiss = { showPhotoOptions = false },
+            onPick = {
+                showPhotoOptions = false
+                galleryLauncher.launch("image/*")
+            },
+            onClear = {
+                showPhotoOptions = false
+                viewModel.updatePhotoUri("")
+            },
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Headline + progress
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun LogHeadline(filledSteps: Int, totalSteps: Int, isEdit: Boolean) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 18.dp, bottom = 10.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "§ ${if (isEdit) "AMEND" else "NEW"} · INCIDENT",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text("·", style = MonoTiny, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "${filledSteps.toString().padStart(2, '0')} / ${
+                    totalSteps.toString().padStart(2, '0')
+                } FILLED",
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(
+                if (isEdit) "Amend the report." else "File the report.",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = filledSteps.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Only HEADLINE, BRIEF and SEVERITY are required. The rest thickens the file.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun LogProgressStrip(filled: Int, total: Int) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.outline
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 16.dp)
+            .height(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        repeat(total) { i ->
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .background(if (i < filled) ink else muted),
+            )
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// CaseStep scaffold
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun CaseStep(
+    index: String,
+    label: String,
+    hint: String,
+    required: Boolean = false,
+    fulfilled: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = index,
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontFamily = MonoTiny.fontFamily,
                 ),
-                keyboardActions = KeyboardActions(
-                    onNext = {
-                        showSeverityDialog = true
-                        focusManager.clearFocus()
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "/ $label",
+                        style = MonoTiny,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (required) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(text = "★ REQ", style = MonoTiny, color = Signal)
                     }
+                    if (fulfilled && !required) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(text = "✓ OK", style = MonoTiny, color = Sage)
+                    } else if (fulfilled && required) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(text = "✓ OK", style = MonoTiny, color = Sage)
+                    }
+                }
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        content()
+    }
+}
 
-            // Severity
-            OutlinedTextField(
-                value = IncidentSeverity.fromString(severity).displayName,
-                onValueChange = {},
-                label = { Text("Severity Level *") },
-                supportingText = { Text("Tap to select severity") },
+// ---------------------------------------------------------------------------
+// Evidence panel
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun EvidencePanel(
+    photoUri: String,
+    onEdit: () -> Unit,
+    onClear: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp)
+            .border(FieldTokens.HairStrong, ink)
+            .clickable { onEdit() },
+    ) {
+        if (photoUri.isNotBlank()) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(photoUri)
+                    .size(Size(512, 512))
+                    .build(),
+                contentDescription = "Incident photo",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+            CornerMarks()
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(10.dp)
+                    .background(paper)
+                    .border(FieldTokens.Hair, ink)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            ) {
+                Text("§ EVIDENCE", style = MonoTiny, color = ink)
+            }
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                SmallInkChip("REPLACE", onClick = onEdit)
+                SmallInkChip("CLEAR", onClick = onClear)
+            }
+        } else {
+            CornerMarks()
+            Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    "⌑",
+                    style = MaterialTheme.typography.displayMedium,
+                    color = ink,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "TAP TO ATTACH EVIDENCE",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = ink,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text("jpg · png · heic", style = MonoTiny, color = muted)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CornerMarks() {
+    val ink = MaterialTheme.colorScheme.onBackground
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(Modifier
+            .align(Alignment.TopStart)
+            .padding(4.dp)
+            .size(10.dp)
+            .background(ink))
+        Box(Modifier
+            .align(Alignment.TopEnd)
+            .padding(4.dp)
+            .size(10.dp)
+            .background(ink))
+        Box(Modifier
+            .align(Alignment.BottomStart)
+            .padding(4.dp)
+            .size(10.dp)
+            .background(ink))
+        Box(Modifier
+            .align(Alignment.BottomEnd)
+            .padding(4.dp)
+            .size(10.dp)
+            .background(ink))
+    }
+}
+
+@Composable
+private fun SmallInkChip(label: String, onClick: () -> Unit) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    Box(
+        modifier = Modifier
+            .border(FieldTokens.Hair, ink)
+            .background(paper)
+            .clickable { onClick() }
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = ink)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Fields
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun InkField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    capitalization: KeyboardCapitalization = KeyboardCapitalization.None,
+    imeAction: ImeAction = ImeAction.Next,
+    singleLine: Boolean = true,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = singleLine,
+        textStyle = MaterialTheme.typography.headlineSmall.copy(color = ink),
+        cursorBrush = SolidColor(ink),
+        keyboardOptions = KeyboardOptions(
+            capitalization = capitalization,
+            imeAction = imeAction,
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = if (singleLine) 48.dp else 72.dp),
+        decorationBox = { inner ->
+            Column {
+                Box(Modifier.padding(vertical = 6.dp)) {
+                    if (value.isEmpty()) {
+                        Text(
+                            placeholder,
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    inner()
+                }
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(FieldTokens.Hair)
+                        .background(ink),
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun SubField(
+    caption: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    capitalization: KeyboardCapitalization = KeyboardCapitalization.None,
+    singleLine: Boolean = true,
+) {
+    Column {
+        Text(
+            caption,
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+        val ink = MaterialTheme.colorScheme.onBackground
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = singleLine,
+            textStyle = MaterialTheme.typography.titleLarge.copy(color = ink),
+            cursorBrush = SolidColor(ink),
+            keyboardOptions = KeyboardOptions(capitalization = capitalization),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = if (singleLine) 40.dp else 60.dp),
+            decorationBox = { inner ->
+                Column {
+                    Box(Modifier.padding(vertical = 4.dp)) {
+                        if (value.isEmpty()) {
+                            Text(
+                                placeholder,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        inner()
+                    }
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(FieldTokens.Hair)
+                            .background(MaterialTheme.colorScheme.outline),
+                    )
+                }
+            },
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Severity grid + event picker
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun SeverityGrid(
+    selected: IncidentSeverity,
+    onSelect: (IncidentSeverity) -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        IncidentSeverity.entries.reversed().forEach { sev ->
+            val isSelected = selected == sev
+            val tone = severityTone(sev)
+            val filled =
+                isSelected && (sev == IncidentSeverity.CRITICAL || sev == IncidentSeverity.HIGH)
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { showSeverityDialog = true },
-                enabled = false,
-                colors = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                    disabledBorderColor = MaterialTheme.colorScheme.outline,
-                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    disabledSupportingTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                trailingIcon = {
-                    Icon(Icons.Default.ArrowDropDown, "Select Severity")
-                }
-            )
-
-            // Location and Category Section
-            Text(
-                text = "Location & Category",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            // Location
-            OutlinedTextField(
-                value = location,
-                onValueChange = viewModel::updateLocation,
-                label = { Text("Specific Location") },
-                placeholder = { Text("e.g., Main Hall, Parking Lot A") },
-                supportingText = { Text("Where did this happen?") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Words,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                )
-            )
-
-            // Category
-            OutlinedTextField(
-                value = category,
-                onValueChange = viewModel::updateCategory,
-                label = { Text("Category") },
-                placeholder = { Text("e.g., Safety, Security, Maintenance") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Words,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                )
-            )
-
-            // Reporter Information Section
-            Text(
-                text = "Reporter Information",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            // Reported By
-            OutlinedTextField(
-                value = reportedBy,
-                onValueChange = viewModel::updateReportedBy,
-                label = { Text("Reported By") },
-                placeholder = { Text("Your name") },
-                supportingText = { Text("Who is reporting this incident?") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Words,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                )
-            )
-
-            // Additional Notes
-            OutlinedTextField(
-                value = notes,
-                onValueChange = viewModel::updateNotes,
-                label = { Text("Additional Notes") },
-                placeholder = { Text("Any other relevant information") },
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 4,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                        if (title.isNotBlank() && description.isNotBlank()) {
-                            viewModel.saveIncident()
+                    .border(FieldTokens.Hair, if (isSelected) tone else ink)
+                    .background(
+                        when {
+                            filled -> tone
+                            isSelected -> ink
+                            else -> paper
                         }
-                    }
-                )
-            )
-
-            // Save Button
-            Button(
-                onClick = { viewModel.saveIncident() },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isSaving && title.isNotBlank() && description.isNotBlank()
+                    )
+                    .clickable { onSelect(sev) }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
+                Box(
+                    Modifier
+                        .size(10.dp)
+                        .background(if (isSelected && !filled) paper else tone),
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    severityTag(sev),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontFamily = MonoTiny.fontFamily,
+                    ),
+                    color = if (isSelected) paper else ink,
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    severityBlurb(sev),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isSelected) paper else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                if (isSelected) {
+                    Text(
+                        "✓",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = paper,
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Saving...")
-                } else {
-                    Icon(Icons.Default.Check, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Report Incident")
                 }
             }
+        }
+    }
+}
 
-            Text(
-                "* Required fields",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
+@Composable
+private fun EventPicker(
+    events: List<EventWithDetails>,
+    selected: String?,
+    onSelect: (String?) -> Unit,
+) {
+    val dateFmt = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        ZoneChip(
+            label = "UNLINKED",
+            selected = selected == null,
+            onClick = { onSelect(null) },
+        )
+        events.forEach { ev ->
+            val name = (ev.eventType?.name ?: "Event").uppercase()
+            val date = dateFmt.format(Date(ev.event.date)).uppercase()
+            ZoneChip(
+                label = "$name · $date",
+                selected = selected == ev.event.id,
+                onClick = {
+                    onSelect(if (selected == ev.event.id) null else ev.event.id)
+                },
             )
         }
     }
+}
 
-    // Severity Selection Dialog
-    if (showSeverityDialog) {
-        AlertDialog(
-            onDismissRequest = { showSeverityDialog = false },
-            title = { Text("Select Severity Level") },
-            text = {
-                Column {
-                    IncidentSeverity.entries.forEach { severityOption ->
-                        ListItem(
-                            headlineContent = { Text(severityOption.displayName) },
-                            leadingContent = {
-                                RadioButton(
-                                    selected = severity == severityOption.name,
-                                    onClick = {
-                                        viewModel.updateSeverity(severityOption.name)
-                                        showSeverityDialog = false
-                                    }
-                                )
-                            },
-                            modifier = Modifier.clickable {
-                                viewModel.updateSeverity(severityOption.name)
-                                showSeverityDialog = false
-                            }
+private fun severityBlurb(sev: IncidentSeverity): String = when (sev) {
+    IncidentSeverity.CRITICAL -> "Life safety. Notify now."
+    IncidentSeverity.HIGH -> "Urgent — supervisor within 10 min."
+    IncidentSeverity.MEDIUM -> "Needs attention today."
+    IncidentSeverity.LOW -> "Log it. No immediate action."
+}
+
+// ---------------------------------------------------------------------------
+// Preview row — mini desk row
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun PreviewRow(
+    title: String,
+    brief: String,
+    severity: IncidentSeverity,
+    location: String,
+    category: String,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val tone = severityTone(severity)
+    val dateFmt = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
+    val timeFmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(FieldTokens.Hair, ink),
+    ) {
+        Box(
+            modifier = Modifier
+                .width(FieldTokens.Lane)
+                .fillMaxWidth()
+                .background(tone)
+                .heightIn(min = 1.dp),
+        )
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Column(modifier = Modifier.width(52.dp)) {
+                    Text(
+                        "01",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = MonoTiny.fontFamily,
+                        ),
+                        color = ink,
+                    )
+                    Text("/ 01", style = MonoTiny, color = muted)
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = ink,
+                    )
+                    if (brief.isNotBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            brief,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = muted,
+                            maxLines = 2,
                         )
                     }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showSeverityDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    // Photo Options Dialog
-    if (showPhotoOptions) {
-        AlertDialog(
-            onDismissRequest = { showPhotoOptions = false },
-            title = { Text("Add Photo") },
-            text = {
-                Column {
-                    ListItem(
-                        headlineContent = { Text("Take Photo") },
-                        leadingContent = { Icon(Icons.Default.CameraAlt, null) },
-                        modifier = Modifier.clickable {
-                            galleryLauncher.launch("image/*")
-                            showPhotoOptions = false
-                        }
-                    )
-                    ListItem(
-                        headlineContent = { Text("Choose from Gallery") },
-                        leadingContent = { Icon(Icons.Default.PhotoLibrary, null) },
-                        modifier = Modifier.clickable {
-                            galleryLauncher.launch("image/*")
-                            showPhotoOptions = false
-                        }
-                    )
-                    if (photoUri.isNotBlank()) {
-                        ListItem(
-                            headlineContent = { Text("Remove Photo") },
-                            leadingContent = { Icon(Icons.Default.Delete, null) },
-                            modifier = Modifier.clickable {
-                                viewModel.updatePhotoUri("")
-                                showPhotoOptions = false
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        buildString {
+                            append(location.ifBlank { "—" }.uppercase())
+                            append("   ·   ")
+                            append(dateFmt.format(Date()).uppercase())
+                            append(" ")
+                            append(timeFmt.format(Date()))
+                            if (category.isNotBlank()) {
+                                append("   ·   ")
+                                append(category.uppercase())
                             }
-                        )
+                        },
+                        style = MonoTiny,
+                        color = muted,
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    SeverityPill(severity)
+                    Spacer(Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier
+                            .size(8.dp)
+                            .background(Signal))
+                        Spacer(Modifier.width(6.dp))
+                        Text("REP", style = MonoTiny, color = ink)
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { showPhotoOptions = false }) {
-                    Text("Cancel")
-                }
             }
-        )
-    }
-
-    // Error Snackbar
-    errorMessage?.let { error ->
-        Snackbar(
-            modifier = Modifier.padding(16.dp),
-            action = {
-                TextButton(onClick = { viewModel.clearError() }) {
-                    Text("Dismiss")
-                }
-            }
-        ) {
-            Text(error)
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Bottom rail
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun LogActionRail(
+    primaryLabel: String,
+    primaryEnabled: Boolean,
+    onCancel: () -> Unit,
+    onPrimary: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(paper)
+            .windowInsetsPadding(WindowInsets.navigationBars),
+    ) {
+        Hairline()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(FieldTokens.ToolHeight)
+                    .border(FieldTokens.Hair, ink)
+                    .background(paper)
+                    .clickable { onCancel() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("CANCEL", style = MaterialTheme.typography.labelMedium, color = ink)
+            }
+            Box(
+                modifier = Modifier
+                    .weight(2f)
+                    .height(FieldTokens.ToolHeight)
+                    .alpha(if (primaryEnabled) 1f else 0.35f)
+                    .border(FieldTokens.Hair, ink)
+                    .background(ink)
+                    .clickable(enabled = primaryEnabled) { onPrimary() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (primaryLabel.endsWith("…")) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            color = paper,
+                            strokeWidth = 1.5.dp,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(
+                        primaryLabel,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = paper,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Evidence options sheet
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun EvidenceOptionsSheet(
+    hasPhoto: Boolean,
+    onDismiss: () -> Unit,
+    onPick: () -> Unit,
+    onClear: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val paper = MaterialTheme.colorScheme.background
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .border(FieldTokens.HairStrong, ink)
+                .background(paper),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "§ EVIDENCE",
+                        style = MonoTiny,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "Attach a photo",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = ink,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(FieldTokens.AppBarIconSize)
+                        .border(FieldTokens.Hair, ink)
+                        .clickable { onDismiss() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("×", style = MaterialTheme.typography.headlineSmall, color = ink)
+                }
+            }
+            Hairline()
+            SheetOption(
+                index = "01",
+                label = "FROM GALLERY",
+                hint = "Pick an image from this device.",
+                onClick = onPick,
+            )
+            HairlineSoft()
+            if (hasPhoto) {
+                SheetOption(
+                    index = "02",
+                    label = "CLEAR EVIDENCE",
+                    hint = "Detach the photo from this report.",
+                    tone = Signal,
+                    onClick = onClear,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SheetOption(
+    index: String,
+    label: String,
+    hint: String,
+    tone: Color = MaterialTheme.colorScheme.onBackground,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            index,
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontFamily = MonoTiny.fontFamily,
+            ),
+            color = tone,
+        )
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text("/ $label", style = MaterialTheme.typography.labelMedium, color = tone)
+            Text(
+                hint,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text("→", style = MaterialTheme.typography.headlineSmall, color = tone)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Colophon
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun Colophon(isEdit: Boolean) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Hairline(color = MaterialTheme.colorScheme.outline)
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                if (isEdit) "REPORT · AMENDED" else "REPORT · DRAFT",
+                style = MonoTiny,
+                color = Sage,
+            )
+            Text(
+                SimpleDateFormat("dd MMM · HH:mm", Locale.getDefault())
+                    .format(Date()).uppercase(),
+                style = MonoTiny,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            "― FIELD · INCIDENTS ―",
+            style = MonoTiny,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

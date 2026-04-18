@@ -4,15 +4,23 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eventmonitor.core.data.local.entities.AreaTemplateEntity
-import com.eventmonitor.core.data.local.entities.EventTypeEntity
-import com.eventmonitor.core.domain.models.ServiceType
 import com.eventmonitor.core.data.repository.interfaces.AreaCountRepository
-import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import com.eventmonitor.core.data.repository.interfaces.EventRepository
 import com.eventmonitor.core.data.repository.interfaces.EventTypeRepository
+import com.eventmonitor.core.data.repository.interfaces.VenueRepository
+import com.eventmonitor.core.domain.models.ServiceType
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 @HiltViewModel
@@ -40,6 +48,7 @@ class CountingViewModel @Inject constructor(
     private val _undoStack = MutableStateFlow<List<CountAction>>(emptyList())
     private val _redoStack = MutableStateFlow<List<CountAction>>(emptyList())
     private val _excludedAreaIds = MutableStateFlow<Set<String>>(emptySet())
+    private val counterMutex = Mutex()
 
     val canUndo: StateFlow<Boolean> = _undoStack.map { it.isNotEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -48,24 +57,22 @@ class CountingViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     init {
-        loadBranch()
-        // If an existing service ID is provided, load it
+        // If an existing service ID is provided, load it (venue is fetched inside loadServiceDetails)
         existingServiceId?.let { serviceId ->
             _uiState.update { it.copy(eventId = serviceId) }
             loadServiceDetails(serviceId)
-        }
-    }
-
-    private fun loadBranch() {
-        viewModelScope.launch {
-            venueRepository.getVenueById(venueId).collect { venueWithAreas ->
-                venueWithAreas?.let {
-                    _uiState.update { currentState ->
-                        currentState.copy(
-                            branchName = it.venue.name,
-                            branchCode = it.venue.code,
-                            isLoading = false
-                        )
+        } ?: run {
+            // No service yet — still need venue name for the UI
+            viewModelScope.launch {
+                venueRepository.getVenueById(venueId).collect { venueWithAreas ->
+                    venueWithAreas?.let {
+                        _uiState.update { state ->
+                            state.copy(
+                                branchName = it.venue.name,
+                                branchCode = it.venue.code,
+                                isLoading = false
+                            )
+                        }
                     }
                 }
             }
@@ -120,19 +127,25 @@ class CountingViewModel @Inject constructor(
             combine(
                 eventRepository.getEventById(serviceId),
                 areaCountRepository.getAreaCountsByService(serviceId),
-                _excludedAreaIds
-            ) { serviceWithDetails, areaCounts, excludedIds ->
-                Triple(serviceWithDetails, areaCounts, excludedIds)
-            }.collect { (serviceWithDetails, areaCounts, excludedIds) ->
-                serviceWithDetails?.let { details ->
-                    val areaCountStates = areaCounts.map { areaCountWithTemplate ->
+                _excludedAreaIds,
+                venueRepository.getVenueById(venueId)
+            ) { serviceWithDetails, areaCounts, excludedIds, venueWithAreas ->
+                object {
+                    val service = serviceWithDetails
+                    val counts = areaCounts
+                    val excluded = excludedIds
+                    val venue = venueWithAreas
+                }
+            }.collect { data ->
+                data.service?.let { details ->
+                    val areaCountStates = data.counts.map { areaCountWithTemplate ->
                         AreaCountState(
                             id = areaCountWithTemplate.areaCount.id,
                             template = areaCountWithTemplate.template,
                             count = areaCountWithTemplate.areaCount.count,
                             capacity = areaCountWithTemplate.areaCount.capacity,
                             notes = areaCountWithTemplate.areaCount.notes,
-                            isIncluded = areaCountWithTemplate.areaCount.id !in excludedIds,
+                            isIncluded = areaCountWithTemplate.areaCount.id !in data.excluded,
                             percentage = if (areaCountWithTemplate.areaCount.capacity > 0) {
                                 (areaCountWithTemplate.areaCount.count.toFloat() / areaCountWithTemplate.areaCount.capacity * 100).toInt()
                             } else 0,
@@ -147,10 +160,13 @@ class CountingViewModel @Inject constructor(
                     // Single atomic update to prevent flickering
                     _uiState.update { currentState ->
                         currentState.copy(
+                            branchName = data.venue?.venue?.name ?: currentState.branchName,
+                            branchCode = data.venue?.venue?.code ?: currentState.branchCode,
                             totalAttendance = totalAttendance,
                             totalCapacity = totalCapacity,
                             isLocked = details.event.isLocked,
-                            areaCounts = areaCountStates
+                            areaCounts = areaCountStates,
+                            isLoading = false
                         )
                     }
                 }
@@ -169,20 +185,23 @@ class CountingViewModel @Inject constructor(
         if (_uiState.value.isLocked) return
 
         viewModelScope.launch {
-            val oldCount = getCurrentCount(areaCountId)
+            counterMutex.withLock {
+                val oldCount = getCurrentCount(areaCountId)
 
-            eventRepository.incrementAreaCount(eventId, areaCountId, amount)
+                eventRepository.incrementAreaCount(eventId, areaCountId, amount)
 
-            // Add to undo stack
-            _undoStack.value += CountAction.UpdateCount(
-                eventId = eventId,
-                areaCountId = areaCountId,
-                oldCount = oldCount,
-                newCount = oldCount + amount
-            )
+                // Add to undo stack, capped at 50
+                val newStack = (_undoStack.value + CountAction.UpdateCount(
+                    eventId = eventId,
+                    areaCountId = areaCountId,
+                    oldCount = oldCount,
+                    newCount = oldCount + amount
+                )).takeLast(50)
+                _undoStack.value = newStack
 
-            // Clear redo stack
-            _redoStack.value = emptyList()
+                // Clear redo stack
+                _redoStack.value = emptyList()
+            }
         }
     }
 
@@ -195,23 +214,26 @@ class CountingViewModel @Inject constructor(
         if (_uiState.value.isLocked) return
 
         viewModelScope.launch {
-            val oldCount = getCurrentCount(areaCountId)
+            counterMutex.withLock {
+                val oldCount = getCurrentCount(areaCountId)
 
-            eventRepository.updateEventCount(
-                eventId = eventId,
-                areaCountId = areaCountId,
-                newCount = newCount,
-                action = "MANUAL_EDIT"
-            )
+                eventRepository.updateEventCount(
+                    eventId = eventId,
+                    areaCountId = areaCountId,
+                    newCount = newCount,
+                    action = "MANUAL_EDIT"
+                )
 
-            _undoStack.value += CountAction.UpdateCount(
-                eventId = eventId,
-                areaCountId = areaCountId,
-                oldCount = oldCount,
-                newCount = newCount
-            )
+                val newStack = (_undoStack.value + CountAction.UpdateCount(
+                    eventId = eventId,
+                    areaCountId = areaCountId,
+                    oldCount = oldCount,
+                    newCount = newCount
+                )).takeLast(50)
+                _undoStack.value = newStack
 
-            _redoStack.value = emptyList()
+                _redoStack.value = emptyList()
+            }
         }
     }
 

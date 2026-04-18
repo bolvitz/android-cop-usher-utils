@@ -2,7 +2,14 @@ package com.eventmonitor.core.data.di
 
 import android.content.Context
 import androidx.room.Room
-import com.eventmonitor.core.data.local.dao.*
+import com.eventmonitor.core.data.local.dao.AreaCountDao
+import com.eventmonitor.core.data.local.dao.AreaTemplateDao
+import com.eventmonitor.core.data.local.dao.EventDao
+import com.eventmonitor.core.data.local.dao.EventTypeDao
+import com.eventmonitor.core.data.local.dao.IncidentDao
+import com.eventmonitor.core.data.local.dao.LostItemDao
+import com.eventmonitor.core.data.local.dao.UserDao
+import com.eventmonitor.core.data.local.dao.VenueDao
 import com.eventmonitor.core.data.local.database.AppDatabase
 import com.eventmonitor.core.data.local.database.MIGRATION_3_4
 import com.eventmonitor.core.data.local.database.MIGRATION_4_5
@@ -29,6 +36,7 @@ object DatabaseModule {
             AppDatabase.DATABASE_NAME
         )
             .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+            .fallbackToDestructiveMigrationOnDowngrade()
             .build()
     }
 
