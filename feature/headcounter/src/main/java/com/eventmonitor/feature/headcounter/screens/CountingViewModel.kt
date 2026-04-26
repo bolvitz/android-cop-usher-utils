@@ -7,6 +7,7 @@ import com.eventmonitor.core.data.local.entities.AreaTemplateEntity
 import com.eventmonitor.core.data.repository.interfaces.AreaCountRepository
 import com.eventmonitor.core.data.repository.interfaces.EventRepository
 import com.eventmonitor.core.data.repository.interfaces.EventTypeRepository
+import com.eventmonitor.core.data.repository.interfaces.SeatMapRepository
 import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import com.eventmonitor.core.domain.models.ServiceType
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,6 +30,7 @@ class CountingViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     private val eventTypeRepository: EventTypeRepository,
     private val areaCountRepository: AreaCountRepository,
+    private val seatMapRepository: SeatMapRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -128,26 +130,35 @@ class CountingViewModel @Inject constructor(
                 eventRepository.getEventById(serviceId),
                 areaCountRepository.getAreaCountsByService(serviceId),
                 _excludedAreaIds,
-                venueRepository.getVenueById(venueId)
-            ) { serviceWithDetails, areaCounts, excludedIds, venueWithAreas ->
+                venueRepository.getVenueById(venueId),
+                seatMapRepository.observeOccupiedCountsByArea(serviceId)
+            ) { serviceWithDetails, areaCounts, excludedIds, venueWithAreas, seatOccupancy ->
                 object {
                     val service = serviceWithDetails
                     val counts = areaCounts
                     val excluded = excludedIds
                     val venue = venueWithAreas
+                    val seatCounts = seatOccupancy
                 }
             }.collect { data ->
                 data.service?.let { details ->
                     val areaCountStates = data.counts.map { areaCountWithTemplate ->
+                        val template = areaCountWithTemplate.template
+                        val rawCount = areaCountWithTemplate.areaCount.count
+                        // For seat-mapped areas the live count is derived from
+                        // seat_statuses; otherwise fall back to the +/- counter.
+                        val effectiveCount = if (template.hasSeatMap) {
+                            data.seatCounts[template.id] ?: 0
+                        } else rawCount
                         AreaCountState(
                             id = areaCountWithTemplate.areaCount.id,
-                            template = areaCountWithTemplate.template,
-                            count = areaCountWithTemplate.areaCount.count,
+                            template = template,
+                            count = effectiveCount,
                             capacity = areaCountWithTemplate.areaCount.capacity,
                             notes = areaCountWithTemplate.areaCount.notes,
                             isIncluded = areaCountWithTemplate.areaCount.id !in data.excluded,
                             percentage = if (areaCountWithTemplate.areaCount.capacity > 0) {
-                                (areaCountWithTemplate.areaCount.count.toFloat() / areaCountWithTemplate.areaCount.capacity * 100).toInt()
+                                (effectiveCount.toFloat() / areaCountWithTemplate.areaCount.capacity * 100).toInt()
                             } else 0,
                             lastUpdated = areaCountWithTemplate.areaCount.lastUpdated
                         )
@@ -253,6 +264,16 @@ class CountingViewModel @Inject constructor(
                     _undoStack.value = _undoStack.value.dropLast(1)
                     _redoStack.value += action
                 }
+
+                is CountAction.SeatStatus -> {
+                    seatMapRepository.setSeatStatus(
+                        eventId = action.eventId,
+                        seatId = action.seatId,
+                        status = action.oldStatus,
+                    )
+                    _undoStack.value = _undoStack.value.dropLast(1)
+                    _redoStack.value += action
+                }
             }
         }
     }
@@ -270,6 +291,16 @@ class CountingViewModel @Inject constructor(
                         action = "REDO"
                     )
 
+                    _redoStack.value = _redoStack.value.dropLast(1)
+                    _undoStack.value += action
+                }
+
+                is CountAction.SeatStatus -> {
+                    seatMapRepository.setSeatStatus(
+                        eventId = action.eventId,
+                        seatId = action.seatId,
+                        status = action.newStatus,
+                    )
                     _redoStack.value = _redoStack.value.dropLast(1)
                     _undoStack.value += action
                 }
@@ -298,7 +329,7 @@ class CountingViewModel @Inject constructor(
         }
     }
 
-    fun shareReport() {
+    fun generateReport() {
         val eventId = _uiState.value.eventId ?: return
         viewModelScope.launch {
             try {
@@ -306,6 +337,45 @@ class CountingViewModel @Inject constructor(
                 _uiState.update { it.copy(shareableReport = report) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    fun clearReport() {
+        _uiState.update { it.copy(shareableReport = null) }
+    }
+
+    /** Live rows + seats for an area's seat map (re-emits on edits). */
+    fun observeSeatLayout(areaTemplateId: String) =
+        seatMapRepository.observeRowsWithSeats(areaTemplateId)
+
+    /** Live (eventId-scoped) statuses for a single area; absence = AVAILABLE. */
+    fun observeSeatStatuses(areaTemplateId: String) =
+        _uiState.value.eventId?.let { eventId ->
+            seatMapRepository.observeStatusesForArea(eventId, areaTemplateId)
+        }
+
+    /** Cycle a seat: AVAILABLE → OCCUPIED → RESERVED → BLOCKED → AVAILABLE. */
+    fun cycleSeatStatus(seatId: String, currentStatus: String) {
+        val eventId = _uiState.value.eventId ?: return
+        if (_uiState.value.isLocked) return
+        val next = when (currentStatus) {
+            "AVAILABLE" -> "OCCUPIED"
+            "OCCUPIED" -> "RESERVED"
+            "RESERVED" -> "BLOCKED"
+            else -> "AVAILABLE"
+        }
+        viewModelScope.launch {
+            counterMutex.withLock {
+                seatMapRepository.setSeatStatus(eventId, seatId, next)
+                val newStack = (_undoStack.value + CountAction.SeatStatus(
+                    eventId = eventId,
+                    seatId = seatId,
+                    oldStatus = currentStatus,
+                    newStatus = next,
+                )).takeLast(50)
+                _undoStack.value = newStack
+                _redoStack.value = emptyList()
             }
         }
     }
@@ -351,6 +421,14 @@ sealed class CountAction {
         val areaCountId: String,
         val oldCount: Int,
         val newCount: Int,
+        val timestamp: Long = System.currentTimeMillis()
+    ) : CountAction()
+
+    data class SeatStatus(
+        val eventId: String,
+        val seatId: String,
+        val oldStatus: String,
+        val newStatus: String,
         val timestamp: Long = System.currentTimeMillis()
     ) : CountAction()
 }

@@ -4,7 +4,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,13 +48,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.common.theme.Amber
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
-import com.eventmonitor.core.common.ui.FieldAppBar
-import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.ArcadeBackground
 import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.SoftCard
+import com.eventmonitor.core.common.ui.SoftIconButton
 import com.eventmonitor.core.common.ui.Hairline
 import com.eventmonitor.core.common.ui.HairlineSoft
 import com.eventmonitor.core.common.ui.SparkBar
 import com.eventmonitor.core.common.ui.capacityToneFor
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -77,20 +79,19 @@ fun TrendsScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        FieldAppBar(
+        SoftAppBar(
             title = "Almanac",
-            eyebrow = if (uiState.venueName.isNotEmpty())
-                "Trends · ${uiState.venueName}".uppercase()
+            subtitle = if (uiState.venueName.isNotEmpty())
+                "Trends · ${uiState.venueName}"
             else "Attendance Trends",
-            leading = {
-                FieldAppBarIcon(glyph = "‹", onClick = {
-                    haptic.light()
-                    onNavigateBack()
-                })
+            onBack = {
+                haptic.light()
+                onNavigateBack()
             },
         )
 
         Box(modifier = Modifier.weight(1f)) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
             when {
                 uiState.isLoading -> Box(
                     modifier = Modifier.fillMaxSize(),
@@ -145,7 +146,7 @@ fun TrendsScreen(
                                 maxAvg = uiState.eventTypeBreakdown.maxOf { it.avgAttendance }
                                     .coerceAtLeast(1),
                             )
-                            Hairline(color = MaterialTheme.colorScheme.outlineVariant)
+                            Spacer(Modifier.height(10.dp))
                         }
                     }
                     item(key = "foot") { AlmanacFooter(uiState.totalEvents) }
@@ -188,7 +189,6 @@ private fun AlmanacMasthead(state: TrendsUiState, period: TrendPeriod) {
         }
 
         Spacer(Modifier.height(10.dp))
-        Hairline()
         Spacer(Modifier.height(12.dp))
 
         Row(
@@ -209,9 +209,7 @@ private fun AlmanacMasthead(state: TrendsUiState, period: TrendPeriod) {
             Column(modifier = Modifier.padding(bottom = 14.dp)) {
                 Text(
                     text = "Average",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontStyle = FontStyle.Italic,
-                    ),
+                    style = softHeadline(24),
                     color = ink,
                 )
                 Text(
@@ -240,7 +238,7 @@ private fun AlmanacMasthead(state: TrendsUiState, period: TrendPeriod) {
             )
         }
     }
-    Hairline()
+    Spacer(Modifier.height(20.dp))
 }
 
 @Composable
@@ -256,24 +254,28 @@ private fun GrowthChip(pct: Int) {
         pct < 0 -> "▼"
         else -> "—"
     }
-    Row(
-        modifier = Modifier
-            .border(FieldTokens.Hair, tone)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    SoftCard(
+        cornerRadius = 8,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = 8.dp, vertical = 4.dp,
+        ),
     ) {
-        Text(arrow, style = MaterialTheme.typography.labelSmall, color = tone)
-        Text(
-            text = "${if (positive && pct != 0) "+" else ""}${abs(pct)}%",
-            style = MaterialTheme.typography.labelMedium,
-            color = tone,
-        )
-        Text(
-            text = "vs prior half".uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(arrow, style = MaterialTheme.typography.labelSmall, color = tone)
+            Text(
+                text = "${if (positive && pct != 0) "+" else ""}${abs(pct)}%",
+                style = MaterialTheme.typography.labelMedium,
+                color = tone,
+            )
+            Text(
+                text = "vs prior half".uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -315,7 +317,6 @@ private fun PeriodStrip(
                 )
             }
         }
-        Hairline()
     }
 }
 
@@ -553,7 +554,7 @@ private fun ChartSection(
                 LegendSwatch("Average", outline, dashed = true)
             }
         }
-        Hairline()
+        Spacer(Modifier.height(20.dp))
     }
 }
 
@@ -639,7 +640,7 @@ private fun PeakLowSpread(state: TrendsUiState) {
                 alignEnd = true,
             )
         }
-        Hairline()
+        Spacer(Modifier.height(20.dp))
     }
 }
 
@@ -743,9 +744,7 @@ private fun CapacitySection(capacityPct: Int, totalEvents: Int) {
                     )
                     Text(
                         text = "%",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontStyle = FontStyle.Italic,
-                        ),
+                        style = softHeadline(28),
                         color = tone,
                         modifier = Modifier.padding(bottom = 8.dp, start = 2.dp),
                     )
@@ -779,7 +778,7 @@ private fun CapacitySection(capacityPct: Int, totalEvents: Int) {
                 Text("100%", style = MaterialTheme.typography.labelSmall, color = muted)
             }
         }
-        Hairline()
+        Spacer(Modifier.height(20.dp))
     }
 }
 
@@ -888,9 +887,7 @@ private fun SectionRule(title: String, tag: String) {
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontStyle = FontStyle.Italic,
-                ),
+                style = softHeadline(22),
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
@@ -900,7 +897,6 @@ private fun SectionRule(title: String, tag: String) {
                 modifier = Modifier.padding(bottom = 6.dp),
             )
         }
-        Hairline()
     }
 }
 
@@ -925,9 +921,7 @@ private fun EmptyAlmanac() {
             Spacer(Modifier.height(4.dp))
             Text(
                 text = "No dispatches on file",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontStyle = FontStyle.Italic,
-                ),
+                style = softHeadline(20),
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Spacer(Modifier.height(4.dp))

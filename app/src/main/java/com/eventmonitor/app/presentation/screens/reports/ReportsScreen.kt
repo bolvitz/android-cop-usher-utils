@@ -46,13 +46,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Signal
-import com.eventmonitor.core.common.ui.FieldAppBar
-import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.ArcadeBackground
 import com.eventmonitor.core.common.ui.FieldTokens
-import com.eventmonitor.core.common.ui.Hairline
-import com.eventmonitor.core.common.ui.HairlineSoft
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.SoftSection
 import com.eventmonitor.core.common.ui.SparkBar
 import com.eventmonitor.core.common.ui.capacityToneFor
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 
 @Composable
@@ -68,119 +68,123 @@ fun ReportsScreen(
     val selectedVenue by viewModel.selectedVenue.collectAsState()
     val selectedServiceType by viewModel.selectedServiceType.collectAsState()
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        FieldAppBar(
-            title = "Reports",
-            eyebrow = "Analytics · Dossier",
-            leading = {
-                FieldAppBarIcon(glyph = "‹", onClick = {
-                    haptic.light()
-                    onNavigateBack()
-                })
-            },
-        )
+        ArcadeBackground(modifier = Modifier.matchParentSize())
 
-        // Period segmented strip — always visible, tap to switch
-        PeriodStrip(
-            selected = selectedPeriod,
-            onSelect = {
-                haptic.selection()
-                viewModel.selectPeriod(it)
-            },
-        )
-        Hairline()
+        Column(modifier = Modifier.fillMaxSize()) {
+            SoftAppBar(
+                title = "Reports",
+                subtitle = "Analytics · Dossier",
+                onBack = { haptic.light(); onNavigateBack() },
+            )
 
-        // Filter row: Venue + Type
-        FilterRow(
-            venueLabel = selectedVenue?.let { id ->
-                venues.find { it.id == id }?.name
-            } ?: "All Venues",
-            typeLabel = selectedServiceType?.let { id ->
-                eventTypes.find { it.id == id }?.name
-            } ?: "All Types",
-            venueMenu = {
-                DropdownMenuItem(
-                    text = { Text("All Venues") },
-                    onClick = {
-                        haptic.selection()
-                        viewModel.selectVenue(null)
-                        it()
-                    },
-                )
-                venues.forEach { v ->
+            // Period segmented strip — always visible, tap to switch
+            PeriodStrip(
+                selected = selectedPeriod,
+                onSelect = {
+                    haptic.selection()
+                    viewModel.selectPeriod(it)
+                },
+            )
+            Spacer(Modifier.height(20.dp))
+
+            // Filter row: Venue + Type
+            FilterRow(
+                venueLabel = selectedVenue?.let { id ->
+                    venues.find { it.id == id }?.name
+                } ?: "All Venues",
+                typeLabel = selectedServiceType?.let { id ->
+                    eventTypes.find { it.id == id }?.name
+                } ?: "All Types",
+                venueMenu = {
                     DropdownMenuItem(
-                        text = { Text(v.name) },
+                        text = { Text("All Venues") },
                         onClick = {
                             haptic.selection()
-                            viewModel.selectVenue(v.id)
+                            viewModel.selectVenue(null)
                             it()
                         },
                     )
-                }
-            },
-            typeMenu = {
-                DropdownMenuItem(
-                    text = { Text("All Types") },
-                    onClick = {
-                        haptic.selection()
-                        viewModel.selectServiceType(null)
-                        it()
-                    },
-                )
-                eventTypes.forEach { t ->
-                    DropdownMenuItem(
-                        text = { Text(t.name) },
-                        onClick = {
-                            haptic.selection()
-                            viewModel.selectServiceType(t.id)
-                            it()
-                        },
-                    )
-                }
-            },
-        )
-        Hairline()
-
-        if (reportData.totalEvents == 0) {
-            EmptyReportPanel(selectedPeriod)
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 32.dp),
-            ) {
-                item(key = "masthead") {
-                    ReportMasthead(
-                        period = selectedPeriod,
-                        totalEvents = reportData.totalEvents,
-                        totalAttendance = reportData.totalAttendance,
-                        averageAttendance = reportData.averageAttendance,
-                    )
-                    Hairline()
-                }
-
-                if (reportData.areaStatistics.isNotEmpty()) {
-                    item(key = "section-areas") {
-                        SectionRule(title = "Area Index", note = "BY ZONE")
-                    }
-
-                    itemsIndexed(reportData.areaStatistics) { index, stat ->
-                        AreaIndexRow(
-                            index = index + 1,
-                            stat = stat,
-                            onToggle = { haptic.light() },
+                    venues.forEach { v ->
+                        DropdownMenuItem(
+                            text = { Text(v.name) },
+                            onClick = {
+                                haptic.selection()
+                                viewModel.selectVenue(v.id)
+                                it()
+                            },
                         )
-                        Hairline(color = MaterialTheme.colorScheme.outlineVariant)
                     }
+                },
+                typeMenu = {
+                    DropdownMenuItem(
+                        text = { Text("All Types") },
+                        onClick = {
+                            haptic.selection()
+                            viewModel.selectServiceType(null)
+                            it()
+                        },
+                    )
+                    eventTypes.forEach { t ->
+                        DropdownMenuItem(
+                            text = { Text(t.name) },
+                            onClick = {
+                                haptic.selection()
+                                viewModel.selectServiceType(t.id)
+                                it()
+                            },
+                        )
+                    }
+                },
+            )
+            Spacer(Modifier.height(20.dp))
 
-                    item(key = "area-footer") {
-                        AreaIndexFooter(
-                            count = reportData.areaStatistics.size,
+            if (reportData.totalEvents == 0) {
+                EmptyReportPanel(selectedPeriod)
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 32.dp),
+                ) {
+                    item(key = "masthead") {
+                        ReportMasthead(
+                            period = selectedPeriod,
                             totalEvents = reportData.totalEvents,
+                            totalAttendance = reportData.totalAttendance,
+                            averageAttendance = reportData.averageAttendance,
                         )
+                        Spacer(Modifier.height(20.dp))
+                    }
+
+                    if (reportData.areaStatistics.isNotEmpty()) {
+                        item(key = "section-areas") {
+                            SoftSection(
+                                title = "Area Index",
+                                eyebrow = "ANALYTICS",
+                                hint = "By zone"
+                            )
+                            Spacer(Modifier.height(10.dp))
+                        }
+
+                        itemsIndexed(reportData.areaStatistics) { index, stat ->
+                            AreaIndexRow(
+                                index = index + 1,
+                                stat = stat,
+                                onToggle = { haptic.light() },
+                            )
+                            Spacer(Modifier.height(20.dp))
+                        }
+
+                        item(key = "area-footer") {
+                            AreaIndexFooter(
+                                count = reportData.areaStatistics.size,
+                                totalEvents = reportData.totalEvents,
+                            )
+                        }
                     }
                 }
             }
@@ -381,7 +385,7 @@ private fun ReportMasthead(
             Column(modifier = Modifier.padding(bottom = 10.dp)) {
                 Text(
                     text = "Records",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontStyle = FontStyle.Italic),
+                    style = softHeadline(24).copy(fontStyle = FontStyle.Italic),
                     color = ink,
                 )
                 Text(
@@ -410,7 +414,7 @@ private fun ReportMasthead(
         }
 
         Spacer(Modifier.height(18.dp))
-        HairlineSoft()
+        Spacer(Modifier.height(20.dp))
         Spacer(Modifier.height(14.dp))
 
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -446,7 +450,7 @@ private fun StatCell(label: String, value: String, modifier: Modifier = Modifier
         Spacer(Modifier.height(2.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.headlineSmall,
+            style = softHeadline(20),
             color = MaterialTheme.colorScheme.onBackground,
         )
     }
@@ -483,7 +487,7 @@ private fun SectionRule(title: String, note: String) {
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.headlineMedium.copy(fontStyle = FontStyle.Italic),
+                style = softHeadline(24).copy(fontStyle = FontStyle.Italic),
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
@@ -493,7 +497,7 @@ private fun SectionRule(title: String, note: String) {
                 modifier = Modifier.padding(bottom = 6.dp),
             )
         }
-        Hairline()
+        Spacer(Modifier.height(20.dp))
     }
 }
 
@@ -597,7 +601,7 @@ private fun AreaIndexRow(
 
             Spacer(Modifier.width(12.dp))
 
-            // Avg — big serif
+            // Avg — big display digit kept as-is (>36sp numeric)
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = stat.averageCount.toString(),
@@ -623,7 +627,7 @@ private fun AreaIndexRow(
             exit = fadeOut(tween(120)) + shrinkVertically(tween(160)),
         ) {
             Column(modifier = Modifier.padding(start = 48.dp, top = 14.dp)) {
-                HairlineSoft()
+                Spacer(Modifier.height(20.dp))
                 Spacer(Modifier.height(10.dp))
                 DetailGrid(stat)
             }
@@ -661,13 +665,13 @@ private fun DetailGrid(stat: AreaStatistics) {
             stat.maxCount.toString(),
             hot = stat.capacity > 0 && stat.maxCount >= stat.capacity
         )
-        HairlineSoft()
+        Spacer(Modifier.height(20.dp))
         DetailLine("Low count", stat.minCount.toString())
-        HairlineSoft()
+        Spacer(Modifier.height(20.dp))
         DetailLine("Events logged", stat.eventsCount.toString())
-        HairlineSoft()
+        Spacer(Modifier.height(20.dp))
         DetailLine("Capacity", stat.capacity.toString())
-        HairlineSoft()
+        Spacer(Modifier.height(20.dp))
         DetailLine(
             label = "Headroom",
             value = (stat.capacity - stat.averageCount).let { if (it < 0) "—${-it}" else "$it" },
@@ -744,7 +748,7 @@ private fun EmptyReportPanel(period: ReportPeriod) {
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.height(16.dp))
-        HairlineSoft()
+        Spacer(Modifier.height(20.dp))
         Spacer(Modifier.height(12.dp))
         Text(
             text = "§ ${periodLabel.uppercase()}",

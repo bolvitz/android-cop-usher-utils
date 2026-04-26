@@ -53,28 +53,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
-import com.eventmonitor.core.common.ui.FieldAppBar
-import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.ArcadeBackground
 import com.eventmonitor.core.common.ui.FieldTokens
-import com.eventmonitor.core.common.ui.Hairline
-import com.eventmonitor.core.common.ui.HairlineSoft
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.SoftIconButton
+import com.eventmonitor.core.common.ui.SoftSection
 import com.eventmonitor.core.common.ui.ZoneChip
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import com.eventmonitor.core.domain.models.AreaType
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ZONE EDITOR — full-screen composing page (replaces add/edit/quick dialogs)
-// Layout beats:
-//   · FieldAppBar         ← back · COMPOSING ZONE · ✕ close
-//   · Mode bar            SOLO · BATCH · EDIT (locked in EDIT mode)
-//   · HERO PROOF SHEET    inverted ink panel — live name, type tag, capacity
-//                         capacity ribbon (visual fill), draft / ready stamp
-//   · 01 NAMING           big inline input · char counter · suggestion chips
-//   · 02 CLASSIFICATION   2-col grid of "type cards" w/ letter mark + tag
-//   · 03 CAPACITY         stepper + visual scale + preset chips
-//   · 04 BATCH SERIES     count + start steppers + quick multipliers (BATCH)
-//   · 05 REGISTRATION     mini ledger row preview / batch sample list
-//   · Sticky action rail  CANCEL · primary morphing label
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -100,14 +90,12 @@ fun ZoneEditorScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            FieldAppBar(
+            SoftAppBar(
                 title = title,
-                eyebrow = eyebrow,
-                leading = {
-                    FieldAppBarIcon(glyph = "←", onClick = { haptic.light(); onNavigateBack() })
-                },
+                subtitle = eyebrow,
+                onBack = { haptic.light(); onNavigateBack() },
                 trailing = {
-                    FieldAppBarIcon(glyph = "✕", onClick = { haptic.light(); onNavigateBack() })
+                    SoftIconButton(glyph = "✕", onClick = { haptic.light(); onNavigateBack() })
                 },
             )
         },
@@ -124,6 +112,8 @@ fun ZoneEditorScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
+
             EditorBody(
                 state = state,
                 onModeChange = { haptic.light(); viewModel.setMode(it) },
@@ -132,6 +122,10 @@ fun ZoneEditorScreen(
                 onCapacityChange = viewModel::setCapacity,
                 onBatchCountChange = viewModel::setBatchCount,
                 onBatchStartChange = viewModel::setBatchStart,
+                onSeatMapToggle = { haptic.light(); viewModel.setHasSeatMap(it) },
+                onAddSeatRow = { haptic.medium(); viewModel.addSeatRow() },
+                onResizeSeatRow = viewModel::resizeSeatRow,
+                onDeleteSeatRow = { haptic.medium(); viewModel.deleteSeatRow(it) },
             )
 
             AnimatedVisibility(
@@ -177,6 +171,10 @@ private fun EditorBody(
     onCapacityChange: (Int) -> Unit,
     onBatchCountChange: (Int) -> Unit,
     onBatchStartChange: (Int) -> Unit,
+    onSeatMapToggle: (Boolean) -> Unit,
+    onAddSeatRow: () -> Unit,
+    onResizeSeatRow: (String, Int) -> Unit,
+    onDeleteSeatRow: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier
@@ -251,12 +249,36 @@ private fun EditorBody(
             }
         }
 
+        if (state.mode != EditorMode.BATCH) {
+            item("step-seatmap") {
+                ComposerStep(
+                    index = "04",
+                    label = "SEAT MAP",
+                    hint = if (state.mode == EditorMode.SOLO) {
+                        "Optional. Lay out rows after minting."
+                    } else if (state.hasSeatMap) {
+                        "Tap a row to resize. Adds/removes trailing seats."
+                    } else {
+                        "Optional. Replace +/− with a per-seat grid."
+                    },
+                ) {
+                    SeatMapComposer(
+                        state = state,
+                        onToggle = onSeatMapToggle,
+                        onAddRow = onAddSeatRow,
+                        onResizeRow = onResizeSeatRow,
+                        onDeleteRow = onDeleteSeatRow,
+                    )
+                }
+            }
+        }
+
         item("step-registration") {
             ComposerStep(
                 index = when (state.mode) {
-                    EditorMode.SOLO -> "04"
+                    EditorMode.SOLO -> "05"
                     EditorMode.BATCH -> "04"
-                    EditorMode.EDIT -> "04"
+                    EditorMode.EDIT -> "05"
                 },
                 label = "REGISTRATION",
                 hint = "How it appears on the books.",
@@ -310,7 +332,7 @@ private fun ModeStrip(active: EditorMode, onModeChange: (EditorMode) -> Unit) {
                 modifier = Modifier.weight(1f),
             )
         }
-        Hairline()
+        Spacer(Modifier.height(20.dp))
     }
 }
 
@@ -353,7 +375,7 @@ private fun ModeTab(
         Spacer(Modifier.height(6.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.headlineSmall,
+            style = softHeadline(20),
             color = fg,
         )
     }
@@ -450,8 +472,8 @@ private fun ProofSheet(state: ZoneEditorState) {
                 Text(
                     text = displayName,
                     style = if (displayName.length > 24)
-                        MaterialTheme.typography.headlineSmall
-                    else MaterialTheme.typography.headlineLarge,
+                        softHeadline(20)
+                    else softHeadline(28),
                     color = paper,
                     maxLines = 2,
                 )
@@ -495,7 +517,7 @@ private fun ProofSheet(state: ZoneEditorState) {
                         Text("PERSONS", style = MonoTiny, color = paper.copy(alpha = 0.55f))
                         Text(
                             text = state.capacity.bandLabel(),
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = softHeadline(20),
                             color = paper,
                         )
                     }
@@ -607,7 +629,7 @@ private fun ComposerStep(
         Spacer(Modifier.height(14.dp))
         content()
     }
-    HairlineSoft()
+    Spacer(Modifier.height(20.dp))
 }
 
 // ─── Step content components ───────────────────────────────────────────────
@@ -631,7 +653,7 @@ private fun NameField(
                 BasicTextField(
                     value = value,
                     onValueChange = onValueChange,
-                    textStyle = MaterialTheme.typography.headlineMedium.copy(color = ink),
+                    textStyle = softHeadline(24).copy(color = ink),
                     cursorBrush = SolidColor(ink),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
@@ -646,7 +668,7 @@ private fun NameField(
                             if (value.isEmpty()) {
                                 Text(
                                     text = "Bay 1  ·  VIP North  ·  Care Room",
-                                    style = MaterialTheme.typography.headlineMedium,
+                                    style = softHeadline(24),
                                     color = muted.copy(alpha = 0.45f),
                                 )
                             }
@@ -928,7 +950,7 @@ private fun BatchStepper(
             color = muted,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         )
-        HairlineSoft()
+        Spacer(Modifier.height(20.dp))
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
@@ -980,6 +1002,203 @@ private fun BatchStepper(
     }
 }
 
+// ─── Seat map composer ─────────────────────────────────────────────────────
+
+@Composable
+private fun SeatMapComposer(
+    state: ZoneEditorState,
+    onToggle: (Boolean) -> Unit,
+    onAddRow: () -> Unit,
+    onResizeRow: (String, Int) -> Unit,
+    onDeleteRow: (String) -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val paper = MaterialTheme.colorScheme.background
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Toggle row.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(FieldTokens.HairStrong, ink)
+                .clickable { onToggle(!state.hasSeatMap) }
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (state.hasSeatMap) "SEAT MAP · ON" else "SEAT MAP · OFF",
+                    style = MonoTiny,
+                    color = if (state.hasSeatMap) Sage else muted,
+                )
+                Text(
+                    text = if (state.hasSeatMap) "Per-seat grid replaces the +/− tally."
+                    else "Use the standard +/− counter.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ink,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .border(FieldTokens.HairStrong, ink)
+                    .background(if (state.hasSeatMap) ink else paper),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (state.hasSeatMap) {
+                    Text(
+                        text = "✓",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = paper,
+                    )
+                }
+            }
+        }
+
+        if (state.hasSeatMap && state.mode == EditorMode.EDIT) {
+            Spacer(Modifier.height(14.dp))
+
+            // Live counts.
+            val totalSeats = state.seatRows.sumOf { it.seats.size }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("ROWS · ${state.seatRows.size}", style = MonoTiny, color = muted)
+                Text("SEATS · $totalSeats", style = MonoTiny, color = muted)
+            }
+            Spacer(Modifier.height(10.dp))
+
+            // Row list.
+            if (state.seatRows.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(FieldTokens.Hair, ink)
+                        .padding(20.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "No rows yet. Add the first one below.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = muted,
+                    )
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    state.seatRows.forEach { rowWithSeats ->
+                        SeatRowEditorCard(
+                            label = rowWithSeats.row.label,
+                            seatCount = rowWithSeats.seats.size,
+                            onResize = { newCount ->
+                                onResizeRow(rowWithSeats.row.id, newCount)
+                            },
+                            onDelete = { onDeleteRow(rowWithSeats.row.id) },
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Add row CTA.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(FieldTokens.HairStrong, ink)
+                    .background(ink)
+                    .clickable { onAddRow() }
+                    .padding(vertical = 14.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "+ ADD ROW",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = paper,
+                )
+            }
+        } else if (state.hasSeatMap && state.mode == EditorMode.SOLO) {
+            Spacer(Modifier.height(10.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(FieldTokens.Hair, ink)
+                    .padding(14.dp),
+            ) {
+                Text(
+                    text = "Mint the zone first — then revise it to lay out rows and seats.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = muted,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SeatRowEditorCard(
+    label: String,
+    seatCount: Int,
+    onResize: (Int) -> Unit,
+    onDelete: () -> Unit,
+) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(FieldTokens.Hair, ink)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .border(FieldTokens.Hair, ink),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text = label, style = MaterialTheme.typography.titleMedium, color = ink)
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = "ROW $label", style = MonoTiny, color = muted)
+            Text(
+                text = "$seatCount seats",
+                style = MaterialTheme.typography.titleMedium,
+                color = ink,
+            )
+        }
+        // Resize controls.
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .border(FieldTokens.Hair, ink)
+                .clickable { onResize((seatCount - 1).coerceAtLeast(1)) },
+            contentAlignment = Alignment.Center,
+        ) { Text("−", style = MaterialTheme.typography.titleMedium, color = ink) }
+        Spacer(Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .border(FieldTokens.Hair, ink)
+                .clickable { onResize(seatCount + 1) },
+            contentAlignment = Alignment.Center,
+        ) { Text("+", style = MaterialTheme.typography.titleMedium, color = ink) }
+        Spacer(Modifier.width(12.dp))
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .border(FieldTokens.Hair, ink)
+                .clickable { onDelete() },
+            contentAlignment = Alignment.Center,
+        ) { Text("×", style = MaterialTheme.typography.titleMedium, color = ink) }
+    }
+}
+
 // ─── Previews ──────────────────────────────────────────────────────────────
 
 @Composable
@@ -998,7 +1217,7 @@ private fun LedgerRowPreview(state: ZoneEditorState) {
             Text("LEDGER PREVIEW", style = MonoTiny, color = muted)
             Text(state.type.shortTagX(), style = MonoTiny, color = muted)
         }
-        HairlineSoft()
+        Spacer(Modifier.height(20.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1066,7 +1285,7 @@ private fun BatchPreview(state: ZoneEditorState) {
                 color = muted,
             )
         }
-        HairlineSoft()
+        Spacer(Modifier.height(20.dp))
         names.forEachIndexed { i, n ->
             Row(
                 modifier = Modifier
@@ -1088,10 +1307,10 @@ private fun BatchPreview(state: ZoneEditorState) {
                 )
                 Text("CAP ${state.capacity}", style = MonoTiny, color = muted)
             }
-            if (i < names.lastIndex) HairlineSoft()
+            if (i < names.lastIndex) Spacer(Modifier.height(20.dp))
         }
         if (state.batchCount > previewCount) {
-            HairlineSoft()
+            Spacer(Modifier.height(20.dp))
             Text(
                 text = "… +${state.batchCount - previewCount} MORE",
                 style = MonoTiny,
@@ -1127,7 +1346,7 @@ private fun EditorActionRail(
             .background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(WindowInsets.navigationBars),
     ) {
-        Hairline()
+        Spacer(Modifier.height(20.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1188,7 +1407,6 @@ private fun EditorColophon(state: ZoneEditorState) {
             .padding(horizontal = 20.dp, vertical = 22.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Hairline(color = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.height(10.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),

@@ -49,6 +49,13 @@ interface EventRepository {
     suspend fun incrementAreaCount(eventId: String, areaCountId: String, amount: Int = 1)
     suspend fun decrementAreaCount(eventId: String, areaCountId: String, amount: Int = 1)
     suspend fun resetAreaCount(eventId: String, areaCountId: String)
+
+    /**
+     * Forces totalAttendance to be recalculated. Useful when a derived data
+     * source (e.g., seat statuses) changes outside the +/− counter flow.
+     */
+    suspend fun recalculateEventTotal(eventId: String)
+
     suspend fun updateEventNotes(eventId: String, notes: String)
     suspend fun lockEvent(eventId: String)
     suspend fun unlockEvent(eventId: String)

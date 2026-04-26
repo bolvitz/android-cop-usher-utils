@@ -57,12 +57,21 @@ import com.eventmonitor.app.presentation.viewmodels.EventTypeManagementViewModel
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
-import com.eventmonitor.core.common.ui.FieldAppBar
-import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.ArcadeBackground
 import com.eventmonitor.core.common.ui.FieldTokens
-import com.eventmonitor.core.common.ui.Hairline
+import com.eventmonitor.core.common.ui.KeyTone
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.SoftBottomDock
+import com.eventmonitor.core.common.ui.SoftCard
+import com.eventmonitor.core.common.ui.SoftIconButton
+import com.eventmonitor.core.common.ui.SoftAlertDialog
+import com.eventmonitor.core.common.ui.SoftButtonTone
+import com.eventmonitor.core.common.ui.SoftKey
+import com.eventmonitor.core.common.ui.SoftPrimaryButton
+import com.eventmonitor.core.common.ui.SoftSection
 import com.eventmonitor.core.common.ui.SevPill
 import com.eventmonitor.core.common.ui.Severity
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import com.eventmonitor.core.data.local.entities.EventTypeEntity
 
@@ -98,18 +107,15 @@ fun ServiceTypeManagementScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        ArcadeBackground(modifier = Modifier.matchParentSize())
 
         Column(modifier = Modifier.fillMaxSize()) {
-            FieldAppBar(
-                eyebrow = "§ CATALOG",
+            SoftAppBar(
                 title = "Event Types",
-                leading = {
-                    FieldAppBarIcon(glyph = "‹", onClick = {
-                        haptic.light(); onNavigateBack()
-                    })
-                },
+                subtitle = "§ Catalog",
+                onBack = { haptic.light(); onNavigateBack() },
                 trailing = {
-                    FieldAppBarIcon(glyph = "+", onClick = {
+                    SoftIconButton(glyph = "+", onClick = {
                         haptic.medium()
                         editing = null
                         showEditor = true
@@ -208,42 +214,17 @@ fun ServiceTypeManagementScreen(
     }
 
     pendingDelete?.let { target ->
-        AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            containerColor = MaterialTheme.colorScheme.background,
-            title = {
-                Column {
-                    Text(
-                        "DELETE · EVENT TYPE",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Are you sure?",
-                        style = MaterialTheme.typography.headlineSmall,
-                    )
-                }
-            },
-            text = {
-                Text(
-                    "\"${target.name}\" will be removed from the catalog. You can't undo this.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    haptic.strong()
-                    viewModel.deleteServiceType(target.id)
-                    pendingDelete = null
-                }) {
-                    Text("DELETE", color = Signal, style = MaterialTheme.typography.labelMedium)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { haptic.light(); pendingDelete = null }) {
-                    Text("CANCEL", style = MaterialTheme.typography.labelMedium)
-                }
+        SoftAlertDialog(
+            onDismiss = { haptic.light(); pendingDelete = null },
+            eyebrow = "Delete · Event Type",
+            title = "Are you sure?",
+            message = "\"${target.name}\" will be removed from the catalog. You can't undo this.",
+            confirmLabel = "Delete",
+            confirmTone = SoftButtonTone.Destructive,
+            onConfirm = {
+                haptic.strong()
+                viewModel.deleteServiceType(target.id)
+                pendingDelete = null
             },
         )
     }
@@ -268,7 +249,7 @@ private fun StatStrip(total: Int, live: Int, archived: Int) {
         StatDivider()
         StatCell(label = "ARCHIVED", value = archived.toString())
     }
-    Hairline(color = MaterialTheme.colorScheme.outline)
+    Spacer(Modifier.height(20.dp))
 }
 
 @Composable
@@ -314,33 +295,12 @@ private fun StatDivider() {
 
 @Composable
 private fun RosterHeader(count: Int) {
-    Spacer(Modifier.height(20.dp))
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                "§§ ROSTER",
-                style = MonoTiny,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = "Curate the catalog.",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-        }
-        Text(
-            text = "$count ENTRIES",
-            style = MonoTiny,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-    Hairline()
+    SoftSection(
+        title = "Curate the catalog.",
+        eyebrow = "§§ ROSTER",
+        hint = "$count entries",
+    )
+    Spacer(Modifier.height(10.dp))
 }
 
 @Composable
@@ -348,7 +308,7 @@ private fun EmptyPanel(onAdd: () -> Unit) {
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
         Text(
             text = "No event types yet.",
-            style = MaterialTheme.typography.headlineSmall,
+            style = softHeadline(20),
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.height(6.dp))
@@ -358,7 +318,15 @@ private fun EmptyPanel(onAdd: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(16.dp))
-        InkButton(label = "+ ADD FIRST TYPE", onClick = onAdd)
+        SoftCard(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = "+ ADD FIRST TYPE",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
+        }
     }
 }
 
@@ -379,85 +347,89 @@ private fun EventTypeRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit() }
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 10.dp),
     ) {
-        Row(
+        SoftCard(
+            onClick = onEdit,
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top,
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = type.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = if (isActive) MaterialTheme.colorScheme.onBackground
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "${type.dayType.uppercase()} · ${type.time.uppercase()}",
-                    style = MonoTiny,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (type.description.isNotBlank()) {
-                    Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = type.description,
-                        style = MaterialTheme.typography.bodySmall,
+                        text = type.name,
+                        style = softHeadline(20),
+                        color = if (isActive) MaterialTheme.colorScheme.onBackground
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "${type.dayType.uppercase()} · ${type.time.uppercase()}",
+                        style = MonoTiny,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (type.description.isNotBlank()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = type.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
-            }
-            Spacer(Modifier.width(10.dp))
-            Column(horizontalAlignment = Alignment.End) {
-                if (isActive) {
-                    SevPill(severity = Severity.LOW, label = "LIVE")
-                } else {
-                    SevPill(severity = Severity.NEUTRAL, label = "IDLE")
+                Spacer(Modifier.width(10.dp))
+                Column(horizontalAlignment = Alignment.End) {
+                    if (isActive) {
+                        SevPill(severity = Severity.LOW, label = "LIVE")
+                    } else {
+                        SevPill(severity = Severity.NEUTRAL, label = "IDLE")
+                    }
                 }
-            }
-            Box {
-                Text(
-                    text = "⋯",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier
-                        .padding(start = 12.dp)
-                        .clickable { menuOpen = true },
-                )
-                DropdownMenu(
-                    expanded = menuOpen,
-                    onDismissRequest = { menuOpen = false },
-                    containerColor = MaterialTheme.colorScheme.background,
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("EDIT", style = MaterialTheme.typography.labelMedium) },
-                        onClick = { menuOpen = false; onEdit() },
+                Box {
+                    Text(
+                        text = "⋯",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier
+                            .padding(start = 12.dp)
+                            .clickable { menuOpen = true },
                     )
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                if (isActive) "ARCHIVE" else "REINSTATE",
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                        },
-                        onClick = { menuOpen = false; onToggle(!isActive) },
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                "DELETE",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Signal,
-                            )
-                        },
-                        onClick = { menuOpen = false; onDelete() },
-                    )
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false },
+                        containerColor = MaterialTheme.colorScheme.background,
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("EDIT", style = MaterialTheme.typography.labelMedium) },
+                            onClick = { menuOpen = false; onEdit() },
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    if (isActive) "ARCHIVE" else "REINSTATE",
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            },
+                            onClick = { menuOpen = false; onToggle(!isActive) },
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "DELETE",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Signal,
+                                )
+                            },
+                            onClick = { menuOpen = false; onDelete() },
+                        )
+                    }
                 }
             }
         }
     }
-    Hairline(color = MaterialTheme.colorScheme.outline)
 }
 
 // ---------------------------------------------------------------------------
@@ -469,7 +441,7 @@ private fun AddSlab(onClick: () -> Unit) {
     val ink = MaterialTheme.colorScheme.onBackground
     val paper = MaterialTheme.colorScheme.background
     Column {
-        Hairline(color = ink)
+        Spacer(Modifier.height(20.dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -490,7 +462,7 @@ private fun AddSlab(onClick: () -> Unit) {
                     )
                     Text(
                         "Add event type",
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = softHeadline(20),
                         color = paper,
                     )
                 }
@@ -501,25 +473,6 @@ private fun AddSlab(onClick: () -> Unit) {
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun InkButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    Box(
-        modifier = modifier
-            .height(FieldTokens.ToolHeight)
-            .border(FieldTokens.Hair, ink)
-            .clickable { onClick() }
-            .padding(horizontal = 18.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = ink,
-        )
     }
 }
 
@@ -558,7 +511,6 @@ private fun Colophon(total: Int, live: Int) {
             .padding(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Hairline(color = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.height(10.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -580,7 +532,6 @@ private fun Colophon(total: Int, live: Int) {
                 style = MonoTiny,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text("― FIELD ―", style = MonoTiny, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -623,15 +574,14 @@ private fun EventTypeEditorSheet(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
         ) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
+
             Column(modifier = Modifier.fillMaxSize()) {
-                FieldAppBar(
-                    eyebrow = if (isEdit) "§ EDIT · ENTRY" else "§ NEW · ENTRY",
+                SoftAppBar(
                     title = if (isEdit) "Edit Type" else "Add Type",
-                    leading = {
-                        FieldAppBarIcon(glyph = "✕", onClick = {
-                            haptic.light(); onDismiss()
-                        })
-                    },
+                    subtitle = if (isEdit) "§ Edit · Entry" else "§ New · Entry",
+                    onBack = { haptic.light(); onDismiss() },
+                    backGlyph = "✕",
                 )
 
                 Column(
@@ -650,7 +600,7 @@ private fun EventTypeEditorSheet(
                             singleLine = true,
                         )
                     }
-                    Hairline(color = MaterialTheme.colorScheme.outline)
+                    Spacer(Modifier.height(20.dp))
 
                     // Lane: Day (dropdown)
                     FieldLane(label = "DAY", hint = "Of the week") {
@@ -664,7 +614,7 @@ private fun EventTypeEditorSheet(
                             ) {
                                 Text(
                                     text = day,
-                                    style = MaterialTheme.typography.headlineSmall,
+                                    style = softHeadline(20),
                                     color = MaterialTheme.colorScheme.onBackground,
                                 )
                                 Text(
@@ -696,7 +646,7 @@ private fun EventTypeEditorSheet(
                             }
                         }
                     }
-                    Hairline(color = MaterialTheme.colorScheme.outline)
+                    Spacer(Modifier.height(20.dp))
 
                     // Lane: Time (opens picker)
                     FieldLane(label = "TIME", hint = "Tap to set") {
@@ -712,7 +662,7 @@ private fun EventTypeEditorSheet(
                         ) {
                             Text(
                                 text = timeString,
-                                style = MaterialTheme.typography.headlineSmall,
+                                style = softHeadline(20),
                                 color = MaterialTheme.colorScheme.onBackground,
                             )
                             Text(
@@ -722,7 +672,7 @@ private fun EventTypeEditorSheet(
                             )
                         }
                     }
-                    Hairline(color = MaterialTheme.colorScheme.outline)
+                    Spacer(Modifier.height(20.dp))
 
                     // Lane: Description
                     FieldLane(label = "NOTES", hint = "Optional") {
@@ -734,7 +684,7 @@ private fun EventTypeEditorSheet(
                             singleLine = false,
                         )
                     }
-                    Hairline(color = MaterialTheme.colorScheme.outline)
+                    Spacer(Modifier.height(20.dp))
 
                     if (existing != null) {
                         Spacer(Modifier.height(20.dp))
@@ -836,7 +786,7 @@ private fun InkInput(
 ) {
     val ink = MaterialTheme.colorScheme.onBackground
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    val style = MaterialTheme.typography.headlineSmall.copy(color = ink)
+    val style = softHeadline(20).copy(color = ink)
 
     Box(modifier = Modifier.fillMaxWidth()) {
         if (value.isEmpty()) {
@@ -859,42 +809,14 @@ private fun InkInput(
 
 @Composable
 private fun SaveSlab(label: String, enabled: Boolean, onClick: () -> Unit) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    val paper = MaterialTheme.colorScheme.background
-    val bg = if (enabled) ink else MaterialTheme.colorScheme.outline
-    Column {
-        Hairline(color = ink)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(bg)
-                .clickable(enabled = enabled) { onClick() }
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text(
-                        text = if (enabled) "READY" else "NEEDS NAME",
-                        style = MonoTiny,
-                        color = paper.copy(alpha = 0.6f),
-                    )
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = paper,
-                    )
-                }
-                Text(
-                    text = "→",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = paper,
-                )
-            }
-        }
+    SoftBottomDock {
+        SoftPrimaryButton(
+            label = label,
+            onClick = onClick,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth(),
+            trailingGlyph = "→",
+        )
     }
 }
 
@@ -916,27 +838,13 @@ private fun TimePickerDialog(
         is24Hour = false,
     )
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.background,
-        title = {
-            Text(
-                "§ SET TIME",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        text = { TimePicker(state = state) },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(state.hour, state.minute) }) {
-                Text("CONFIRM", style = MaterialTheme.typography.labelMedium)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("CANCEL", style = MaterialTheme.typography.labelMedium)
-            }
-        },
+    SoftAlertDialog(
+        onDismiss = onDismiss,
+        eyebrow = "§ Set Time",
+        title = "Pick a time",
+        confirmLabel = "Confirm",
+        onConfirm = { onConfirm(state.hour, state.minute) },
+        body = { TimePicker(state = state) },
     )
 }
 

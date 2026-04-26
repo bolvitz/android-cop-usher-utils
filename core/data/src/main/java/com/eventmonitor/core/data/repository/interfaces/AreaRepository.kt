@@ -14,7 +14,8 @@ interface AreaRepository {
         name: String,
         type: AreaType,
         capacity: Int,
-        displayOrder: Int
+        displayOrder: Int,
+        hasSeatMap: Boolean = false
     ): String
 
     suspend fun updateArea(area: AreaTemplateEntity)

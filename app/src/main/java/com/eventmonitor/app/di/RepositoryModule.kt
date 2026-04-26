@@ -7,6 +7,7 @@ import com.eventmonitor.core.data.repository.IncidentRepositoryImpl
 import com.eventmonitor.core.data.repository.LostItemRepositoryImpl
 import com.eventmonitor.core.data.repository.EventRepositoryImpl
 import com.eventmonitor.core.data.repository.EventTypeRepositoryImpl
+import com.eventmonitor.core.data.repository.SeatMapRepositoryImpl
 import com.eventmonitor.core.data.repository.interfaces.AreaCountRepository
 import com.eventmonitor.core.data.repository.interfaces.AreaRepository
 import com.eventmonitor.core.data.repository.interfaces.VenueRepository
@@ -14,6 +15,7 @@ import com.eventmonitor.core.data.repository.interfaces.IncidentRepository
 import com.eventmonitor.core.data.repository.interfaces.LostItemRepository
 import com.eventmonitor.core.data.repository.interfaces.EventRepository
 import com.eventmonitor.core.data.repository.interfaces.EventTypeRepository
+import com.eventmonitor.core.data.repository.interfaces.SeatMapRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -65,4 +67,10 @@ abstract class RepositoryModule {
     abstract fun bindIncidentRepository(
         incidentRepositoryImpl: IncidentRepositoryImpl
     ): IncidentRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSeatMapRepository(
+        seatMapRepositoryImpl: SeatMapRepositoryImpl
+    ): SeatMapRepository
 }

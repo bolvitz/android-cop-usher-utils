@@ -3,10 +3,13 @@ package com.eventmonitor.app.presentation.screens.areas
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.eventmonitor.core.data.local.entities.SeatRowWithSeats
 import com.eventmonitor.core.data.repository.interfaces.AreaRepository
+import com.eventmonitor.core.data.repository.interfaces.SeatMapRepository
 import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import com.eventmonitor.core.domain.models.AreaType
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +32,8 @@ data class ZoneEditorState(
     val batchCount: Int = 6,
     val batchStart: Int = 1,
     val typeLocked: Boolean = false,
+    val hasSeatMap: Boolean = false,
+    val seatRows: List<SeatRowWithSeats> = emptyList(),
     val error: String? = null,
     val finished: Boolean = false,
 )
@@ -37,6 +42,7 @@ data class ZoneEditorState(
 class ZoneEditorViewModel @Inject constructor(
     private val areaRepository: AreaRepository,
     private val venueRepository: VenueRepository,
+    private val seatMapRepository: SeatMapRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -58,6 +64,8 @@ class ZoneEditorViewModel @Inject constructor(
     )
     val state: StateFlow<ZoneEditorState> = _state.asStateFlow()
 
+    private var seatRowsJob: Job? = null
+
     init {
         viewModelScope.launch {
             val venueName = runCatching {
@@ -72,10 +80,12 @@ class ZoneEditorViewModel @Inject constructor(
                         name = area.name,
                         capacity = area.capacity,
                         type = AreaType.fromString(area.type),
+                        hasSeatMap = area.hasSeatMap,
                         isInitializing = false,
                         typeLocked = true,
                         mode = EditorMode.EDIT,
                     )
+                    observeSeatRows(zoneId)
                     return@launch
                 }
             }
@@ -83,6 +93,15 @@ class ZoneEditorViewModel @Inject constructor(
                 venueName = venueName,
                 isInitializing = false,
             )
+        }
+    }
+
+    private fun observeSeatRows(areaId: String) {
+        seatRowsJob?.cancel()
+        seatRowsJob = viewModelScope.launch {
+            seatMapRepository.observeRowsWithSeats(areaId).collect { rows ->
+                _state.value = _state.value.copy(seatRows = rows)
+            }
         }
     }
 
@@ -110,6 +129,36 @@ class ZoneEditorViewModel @Inject constructor(
 
     fun setBatchStart(value: Int) {
         _state.value = _state.value.copy(batchStart = value.coerceIn(1, 9999))
+    }
+
+    fun setHasSeatMap(enabled: Boolean) {
+        val s = _state.value
+        if (s.mode == EditorMode.BATCH) return
+        _state.value = s.copy(hasSeatMap = enabled)
+        // For EDIT mode, persist immediately so the row editor reflects DB state.
+        if (s.mode == EditorMode.EDIT && s.zoneId != null) {
+            viewModelScope.launch {
+                seatMapRepository.setHasSeatMap(s.zoneId, enabled)
+            }
+        }
+    }
+
+    fun addSeatRow(seatCount: Int = 10) {
+        val areaId = _state.value.zoneId ?: return
+        if (!_state.value.hasSeatMap) return
+        viewModelScope.launch { seatMapRepository.addRow(areaId, seatCount) }
+    }
+
+    fun resizeSeatRow(rowId: String, newSeatCount: Int) {
+        viewModelScope.launch { seatMapRepository.resizeRow(rowId, newSeatCount) }
+    }
+
+    fun renameSeatRow(rowId: String, label: String) {
+        viewModelScope.launch { seatMapRepository.renameRow(rowId, label) }
+    }
+
+    fun deleteSeatRow(rowId: String) {
+        viewModelScope.launch { seatMapRepository.deleteRow(rowId) }
     }
 
     fun clearError() {
@@ -141,6 +190,7 @@ class ZoneEditorViewModel @Inject constructor(
                     type = s.type,
                     capacity = s.capacity,
                     displayOrder = nextOrder,
+                    hasSeatMap = s.hasSeatMap,
                 )
                 _state.value = _state.value.copy(isSubmitting = false, finished = true)
             } catch (e: Exception) {
@@ -198,7 +248,11 @@ class ZoneEditorViewModel @Inject constructor(
                     return@launch
                 }
                 areaRepository.updateArea(
-                    current.copy(name = s.name.trim(), capacity = s.capacity),
+                    current.copy(
+                        name = s.name.trim(),
+                        capacity = s.capacity,
+                        hasSeatMap = s.hasSeatMap,
+                    ),
                 )
                 _state.value = _state.value.copy(isSubmitting = false, finished = true)
             } catch (e: Exception) {

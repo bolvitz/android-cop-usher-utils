@@ -29,7 +29,8 @@ class AreaRepositoryImpl @Inject constructor(
         name: String,
         type: AreaType,
         capacity: Int,
-        displayOrder: Int
+        displayOrder: Int,
+        hasSeatMap: Boolean
     ): String {
         val areaId = UUID.randomUUID().toString()
         val area = AreaTemplateEntity(
@@ -39,7 +40,8 @@ class AreaRepositoryImpl @Inject constructor(
             type = type.name,
             capacity = capacity,
             displayOrder = displayOrder,
-            icon = type.defaultIcon
+            icon = type.defaultIcon,
+            hasSeatMap = hasSeatMap
         )
 
         areaTemplateDao.insertArea(area)

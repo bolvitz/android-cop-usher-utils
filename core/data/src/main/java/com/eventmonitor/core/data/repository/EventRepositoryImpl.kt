@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.eventmonitor.core.data.local.dao.AreaCountDao
 import com.eventmonitor.core.data.local.dao.AreaTemplateDao
 import com.eventmonitor.core.data.local.dao.EventDao
+import com.eventmonitor.core.data.local.dao.SeatStatusDao
 import com.eventmonitor.core.data.local.dao.VenueDao
 import com.eventmonitor.core.data.local.database.AppDatabase
 import com.eventmonitor.core.data.local.entities.AreaCountEntity
@@ -30,7 +31,8 @@ class EventRepositoryImpl @Inject constructor(
     private val eventDao: EventDao,
     private val areaCountDao: AreaCountDao,
     private val areaTemplateDao: AreaTemplateDao,
-    private val venueDao: VenueDao
+    private val venueDao: VenueDao,
+    private val seatStatusDao: SeatStatusDao
 ) : EventRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -166,6 +168,10 @@ class EventRepositoryImpl @Inject constructor(
         updateEventCount(eventId, areaCountId, 0, "RESET")
     }
 
+    override suspend fun recalculateEventTotal(eventId: String) {
+        updateEventTotal(eventId)
+    }
+
     override suspend fun updateEventNotes(eventId: String, notes: String) {
         val event = eventDao.getEventById(eventId).first()?.event ?: return
         eventDao.updateEvent(event.copy(notes = notes, updatedAt = System.currentTimeMillis()))
@@ -202,6 +208,8 @@ class EventRepositoryImpl @Inject constructor(
         val event = eventWithDetails.event
         val venue = eventWithDetails.venue
         val areaCounts = areaCountDao.getAreaCountsByService(eventId).first()
+        val seatOccupied = seatStatusDao.getOccupiedCountsByArea(eventId)
+            .associate { it.areaTemplateId to it.occupied }
 
         val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
         val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
@@ -233,10 +241,13 @@ class EventRepositoryImpl @Inject constructor(
                 .forEach { areaCountWithTemplate ->
                     val area = areaCountWithTemplate.areaCount
                     val template = areaCountWithTemplate.template
+                    val effectiveCount = if (template.hasSeatMap) {
+                        seatOccupied[template.id] ?: 0
+                    } else area.count
 
                     // Format: "Area Name" followed by spaces, then the count right-aligned
                     val maxLineLength = 40
-                    val countStr = area.count.toString()
+                    val countStr = effectiveCount.toString()
                     val nameLength = template.name.length
                     val spacesNeeded = maxLineLength - nameLength - countStr.length
                     val spaces = if (spacesNeeded > 0) " ".repeat(spacesNeeded) else "  "
@@ -341,7 +352,12 @@ class EventRepositoryImpl @Inject constructor(
 
     private suspend fun updateEventTotal(eventId: String) {
         val areaCounts = areaCountDao.getAreaCountsByService(eventId).first()
-        val total = areaCounts.sumOf { it.areaCount.count }
+        val seatOccupied = seatStatusDao.getOccupiedCountsByArea(eventId)
+            .associate { it.areaTemplateId to it.occupied }
+        val total = areaCounts.sumOf { entry ->
+            if (entry.template.hasSeatMap) seatOccupied[entry.template.id] ?: 0
+            else entry.areaCount.count
+        }
 
         val event = eventDao.getEventById(eventId).first()?.event ?: return
 

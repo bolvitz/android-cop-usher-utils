@@ -57,11 +57,17 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.common.theme.DataMono
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Signal
-import com.eventmonitor.core.common.ui.FieldAppBar
-import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.ArcadeBackground
 import com.eventmonitor.core.common.ui.FieldTokens
-import com.eventmonitor.core.common.ui.Hairline
-import com.eventmonitor.core.common.ui.HairlineSoft
+import com.eventmonitor.core.common.ui.KeyTone
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.SoftBottomDock
+import com.eventmonitor.core.common.ui.SoftCard
+import com.eventmonitor.core.common.ui.SoftKey
+import com.eventmonitor.core.common.ui.SoftPrimaryButton
+import com.eventmonitor.core.common.ui.SoftLivePulseDot
+import com.eventmonitor.core.common.ui.SoftSection
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 
 @Composable
@@ -80,15 +86,10 @@ fun VenueSetupScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            FieldAppBar(
+            SoftAppBar(
                 title = if (isEditMode) "Amend." else "New venue.",
-                eyebrow = if (isEditMode) "§ RECORD · EDIT" else "§ RECORD · DRAFT",
-                leading = {
-                    FieldAppBarIcon(glyph = "‹", onClick = {
-                        haptic.light()
-                        onNavigateBack()
-                    })
-                },
+                subtitle = if (isEditMode) "§ Record · Edit" else "§ Record · Draft",
+                onBack = { haptic.light(); onNavigateBack() },
                 trailing = {
                     if (isEditMode && uiState.isActive) LivePulseDot()
                 },
@@ -113,61 +114,65 @@ fun VenueSetupScreen(
             )
         },
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState()),
-        ) {
-            IdentityStanza(
-                name = uiState.name,
-                code = uiState.code,
-                location = uiState.location,
-                onNameChange = viewModel::updateName,
-                onCodeChange = viewModel::updateCode,
-                onLocationChange = viewModel::updateLocation,
-            )
-
-            LiaisonStanza(
-                person = uiState.contactPerson,
-                email = uiState.contactEmail,
-                phone = uiState.contactPhone,
-                onPersonChange = viewModel::updateContactPerson,
-                onEmailChange = viewModel::updateContactEmail,
-                onPhoneChange = viewModel::updateContactPhone,
-            )
-
-            CapabilitiesStanza(
-                headcount = uiState.isHeadCountEnabled,
-                lostFound = uiState.isLostAndFoundEnabled,
-                incidents = uiState.isIncidentReportingEnabled,
-                onHeadcount = viewModel::updateHeadCountEnabled,
-                onLostFound = viewModel::updateLostAndFoundEnabled,
-                onIncidents = viewModel::updateIncidentReportingEnabled,
-            )
-
-            if (isEditMode) {
-                VisibilityStanza(
-                    isActive = uiState.isActive,
-                    onChange = viewModel::updateActive,
-                )
-            }
-
-            AnimatedVisibility(
-                visible = uiState.error != null,
-                enter = fadeIn(),
-                exit = fadeOut(),
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
             ) {
-                uiState.error?.let { ErrorRibbon(it) }
-            }
+                IdentityStanza(
+                    name = uiState.name,
+                    code = uiState.code,
+                    location = uiState.location,
+                    onNameChange = viewModel::updateName,
+                    onCodeChange = viewModel::updateCode,
+                    onLocationChange = viewModel::updateLocation,
+                )
 
-            Spacer(Modifier.height(24.dp))
+                LiaisonStanza(
+                    person = uiState.contactPerson,
+                    email = uiState.contactEmail,
+                    phone = uiState.contactPhone,
+                    onPersonChange = viewModel::updateContactPerson,
+                    onEmailChange = viewModel::updateContactEmail,
+                    onPhoneChange = viewModel::updateContactPhone,
+                )
+
+                CapabilitiesStanza(
+                    headcount = uiState.isHeadCountEnabled,
+                    lostFound = uiState.isLostAndFoundEnabled,
+                    incidents = uiState.isIncidentReportingEnabled,
+                    onHeadcount = viewModel::updateHeadCountEnabled,
+                    onLostFound = viewModel::updateLostAndFoundEnabled,
+                    onIncidents = viewModel::updateIncidentReportingEnabled,
+                )
+
+                if (isEditMode) {
+                    VisibilityStanza(
+                        isActive = uiState.isActive,
+                        onChange = viewModel::updateActive,
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = uiState.error != null,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                ) {
+                    uiState.error?.let { ErrorRibbon(it) }
+                }
+
+                Spacer(Modifier.height(24.dp))
+            }
         }
     }
 }
 
 // ---------------------------------------------------------------------------
-// 01 · Identity — serif headline name + mono code + sans location
+// 01 · Identity
 // ---------------------------------------------------------------------------
 
 @Composable
@@ -182,12 +187,13 @@ private fun IdentityStanza(
     val ink = MaterialTheme.colorScheme.onBackground
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
 
-    StanzaHeader(number = "01", label = "IDENTITY", note = "REQUIRED")
+    SoftSection(title = "Identity", eyebrow = "01 · IDENTITY", hint = "Required")
+    Spacer(Modifier.height(20.dp))
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 20.dp),
+            .padding(horizontal = 20.dp),
     ) {
         Text("VENUE NAME", style = MonoTiny, color = muted)
         Spacer(Modifier.height(10.dp))
@@ -195,7 +201,7 @@ private fun IdentityStanza(
             value = name,
             onChange = onNameChange,
             placeholder = "Untitled venue",
-            textStyle = MaterialTheme.typography.headlineLarge.copy(color = ink),
+            textStyle = softHeadline(28).copy(color = ink),
             capitalization = KeyboardCapitalization.Words,
         )
 
@@ -245,6 +251,7 @@ private fun IdentityStanza(
                 )
             }
         }
+        Spacer(Modifier.height(20.dp))
     }
 }
 
@@ -261,7 +268,8 @@ private fun LiaisonStanza(
     onEmailChange: (String) -> Unit,
     onPhoneChange: (String) -> Unit,
 ) {
-    StanzaHeader(number = "02", label = "LIAISON", note = "OPTIONAL")
+    SoftSection(title = "Liaison", eyebrow = "02 · LIAISON", hint = "Optional")
+    Spacer(Modifier.height(6.dp))
 
     Column(
         modifier = Modifier
@@ -275,7 +283,7 @@ private fun LiaisonStanza(
             placeholder = "Name",
             capitalization = KeyboardCapitalization.Words,
         )
-        HairlineSoft()
+        Spacer(Modifier.height(20.dp))
         LabeledInput(
             label = "EMAIL",
             value = email,
@@ -287,7 +295,7 @@ private fun LiaisonStanza(
                 fontSize = MaterialTheme.typography.bodyMedium.fontSize,
             ).copy(color = MaterialTheme.colorScheme.onBackground),
         )
-        HairlineSoft()
+        Spacer(Modifier.height(20.dp))
         LabeledInput(
             label = "PHONE",
             value = phone,
@@ -303,7 +311,7 @@ private fun LiaisonStanza(
 }
 
 // ---------------------------------------------------------------------------
-// 03 · Capabilities — ink-slab toggle rows
+// 03 · Capabilities — toggle rows
 // ---------------------------------------------------------------------------
 
 @Composable
@@ -317,36 +325,42 @@ private fun CapabilitiesStanza(
 ) {
     val enabledCount = listOf(headcount, lostFound, incidents).count { it }
 
-    StanzaHeader(
-        number = "03",
-        label = "CAPABILITIES",
-        note = "$enabledCount / 3 ENABLED",
+    SoftSection(
+        title = "Capabilities",
+        eyebrow = "03 · CAPABILITIES",
+        hint = "$enabledCount / 3 enabled",
     )
 
-    Column(Modifier.fillMaxWidth()) {
-        CapabilityRow(
-            glyph = "▦",
-            title = "Head count",
-            caption = "Track seated, standing, and overflow in real time.",
-            checked = headcount,
-            onChange = onHeadcount,
-        )
-        HairlineSoft()
-        CapabilityRow(
-            glyph = "⌧",
-            title = "Lost & found",
-            caption = "Tag items, attach photos, reconcile on claim.",
-            checked = lostFound,
-            onChange = onLostFound,
-        )
-        HairlineSoft()
-        CapabilityRow(
-            glyph = "!",
-            title = "Incident log",
-            caption = "Record safety, medical, and security events.",
-            checked = incidents,
-            onChange = onIncidents,
-        )
+    Column(Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp)) {
+        Spacer(Modifier.height(10.dp))
+        SoftCard(modifier = Modifier.fillMaxWidth()) {
+            CapabilityRow(
+                glyph = "▦",
+                title = "Head count",
+                caption = "Track seated, standing, and overflow in real time.",
+                checked = headcount,
+                onChange = onHeadcount,
+            )
+            Spacer(Modifier.height(20.dp))
+            CapabilityRow(
+                glyph = "⌧",
+                title = "Lost & found",
+                caption = "Tag items, attach photos, reconcile on claim.",
+                checked = lostFound,
+                onChange = onLostFound,
+            )
+            Spacer(Modifier.height(20.dp))
+            CapabilityRow(
+                glyph = "!",
+                title = "Incident log",
+                caption = "Record safety, medical, and security events.",
+                checked = incidents,
+                onChange = onIncidents,
+            )
+        }
+        Spacer(Modifier.height(10.dp))
     }
 }
 
@@ -368,8 +382,7 @@ private fun CapabilityRow(
             .clickable {
                 haptic.light()
                 onChange(!checked)
-            }
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+            },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -438,10 +451,10 @@ private fun VisibilityStanza(
     isActive: Boolean,
     onChange: (Boolean) -> Unit,
 ) {
-    StanzaHeader(
-        number = "04",
-        label = "VISIBILITY",
-        note = if (isActive) "● LIVE" else "○ IDLE",
+    SoftSection(
+        title = "Visibility",
+        eyebrow = "04 · VISIBILITY",
+        hint = if (isActive) "● LIVE" else "○ IDLE",
     )
 
     val ink = MaterialTheme.colorScheme.onBackground
@@ -553,7 +566,7 @@ private fun VisibilityCell(
 }
 
 // ---------------------------------------------------------------------------
-// Stanza header — serif number + mono label + right-aligned note
+// Stanza header
 // ---------------------------------------------------------------------------
 
 @Composable
@@ -561,7 +574,7 @@ private fun StanzaHeader(number: String, label: String, note: String? = null) {
     val ink = MaterialTheme.colorScheme.onBackground
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
 
-    Hairline(color = ink)
+    Spacer(Modifier.height(20.dp))
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -592,7 +605,7 @@ private fun StanzaHeader(number: String, label: String, note: String? = null) {
             )
         }
     }
-    HairlineSoft()
+    Spacer(Modifier.height(20.dp))
 }
 
 // ---------------------------------------------------------------------------
@@ -750,21 +763,19 @@ private fun SaveSlab(
     loading: Boolean,
     onClick: () -> Unit,
 ) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    val paper = MaterialTheme.colorScheme.background
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val ink = MaterialTheme.colorScheme.onBackground
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(paper),
+            .navigationBarsPadding(),
     ) {
-        Hairline(color = ink)
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 10.dp),
+                .padding(horizontal = 20.dp)
+                .padding(top = 6.dp, bottom = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -773,46 +784,16 @@ private fun SaveSlab(
                 color = if (enabled) ink else muted,
                 modifier = Modifier.weight(1f),
             )
-            Text(
-                text = hintLine,
-                style = MonoTiny,
-                color = muted,
-            )
+            Text(text = hintLine, style = MonoTiny, color = muted)
         }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .alpha(if (enabled) 1f else 0.4f)
-                .background(ink)
-                .clickable(enabled = enabled && !loading) { onClick() }
-                .padding(horizontal = 20.dp, vertical = 18.dp)
-                .navigationBarsPadding(),
-        ) {
-            Row(
+        SoftBottomDock {
+            SoftPrimaryButton(
+                label = label,
+                onClick = onClick,
+                enabled = enabled && !loading,
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = paper,
-                    modifier = Modifier.weight(1f),
-                )
-                if (loading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        color = paper,
-                        strokeWidth = 1.dp,
-                    )
-                } else {
-                    Text(
-                        text = "→",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = paper,
-                    )
-                }
-            }
+                trailingGlyph = if (loading) "…" else "→",
+            )
         }
     }
 }
@@ -823,20 +804,5 @@ private fun SaveSlab(
 
 @Composable
 private fun LivePulseDot() {
-    val transition = rememberInfiniteTransition(label = "venue-live")
-    val alpha by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = EaseInOut),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "venue-live-alpha",
-    )
-    Box(
-        modifier = Modifier
-            .alpha(alpha)
-            .size(7.dp)
-            .background(Signal),
-    )
+    SoftLivePulseDot(size = 8)
 }

@@ -48,25 +48,20 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
-import com.eventmonitor.core.common.ui.FieldAppBar
-import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.ArcadeBackground
 import com.eventmonitor.core.common.ui.FieldTokens
-import com.eventmonitor.core.common.ui.Hairline
-import com.eventmonitor.core.common.ui.HairlineSoft
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.SoftCard
+import com.eventmonitor.core.common.ui.SoftIconButton
+import com.eventmonitor.core.common.ui.SoftSection
 import com.eventmonitor.core.common.ui.ZoneChip
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import com.eventmonitor.core.data.local.entities.AreaTemplateEntity
 import com.eventmonitor.core.domain.models.AreaType
 
 // ═════════════════════════════════════════════════════════════════════════════
-// ZONE LEDGER — editorial/industrial redesign for the "Manage Areas" screen.
-// Layout beats:
-//   1. FieldAppBar    — venue eyebrow + ZONES title + inline [+] add glyph
-//   2. Section head   — serif count · monotype headline ("§ ZONE LEDGER")
-//   3. Ledger strip   — ZONES / CAPACITY / TYPES metrics
-//   4. Type filter    — horizontally scrolling ZoneChips (all, seating, vip…)
-//   5. Grouped rows   — each type becomes a ledger page with oversize count
-//   6. Sticky rail    — [+ ZONE]   [QUICK +N]    (replaces FAB)
+// ZONE LEDGER — Manage Areas screen.
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -86,17 +81,12 @@ fun AreaManagementScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            FieldAppBar(
-                title = "ZONES",
-                eyebrow = uiState.branchName.ifBlank { "VENUE" },
-                leading = {
-                    FieldAppBarIcon(glyph = "←", onClick = { haptic.light(); onNavigateBack() })
-                },
+            SoftAppBar(
+                title = "Zones",
+                subtitle = uiState.branchName.ifBlank { "Venue" },
+                onBack = { haptic.light(); onNavigateBack() },
                 trailing = {
-                    FieldAppBarIcon(
-                        glyph = "+",
-                        onClick = { haptic.medium(); onCreateZone() },
-                    )
+                    SoftIconButton(glyph = "+", onClick = { haptic.medium(); onCreateZone() })
                 },
             )
         },
@@ -112,6 +102,8 @@ fun AreaManagementScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
+
             when {
                 uiState.isLoading -> LoadingPanel()
                 uiState.areas.isEmpty() -> EmptyLedger(onAdd = {
@@ -263,7 +255,7 @@ private fun LedgerHeadline(zoneCount: Int) {
         ) {
             Text(
                 text = "Plan the floor.",
-                style = MaterialTheme.typography.headlineLarge,
+                style = softHeadline(28),
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
@@ -283,7 +275,7 @@ private fun LedgerHeadline(zoneCount: Int) {
 
 @Composable
 private fun LedgerStrip(zones: Int, capacity: Int, types: Int) {
-    Hairline()
+    Spacer(Modifier.height(20.dp))
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -301,7 +293,7 @@ private fun LedgerStrip(zones: Int, capacity: Int, types: Int) {
         StripDivider()
         StripCell(label = "TYPES", value = types.toString(), modifier = Modifier.weight(1f))
     }
-    Hairline()
+    Spacer(Modifier.height(20.dp))
 }
 
 @Composable
@@ -356,7 +348,7 @@ private fun TypeFilterRail(
             )
         }
     }
-    HairlineSoft()
+    Spacer(Modifier.height(20.dp))
 }
 
 // ---------------------------------------------------------------------------
@@ -370,47 +362,17 @@ private fun SectionHeader(
     capacity: Int,
     sectionIndex: Int,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .padding(top = 22.dp, bottom = 8.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "SECTION ${
-                        sectionIndex.toString().padStart(2, '0')
-                    } · ${type.displayName.uppercase()}",
-                    style = MonoTiny,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = type.displayName,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = count.toString().padStart(2, '0'),
-                    style = MaterialTheme.typography.displaySmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    text = if (capacity > 0) "CAP ${capacity.groupedThousands()}" else "CAP —",
-                    style = MonoTiny,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-    Hairline()
+    SoftSection(
+        title = type.displayName,
+        eyebrow = "SECTION ${
+            sectionIndex.toString().padStart(2, '0')
+        } · ${type.displayName.uppercase()}",
+        hint = "${
+            count.toString().padStart(2, '0')
+        } zones · CAP ${if (capacity > 0) capacity.groupedThousands() else "—"}",
+        modifier = Modifier.padding(top = 22.dp),
+    )
+    Spacer(Modifier.height(10.dp))
 }
 
 @Composable
@@ -427,94 +389,106 @@ private fun ZoneLedgerRow(
     val ink = MaterialTheme.colorScheme.onBackground
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit() }
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 10.dp),
     ) {
-        // Index column — tabular fraction index
-        Column(modifier = Modifier.width(52.dp)) {
-            Text(
-                text = rowIndex.toString().padStart(2, '0'),
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontFamily = MonoTiny.fontFamily,
-                ),
-                color = ink,
-            )
-            Text(
-                text = "/ ${totalInSection.toString().padStart(2, '0')}",
-                style = MonoTiny,
-                color = muted,
-            )
-        }
-
-        // Name + type caption
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = area.name,
-                style = MaterialTheme.typography.titleLarge,
-                color = ink,
-            )
-            Text(
-                text = "${AreaType.fromString(area.type).shortTag()} · ID ${
-                    area.id.take(6).uppercase()
-                }",
-                style = MonoTiny,
-                color = muted,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-        }
-
-        // Capacity column
-        Column(
-            horizontalAlignment = Alignment.End,
-            modifier = Modifier.padding(end = 4.dp),
+        SoftCard(
+            onClick = onEdit,
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(
-                text = "CAP",
-                style = MonoTiny,
-                color = muted,
-            )
-            Text(
-                text = area.capacity.toString().padStart(3, ' '),
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontFamily = MonoTiny.fontFamily,
-                ),
-                color = ink,
-            )
-        }
-
-        // Overflow menu
-        Box {
-            Text(
-                text = "⋯",
-                style = MaterialTheme.typography.headlineSmall,
-                color = ink,
-                modifier = Modifier
-                    .padding(start = 10.dp)
-                    .clickable { onOpenMenu() },
-            )
-            DropdownMenu(
-                expanded = menuOpen,
-                onDismissRequest = onDismissMenu,
-                containerColor = MaterialTheme.colorScheme.background,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                DropdownMenuItem(
-                    text = { Text("EDIT", style = MaterialTheme.typography.labelMedium) },
-                    onClick = onEdit,
-                )
-                DropdownMenuItem(
-                    text = {
-                        Text("DELETE", style = MaterialTheme.typography.labelMedium, color = Signal)
-                    },
-                    onClick = onDelete,
-                )
+                // Index column — tabular fraction index
+                Column(modifier = Modifier.width(52.dp)) {
+                    Text(
+                        text = rowIndex.toString().padStart(2, '0'),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = MonoTiny.fontFamily,
+                        ),
+                        color = ink,
+                    )
+                    Text(
+                        text = "/ ${totalInSection.toString().padStart(2, '0')}",
+                        style = MonoTiny,
+                        color = muted,
+                    )
+                }
+
+                // Name + type caption
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = area.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = ink,
+                    )
+                    Text(
+                        text = "${AreaType.fromString(area.type).shortTag()} · ID ${
+                            area.id.take(6).uppercase()
+                        }",
+                        style = MonoTiny,
+                        color = muted,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+
+                // Capacity column
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    modifier = Modifier.padding(end = 4.dp),
+                ) {
+                    Text(
+                        text = "CAP",
+                        style = MonoTiny,
+                        color = muted,
+                    )
+                    Text(
+                        text = area.capacity.toString().padStart(3, ' '),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = MonoTiny.fontFamily,
+                        ),
+                        color = ink,
+                    )
+                }
+
+                // Overflow menu
+                Box {
+                    Text(
+                        text = "⋯",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = ink,
+                        modifier = Modifier
+                            .padding(start = 10.dp)
+                            .clickable { onOpenMenu() },
+                    )
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = onDismissMenu,
+                        containerColor = MaterialTheme.colorScheme.background,
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("EDIT", style = MaterialTheme.typography.labelMedium) },
+                            onClick = onEdit,
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "DELETE",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Signal
+                                )
+                            },
+                            onClick = onDelete,
+                        )
+                    }
+                }
             }
         }
     }
-    HairlineSoft()
 }
 
 // ---------------------------------------------------------------------------
@@ -529,7 +503,7 @@ private fun ActionRail(onAdd: () -> Unit, onQuick: () -> Unit) {
             .background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(WindowInsets.navigationBars),
     ) {
-        Hairline()
+        Spacer(Modifier.height(20.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -610,7 +584,6 @@ private fun EmptyLedger(onAdd: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(24.dp))
-        Hairline()
         Spacer(Modifier.height(24.dp))
 
         Box(
@@ -628,7 +601,7 @@ private fun EmptyLedger(onAdd: () -> Unit) {
                     Text("START", style = MonoTiny, color = paper.copy(alpha = 0.55f))
                     Text(
                         "Add first zone",
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = softHeadline(20),
                         color = paper,
                     )
                 }
@@ -671,7 +644,6 @@ private fun LedgerColophon(total: Int, capacity: Int) {
             .padding(horizontal = 20.dp, vertical = 22.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Hairline(color = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.height(10.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),

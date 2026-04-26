@@ -2,6 +2,7 @@ package com.eventmonitor.feature.headcounter.seatmap
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,20 +13,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import com.eventmonitor.core.common.ui.ArcadeBackground
+import com.eventmonitor.core.common.ui.BrandBlue
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.SoftCard
+import com.eventmonitor.core.common.ui.SoftIconButton
+import com.eventmonitor.core.common.ui.softHeadline
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,7 +37,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.eventmonitor.feature.headcounter.seatmap.components.SeatMapView
 import com.eventmonitor.feature.headcounter.seatmap.models.SeatStatus
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeatMapDemoScreen(
     onNavigateBack: () -> Unit = {},
@@ -50,35 +46,22 @@ fun SeatMapDemoScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Cinema Seat Map Prototype") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
+            SoftAppBar(
+                title = "Seat Map",
+                subtitle = "Cinema Prototype",
+                onBack = onNavigateBack,
+                trailing = {
+                    SoftIconButton(glyph = "↺", onClick = { viewModel.resetSeats() })
                 },
-                actions = {
-                    IconButton(onClick = { viewModel.resetSeats() }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Reset seats"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
             )
         }
     ) { paddingValues ->
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+            modifier = Modifier.fillMaxSize()
         ) {
             // Statistics card
             SeatStatisticsCard(
@@ -108,6 +91,7 @@ fun SeatMapDemoScreen(
                 modifier = Modifier.weight(1f)
             )
         }
+        } // end Box
     }
 }
 
@@ -120,38 +104,29 @@ private fun SeatStatisticsCard(
     occupancyPercentage: Int,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+    SoftCard(modifier = modifier) {
+        // Title and total
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Title and total
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Seat Occupancy",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "$occupancyPercentage%",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = when {
-                        occupancyPercentage >= 80 -> Color(0xFFF44336)
-                        occupancyPercentage >= 50 -> Color(0xFFFF9800)
-                        else -> Color(0xFF4CAF50)
-                    }
-                )
-            }
+            Text(
+                text = "Seat Occupancy",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "$occupancyPercentage%",
+                style = softHeadline(24),
+                fontWeight = FontWeight.Bold,
+                color = when {
+                    occupancyPercentage >= 80 -> Color(0xFFF44336)
+                    occupancyPercentage >= 50 -> Color(0xFFFF9800)
+                    else -> Color(0xFF4CAF50)
+                }
+            )
+        }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -179,17 +154,17 @@ private fun SeatStatisticsCard(
                 StatItem(
                     label = "Total",
                     value = totalSeats.toString(),
-                    color = MaterialTheme.colorScheme.primary
+                    color = BrandBlue
                 )
                 StatItem(
                     label = "Occupied",
                     value = occupiedSeats.toString(),
-                    color = Color(0xFFF44336)
+                    color = Color(0xFFE63946) // BrandRed
                 )
                 StatItem(
                     label = "Reserved",
                     value = reservedSeats.toString(),
-                    color = Color(0xFFFF9800)
+                    color = Color(0xFFB8851A) // Amber
                 )
                 StatItem(
                     label = "Available",
@@ -197,7 +172,6 @@ private fun SeatStatisticsCard(
                     color = Color(0xFF4CAF50)
                 )
             }
-        }
     }
 }
 
@@ -230,16 +204,12 @@ private fun StatItem(
 private fun SeatLegend(
     modifier: Modifier = Modifier
 ) {
-    Card(
+    SoftCard(
         modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             LegendItem(

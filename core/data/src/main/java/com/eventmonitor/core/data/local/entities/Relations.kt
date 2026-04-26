@@ -35,6 +35,15 @@ data class AreaCountWithTemplate(
     val template: AreaTemplateEntity
 )
 
+data class SeatRowWithSeats(
+    @Embedded val row: SeatRowEntity,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "rowId"
+    )
+    val seats: List<SeatEntity>
+)
+
 data class EventWithAreaCounts(
     @Embedded val event: EventEntity,
     @Relation(

@@ -1,6 +1,20 @@
 package com.eventmonitor.core.common.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,8 +24,11 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,10 +39,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.eventmonitor.core.common.theme.LocalThemeMode
 import com.eventmonitor.core.common.theme.MonoTiny
+import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -120,12 +142,18 @@ fun FieldMasthead(
                     )
                 }
             }
-            Text(
-                text = clockFmt.format(now),
-                style = MaterialTheme.typography.headlineMedium,
-                color = ink,
+            Column(
+                horizontalAlignment = Alignment.End,
                 modifier = Modifier.padding(bottom = 6.dp),
-            )
+            ) {
+                ThemeToggle()
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = clockFmt.format(now),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = ink,
+                )
+            }
         }
         Spacer(Modifier.height(2.dp))
 
@@ -142,6 +170,70 @@ fun FieldMasthead(
                 .fillMaxWidth()
                 .height(FieldTokens.Hair)
                 .background(ink),
+        )
+    }
+}
+
+/**
+ * Compact light/dark switch — a stamp-bordered button with a sun↔moon glyph
+ * that flips on press. Reads/writes the [LocalThemeMode] composition local.
+ */
+@Composable
+private fun ThemeToggle(modifier: Modifier = Modifier) {
+    val theme = LocalThemeMode.current
+    val haptic = rememberHapticFeedback()
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.92f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "toggleScale",
+    )
+
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val isDark = theme.isDark
+
+    Row(
+        modifier = modifier
+            .scale(scale)
+            .clip(RoundedCornerShape(2.dp))
+            .border(FieldTokens.Hair, ink, RoundedCornerShape(2.dp))
+            .background(if (isDark) ink else MaterialTheme.colorScheme.background)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+            ) {
+                haptic.selection()
+                theme.isDark = !isDark
+            }
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AnimatedContent(
+            targetState = isDark,
+            label = "toggleGlyph",
+            transitionSpec = {
+                (scaleIn(tween(180), initialScale = 0.6f) + fadeIn(tween(180)))
+                    .togetherWith(scaleOut(tween(140), targetScale = 0.6f) + fadeOut(tween(140)))
+            },
+        ) { dark ->
+            Text(
+                text = if (dark) "☾" else "☀",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                color = if (dark) MaterialTheme.colorScheme.background else ink,
+            )
+        }
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = if (isDark) "DARK" else "LIGHT",
+            style = MonoTiny.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.4.sp,
+            ),
+            color = if (isDark) MaterialTheme.colorScheme.background else muted,
         )
     }
 }

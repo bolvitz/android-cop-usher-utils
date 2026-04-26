@@ -54,12 +54,14 @@ import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Navy
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
-import com.eventmonitor.core.common.ui.FieldAppBar
-import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.ArcadeBackground
 import com.eventmonitor.core.common.ui.FieldTokens
-import com.eventmonitor.core.common.ui.Hairline
-import com.eventmonitor.core.common.ui.HairlineSoft
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.SoftCard
+import com.eventmonitor.core.common.ui.SoftIconButton
 import com.eventmonitor.core.common.ui.ZoneChip
+import com.eventmonitor.core.common.ui.softEnter
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import com.eventmonitor.core.data.local.entities.LostItemEntity
 import com.eventmonitor.core.domain.models.ItemCategory
@@ -101,16 +103,12 @@ fun LostAndFoundScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            FieldAppBar(
+            SoftAppBar(
                 title = "CASES",
-                eyebrow = "LOST · FOUND",
-                leading = {
-                    FieldAppBarIcon(glyph = "←", onClick = {
-                        haptic.light(); onNavigateBack()
-                    })
-                },
+                subtitle = "Lost · Found",
+                onBack = { haptic.light(); onNavigateBack() },
                 trailing = {
-                    FieldAppBarIcon(
+                    SoftIconButton(
                         glyph = if (searchOpen) "×" else "⌕",
                         onClick = {
                             haptic.light()
@@ -140,6 +138,7 @@ fun LostAndFoundScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
             when (val state = uiState) {
                 is LostAndFoundUiState.Loading -> LoadingPanel()
                 is LostAndFoundUiState.Empty -> EmptyLedger(
@@ -223,22 +222,34 @@ private fun CaseLedger(
             .navigationBarsPadding(),
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
-        item(key = "headline") { LedgerHeadline(total = items.size) }
-        item(key = "strip") { StatusStrip(counts = counts) }
+        item(key = "headline") {
+            Box(modifier = Modifier.softEnter(index = 0)) {
+                LedgerHeadline(total = items.size)
+            }
+        }
+        item(key = "strip") {
+            Box(modifier = Modifier.softEnter(index = 1)) {
+                StatusStrip(counts = counts)
+            }
+        }
         item(key = "status-filter") {
-            StatusFilterRail(
-                selected = selectedStatus,
-                counts = counts,
-                onSelect = onStatusFilter,
-            )
+            Box(modifier = Modifier.softEnter(index = 2)) {
+                StatusFilterRail(
+                    selected = selectedStatus,
+                    counts = counts,
+                    onSelect = onStatusFilter,
+                )
+            }
         }
         if (catCounts.isNotEmpty()) {
             item(key = "cat-filter") {
-                CategoryFilterRail(
-                    selected = selectedCategory,
-                    counts = catCounts,
-                    onSelect = onCategoryFilter,
-                )
+                Box(modifier = Modifier.softEnter(index = 3)) {
+                    CategoryFilterRail(
+                        selected = selectedCategory,
+                        counts = catCounts,
+                        onSelect = onCategoryFilter,
+                    )
+                }
             }
         }
         if (searchOpen) {
@@ -255,14 +266,16 @@ private fun CaseLedger(
                 }
                 group.forEachIndexed { idx, item ->
                     item(key = "row-${item.id}") {
-                        CaseLedgerRow(
-                            item = item,
-                            rowIndex = idx + 1,
-                            total = group.size,
-                            onClick = { onItemClick(item.id) },
-                            onClaim = { onClaim(item) },
-                            onDonate = { onDonate(item) },
-                        )
+                        Box(modifier = Modifier.animateItem()) {
+                            CaseLedgerRow(
+                                item = item,
+                                rowIndex = idx + 1,
+                                total = group.size,
+                                onClick = { onItemClick(item.id) },
+                                onClaim = { onClaim(item) },
+                                onDonate = { onDonate(item) },
+                            )
+                        }
                     }
                 }
             }
@@ -297,7 +310,7 @@ private fun LedgerHeadline(total: Int) {
         ) {
             Text(
                 "Found on the floor.",
-                style = MaterialTheme.typography.headlineLarge,
+                style = softHeadline(28),
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
@@ -317,7 +330,7 @@ private fun LedgerHeadline(total: Int) {
 
 @Composable
 private fun StatusStrip(counts: Map<ItemStatus, Int>) {
-    Hairline()
+    Spacer(Modifier.height(10.dp))
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -338,7 +351,7 @@ private fun StatusStrip(counts: Map<ItemStatus, Int>) {
             Modifier.weight(1f)
         )
     }
-    Hairline()
+    Spacer(Modifier.height(10.dp))
 }
 
 @Composable
@@ -468,7 +481,7 @@ private fun CategoryFilterRail(
                     )
                 }
         }
-        HairlineSoft()
+        Spacer(Modifier.height(10.dp))
     }
 }
 
@@ -518,7 +531,7 @@ private fun InlineSearch(query: String, onChange: (String) -> Unit) {
             },
         )
     }
-    HairlineSoft()
+    Spacer(Modifier.height(10.dp))
 }
 
 // ---------------------------------------------------------------------------
@@ -554,7 +567,7 @@ private fun StatusSectionHeader(status: ItemStatus, count: Int) {
                 Spacer(Modifier.height(2.dp))
                 Text(
                     sectionTitle(status),
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = softHeadline(20),
                     color = MaterialTheme.colorScheme.onBackground,
                 )
             }
@@ -565,7 +578,7 @@ private fun StatusSectionHeader(status: ItemStatus, count: Int) {
             )
         }
     }
-    Hairline()
+    Spacer(Modifier.height(10.dp))
 }
 
 @Composable
@@ -720,7 +733,7 @@ private fun CaseLedgerRow(
             )
         }
     }
-    HairlineSoft()
+    Spacer(Modifier.height(10.dp))
 }
 
 @Composable
@@ -771,20 +784,21 @@ private fun CaseActionChip(
     onClick: () -> Unit,
     enabled: Boolean = true,
 ) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    val paper = MaterialTheme.colorScheme.background
-    Box(
-        modifier = Modifier
-            .alpha(if (enabled) 1f else 0.35f)
-            .border(FieldTokens.Hair, ink)
-            .background(if (primary) ink else paper)
-            .clickable(enabled = enabled) { onClick() }
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+    val fg =
+        if (primary) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onBackground
+    SoftCard(
+        onClick = if (enabled) onClick else null,
+        selected = primary,
+        cornerRadius = 8,
+        modifier = Modifier.alpha(if (enabled) 1f else 0.35f),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = 12.dp, vertical = 8.dp,
+        ),
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = if (primary) paper else ink,
+            color = fg,
         )
     }
 }
@@ -801,7 +815,6 @@ private fun CaseActionRail(onAdd: () -> Unit, onFind: () -> Unit) {
             .background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(WindowInsets.navigationBars),
     ) {
-        Hairline()
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -831,20 +844,20 @@ private fun RailButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    val paper = MaterialTheme.colorScheme.background
-    Box(
-        modifier = modifier
-            .height(FieldTokens.ToolHeight)
-            .border(FieldTokens.Hair, ink)
-            .background(if (inverted) ink else paper)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center,
+    val fg =
+        if (inverted) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onBackground
+    SoftCard(
+        onClick = onClick,
+        selected = inverted,
+        modifier = modifier,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 14.dp),
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = if (inverted) paper else ink,
+            color = fg,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
     }
 }
@@ -885,48 +898,48 @@ private fun EmptyLedger(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(22.dp))
-        Hairline()
         Spacer(Modifier.height(22.dp))
 
         if (hasFilter) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(FieldTokens.Hair, ink)
-                    .clickable { onClearFilters() }
-                    .padding(vertical = 18.dp),
-                contentAlignment = Alignment.Center,
+            SoftCard(
+                onClick = onClearFilters,
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 18.dp),
             ) {
                 Text(
                     "CLEAR FILTERS",
                     style = MaterialTheme.typography.labelMedium,
                     color = ink,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
             }
         } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(ink)
-                    .clickable { onAdd() }
-                    .padding(horizontal = 18.dp, vertical = 20.dp),
+            SoftCard(
+                onClick = onAdd,
+                selected = true,
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("START", style = MonoTiny, color = paper.copy(alpha = 0.55f))
+                        Text(
+                            "START",
+                            style = MonoTiny,
+                            color = MaterialTheme.colorScheme.background.copy(alpha = 0.55f)
+                        )
                         Text(
                             "File first case",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = paper,
+                            style = softHeadline(20),
+                            color = MaterialTheme.colorScheme.background,
                         )
                     }
                     Text(
                         "+",
                         style = MaterialTheme.typography.displaySmall,
-                        color = paper,
+                        color = MaterialTheme.colorScheme.background,
                     )
                 }
             }
@@ -965,7 +978,7 @@ private fun ErrorPanel(message: String) {
         Spacer(Modifier.height(6.dp))
         Text(
             message,
-            style = MaterialTheme.typography.headlineSmall,
+            style = softHeadline(20),
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
         )
@@ -980,7 +993,6 @@ private fun LedgerColophon(total: Int, visible: Int) {
             .padding(horizontal = 20.dp, vertical = 22.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Hairline(color = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.height(10.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1021,12 +1033,11 @@ private fun ClaimCaseSheet(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Column(
+        SoftCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .border(FieldTokens.HairStrong, ink)
-                .background(paper),
+                .padding(16.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
         ) {
             // Header
             Row(
@@ -1044,7 +1055,7 @@ private fun ClaimCaseSheet(
                     Spacer(Modifier.height(2.dp))
                     Text(
                         "Release custody",
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = softHeadline(24),
                         color = ink,
                     )
                     Spacer(Modifier.height(2.dp))
@@ -1054,21 +1065,19 @@ private fun ClaimCaseSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .size(FieldTokens.AppBarIconSize)
-                        .border(FieldTokens.Hair, ink)
-                        .clickable { onDismiss() },
-                    contentAlignment = Alignment.Center,
+                SoftCard(
+                    onClick = onDismiss,
+                    cornerRadius = 8,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp),
                 ) {
                     Text(
                         "×",
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = softHeadline(20),
                         color = ink,
                     )
                 }
             }
-            Hairline()
+            Spacer(Modifier.height(10.dp))
 
             SheetStep(index = "01", label = "CLAIMER", hint = "Legal name on the record.") {
                 SheetField(
@@ -1078,7 +1087,7 @@ private fun ClaimCaseSheet(
                     capitalization = KeyboardCapitalization.Words,
                 )
             }
-            HairlineSoft()
+            Spacer(Modifier.height(10.dp))
             SheetStep(index = "02", label = "CONTACT", hint = "Phone or email to verify later.") {
                 SheetField(
                     value = contact,
@@ -1086,7 +1095,7 @@ private fun ClaimCaseSheet(
                     placeholder = "+1 555 · name@email",
                 )
             }
-            HairlineSoft()
+            Spacer(Modifier.height(10.dp))
             SheetStep(index = "03", label = "VERIFY", hint = "What proof was shown?") {
                 SheetField(
                     value = notes,
@@ -1096,7 +1105,7 @@ private fun ClaimCaseSheet(
                     singleLine = false,
                 )
             }
-            Hairline()
+            Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1109,22 +1118,22 @@ private fun ClaimCaseSheet(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f),
                 )
-                Box(
+                SoftCard(
+                    onClick = if (name.isNotBlank()) {
+                        { onClaim(name, contact, notes) }
+                    } else null,
+                    selected = true,
                     modifier = Modifier
                         .weight(1f)
-                        .height(FieldTokens.ToolHeight)
-                        .alpha(if (name.isNotBlank()) 1f else 0.35f)
-                        .border(FieldTokens.Hair, ink)
-                        .background(ink)
-                        .clickable(enabled = name.isNotBlank()) {
-                            onClaim(name, contact, notes)
-                        },
-                    contentAlignment = Alignment.Center,
+                        .alpha(if (name.isNotBlank()) 1f else 0.35f),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 14.dp),
                 ) {
                     Text(
                         "RELEASE CASE",
                         style = MaterialTheme.typography.labelMedium,
-                        color = paper,
+                        color = MaterialTheme.colorScheme.background,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
                 }
             }
@@ -1147,9 +1156,7 @@ private fun SheetStep(
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 text = index,
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontFamily = MonoTiny.fontFamily,
-                ),
+                style = softHeadline(24),
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Spacer(Modifier.width(10.dp))

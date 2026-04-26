@@ -1,9 +1,7 @@
 package com.eventmonitor.feature.headcounter.screens
 
-import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -37,7 +35,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,9 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -58,13 +53,20 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.common.theme.Amber
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
-import com.eventmonitor.core.common.ui.FieldAppBar
-import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.ArcadeBackground
+import com.eventmonitor.core.common.ui.BrandBlue
+import com.eventmonitor.core.common.ui.BrandRed
+import com.eventmonitor.core.common.ui.KeyTone
+import com.eventmonitor.core.common.ui.SoftAlertDialog
+import com.eventmonitor.core.common.ui.SoftButtonTone
 import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.SoftCard
+import com.eventmonitor.core.common.ui.SoftIconButton
 import com.eventmonitor.core.common.ui.Hairline
-import com.eventmonitor.core.common.ui.HairlineSoft
 import com.eventmonitor.core.common.ui.SparkBar
 import com.eventmonitor.core.common.ui.capacityToneFor
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import com.eventmonitor.core.data.local.entities.EventWithDetails
 import java.text.SimpleDateFormat
@@ -82,8 +84,6 @@ fun HistoryScreen(
 ) {
     val haptic = rememberHapticFeedback()
     val uiState by viewModel.uiState.collectAsState()
-    val selectedReport by viewModel.selectedServiceReport.collectAsState()
-    val csvExport by viewModel.csvExportData.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<String?>(null) }
     var showUnlockDialog by remember { mutableStateOf<String?>(null) }
 
@@ -92,17 +92,15 @@ fun HistoryScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        FieldAppBar(
+        SoftAppBar(
             title = "Ledger",
-            eyebrow = "Event History",
-            leading = {
-                FieldAppBarIcon(glyph = "‹", onClick = {
-                    haptic.light()
-                    onNavigateBack()
-                })
+            subtitle = "Event History",
+            onBack = {
+                haptic.light()
+                onNavigateBack()
             },
             trailing = {
-                FieldAppBarIcon(glyph = "TR", onClick = {
+                SoftIconButton(glyph = "TR", onClick = {
                     haptic.light()
                     onViewTrends(viewModel.venueId)
                 })
@@ -110,6 +108,7 @@ fun HistoryScreen(
         )
 
         Box(modifier = Modifier.weight(1f)) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
             when (val state = uiState) {
                 is HistoryUiState.Loading -> LoadingPanel()
                 is HistoryUiState.Empty -> EmptyLedgerPanel()
@@ -130,14 +129,6 @@ fun HistoryScreen(
                                         haptic.medium()
                                         onServiceClick(entry.event.venueId, entry.event.id)
                                     },
-                                    onViewReport = {
-                                        haptic.light()
-                                        viewModel.generateReport(entry.event.id)
-                                    },
-                                    onExportCsv = {
-                                        haptic.light()
-                                        viewModel.generateCsvExport(entry.event.id)
-                                    },
                                     onUnlock = {
                                         haptic.light()
                                         showUnlockDialog = entry.event.id
@@ -147,7 +138,7 @@ fun HistoryScreen(
                                         showDeleteDialog = entry.event.id
                                     },
                                 )
-                                Hairline(color = MaterialTheme.colorScheme.outlineVariant)
+                                Spacer(Modifier.height(10.dp))
                             }
                         }
                     }
@@ -170,70 +161,37 @@ fun HistoryScreen(
         }
     }
 
-    selectedReport?.let { report ->
-        ServiceReportDialog(report = report, onDismiss = {
-            haptic.light()
-            viewModel.clearReport()
-        })
-    }
-
     showDeleteDialog?.let { serviceId ->
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Delete Entry") },
-            text = { Text("This removes the event and all of its counts. Cannot be undone.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        haptic.strong()
-                        viewModel.deleteEvent(serviceId)
-                        showDeleteDialog = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                ) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    haptic.light()
-                    showDeleteDialog = null
-                }) { Text("Cancel") }
+        SoftAlertDialog(
+            onDismiss = { haptic.light(); showDeleteDialog = null },
+            eyebrow = "Delete · Entry",
+            title = "Delete this event?",
+            message = "This removes the event and all of its counts. Cannot be undone.",
+            confirmLabel = "Delete",
+            confirmTone = SoftButtonTone.Destructive,
+            onConfirm = {
+                haptic.strong()
+                viewModel.deleteEvent(serviceId)
+                showDeleteDialog = null
             },
         )
     }
 
     showUnlockDialog?.let { serviceId ->
-        AlertDialog(
-            onDismissRequest = { showUnlockDialog = null },
-            title = { Text("Unlock Entry") },
-            text = { Text("Unlocking lets you edit the counts for this event.") },
-            confirmButton = {
-                Button(onClick = {
-                    haptic.medium()
-                    viewModel.unlockEvent(serviceId)
-                    showUnlockDialog = null
-                }) { Text("Unlock") }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    haptic.light()
-                    showUnlockDialog = null
-                }) { Text("Cancel") }
+        SoftAlertDialog(
+            onDismiss = { haptic.light(); showUnlockDialog = null },
+            eyebrow = "Unlock · Entry",
+            title = "Unlock this event?",
+            message = "Unlocking lets you edit the counts for this event.",
+            confirmLabel = "Unlock",
+            onConfirm = {
+                haptic.medium()
+                viewModel.unlockEvent(serviceId)
+                showUnlockDialog = null
             },
         )
     }
 
-    val context = LocalContext.current
-    LaunchedEffect(csvExport) {
-        csvExport?.let { csv ->
-            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/csv"
-                putExtra(Intent.EXTRA_TEXT, csv)
-                putExtra(Intent.EXTRA_SUBJECT, "Head Count Export")
-            }
-            context.startActivity(Intent.createChooser(shareIntent, "Share CSV"))
-            viewModel.clearCsvExport()
-        }
-    }
 }
 
 // region ── Ledger summary ────────────────────────────────────────────────
@@ -299,7 +257,7 @@ private fun LedgerSummary(stats: LedgerStats) {
             Column(modifier = Modifier.padding(bottom = 10.dp)) {
                 Text(
                     text = "Records",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontStyle = FontStyle.Italic),
+                    style = softHeadline(24),
                     color = ink,
                 )
                 Text(
@@ -311,7 +269,6 @@ private fun LedgerSummary(stats: LedgerStats) {
         }
 
         Spacer(Modifier.height(14.dp))
-        HairlineSoft()
         Spacer(Modifier.height(12.dp))
 
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -333,7 +290,7 @@ private fun LedgerSummary(stats: LedgerStats) {
             )
         }
     }
-    Hairline()
+    Spacer(Modifier.height(20.dp))
 }
 
 @Composable
@@ -386,9 +343,7 @@ private fun MonthRule(month: String) {
         ) {
             Text(
                 text = month,
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontStyle = FontStyle.Italic,
-                ),
+                style = softHeadline(22),
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
@@ -398,7 +353,6 @@ private fun MonthRule(month: String) {
                 modifier = Modifier.padding(bottom = 4.dp),
             )
         }
-        Hairline()
     }
 }
 
@@ -410,8 +364,6 @@ private fun MonthRule(month: String) {
 private fun LedgerRow(
     entry: EventWithDetails,
     onResumeEdit: () -> Unit,
-    onViewReport: () -> Unit,
-    onExportCsv: () -> Unit,
     onUnlock: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -513,9 +465,6 @@ private fun LedgerRow(
             Spacer(Modifier.height(12.dp))
             LedgerActionRow(
                 locked = entry.event.isLocked,
-                onResumeEdit = onResumeEdit,
-                onViewReport = onViewReport,
-                onExportCsv = onExportCsv,
                 onUnlock = onUnlock,
                 onDelete = onDelete,
             )
@@ -581,9 +530,6 @@ private fun StatusBadge(locked: Boolean) {
 @Composable
 private fun LedgerActionRow(
     locked: Boolean,
-    onResumeEdit: () -> Unit,
-    onViewReport: () -> Unit,
-    onExportCsv: () -> Unit,
     onUnlock: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -591,13 +537,6 @@ private fun LedgerActionRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        LedgerActionChip(
-            label = if (locked) "View" else "Edit",
-            solid = true,
-            onClick = onResumeEdit,
-        )
-        LedgerActionChip(label = "Report", onClick = onViewReport)
-        LedgerActionChip(label = "CSV", onClick = onExportCsv)
         if (locked) {
             LedgerActionChip(label = "Unlock", onClick = onUnlock)
         }
@@ -613,30 +552,24 @@ private fun LedgerActionChip(
     danger: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    val paper = MaterialTheme.colorScheme.background
-    val borderColor = if (danger) Signal else ink
-    val bg = if (solid) ink else paper
     val fg = when {
-        solid -> paper
         danger -> Signal
-        else -> ink
+        solid -> MaterialTheme.colorScheme.background
+        else -> MaterialTheme.colorScheme.onBackground
     }
-    val interaction = remember { MutableInteractionSource() }
-
-    Text(
-        text = label.uppercase(),
-        style = MaterialTheme.typography.labelSmall.copy(color = fg),
-        modifier = Modifier
-            .border(FieldTokens.Hair, borderColor)
-            .background(bg)
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-    )
+    SoftCard(
+        onClick = onClick,
+        selected = solid,
+        cornerRadius = 8,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = 10.dp, vertical = 6.dp,
+        ),
+    ) {
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall.copy(color = fg),
+        )
+    }
 }
 
 // endregion
@@ -645,17 +578,20 @@ private fun LedgerActionChip(
 
 @Composable
 private fun NewCountRail(modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Hairline()
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.onBackground)
-                .clickable(onClick = onClick)
-                .padding(vertical = 18.dp),
-            contentAlignment = Alignment.Center,
+    Column(modifier = modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 8.dp)) {
+        SoftCard(
+            onClick = onClick,
+            selected = true,
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     text = "+",
                     style = MaterialTheme.typography.headlineSmall,
@@ -692,16 +628,15 @@ private fun EmptyLedgerPanel() {
         Spacer(Modifier.height(4.dp))
         Text(
             text = "No records",
-            style = MaterialTheme.typography.headlineLarge.copy(fontStyle = FontStyle.Italic),
+            style = softHeadline(28),
             color = MaterialTheme.colorScheme.onBackground,
         )
         Text(
             text = "on file.",
-            style = MaterialTheme.typography.headlineLarge,
+            style = softHeadline(28),
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.height(16.dp))
-        HairlineSoft()
         Spacer(Modifier.height(12.dp))
         Text(
             text = "Start a count to file the ledger's first entry.".uppercase(),
@@ -851,7 +786,7 @@ fun ServiceReportText(report: String, modifier: Modifier = Modifier) {
                             letterSpacing = 3.sp,
                         ),
                         fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = BrandBlue,
                         fontFamily = FontFamily.Monospace,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -881,7 +816,7 @@ fun ServiceReportText(report: String, modifier: Modifier = Modifier) {
                                     letterSpacing = 3.sp,
                                 ),
                                 fontWeight = FontWeight.Black,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = BrandBlue,
                                 fontFamily = FontFamily.Monospace,
                             )
                         }

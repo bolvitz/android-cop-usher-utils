@@ -30,6 +30,7 @@ data class AreaTemplateEntity(
     val color: String = "#4CAF50", // Visual identification
     val icon: String = "chair", // Material icon name
     val notes: String = "",
+    val hasSeatMap: Boolean = false, // When true, count is derived from seat_statuses
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val isSyncedToCloud: Boolean = false

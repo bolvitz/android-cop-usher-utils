@@ -15,9 +15,12 @@ import com.eventmonitor.core.data.local.entities.*
         AreaCountEntity::class,
         UserEntity::class,
         LostItemEntity::class,
-        IncidentEntity::class
+        IncidentEntity::class,
+        SeatRowEntity::class,
+        SeatEntity::class,
+        SeatStatusEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -30,6 +33,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun lostItemDao(): LostItemDao
     abstract fun incidentDao(): IncidentDao
+    abstract fun seatRowDao(): SeatRowDao
+    abstract fun seatDao(): SeatDao
+    abstract fun seatStatusDao(): SeatStatusDao
 
     companion object {
         const val DATABASE_NAME = "event_monitor_db"

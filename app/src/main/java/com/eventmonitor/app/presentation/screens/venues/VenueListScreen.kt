@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -56,13 +57,20 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
+import com.eventmonitor.core.common.ui.ArcadeBackground
 import com.eventmonitor.core.common.ui.FieldMasthead
 import com.eventmonitor.core.common.ui.FieldTokens
-import com.eventmonitor.core.common.ui.Hairline
 import com.eventmonitor.core.common.ui.SevPill
 import com.eventmonitor.core.common.ui.Severity
+import com.eventmonitor.core.common.ui.KeyTone
+import com.eventmonitor.core.common.ui.SoftAlertDialog
+import com.eventmonitor.core.common.ui.SoftButtonTone
+import com.eventmonitor.core.common.ui.SoftLivePulseDot
+import com.eventmonitor.core.common.ui.softEnter
+import com.eventmonitor.core.common.ui.SoftCard
 import com.eventmonitor.core.common.ui.SparkBar
 import com.eventmonitor.core.common.ui.capacityToneFor
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import com.eventmonitor.core.data.local.entities.VenueWithAreas
 import kotlin.math.roundToInt
@@ -95,6 +103,8 @@ fun VenueListScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
+
             when (val state = uiState) {
                 is VenueListUiState.Loading -> LoadingPanel()
 
@@ -136,50 +146,20 @@ fun VenueListScreen(
                 is VenueListUiState.Error -> ErrorPanel(state.message)
             }
 
-            AnimatedVisibility(
-                visible = showDeleteDialog != null,
-                enter = fadeIn() + scaleIn(initialScale = 0.8f),
-                exit = fadeOut() + scaleOut(targetScale = 0.8f),
-            ) {
-                showDeleteDialog?.let { branchId ->
-                    AlertDialog(
-                        onDismissRequest = { showDeleteDialog = null },
-                        containerColor = MaterialTheme.colorScheme.background,
-                        title = {
-                            Column {
-                                Text(
-                                    "DELETE · VENUE",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    "Are you sure?",
-                                    style = MaterialTheme.typography.headlineSmall
-                                )
-                            }
-                        },
-                        text = { Text("This venue will be removed. You can't undo this.") },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                haptic.strong()
-                                viewModel.deleteVenue(branchId) { errorMessage = it }
-                                showDeleteDialog = null
-                            }) {
-                                Text(
-                                    "DELETE",
-                                    color = Signal,
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { haptic.light(); showDeleteDialog = null }) {
-                                Text("CANCEL", style = MaterialTheme.typography.labelMedium)
-                            }
-                        },
-                    )
-                }
+            showDeleteDialog?.let { branchId ->
+                SoftAlertDialog(
+                    onDismiss = { haptic.light(); showDeleteDialog = null },
+                    eyebrow = "Delete · Venue",
+                    title = "Are you sure?",
+                    message = "This venue will be removed. You can't undo this.",
+                    confirmLabel = "Delete",
+                    confirmTone = SoftButtonTone.Destructive,
+                    onConfirm = {
+                        haptic.strong()
+                        viewModel.deleteVenue(branchId) { errorMessage = it }
+                        showDeleteDialog = null
+                    },
+                )
             }
 
             AnimatedVisibility(
@@ -248,45 +228,55 @@ private fun HomeContent(
     ) {
         // 1. Masthead
         item(key = "masthead") {
-            FieldMasthead()
+            Box(modifier = Modifier.softEnter(index = 0)) { FieldMasthead() }
         }
 
         // 2. Stat strip — total / live / pending
         item(key = "stats") {
-            StatStrip(
-                total = venues.size,
-                live = activeCount,
-                pending = pendingCount,
-            )
+            Box(modifier = Modifier.softEnter(index = 1)) {
+                StatStrip(
+                    total = venues.size,
+                    live = activeCount,
+                    pending = pendingCount,
+                )
+            }
         }
 
         // 3. Live hero slab
         if (hero != null) {
             item(key = "hero-${hero.venue.id}") {
-                LiveHero(
-                    venue = hero,
-                    onEnter = { onEnterVenue(hero.venue.id) },
-                )
+                Box(modifier = Modifier.softEnter(index = 2)) {
+                    LiveHero(
+                        venue = hero,
+                        onEnter = { onEnterVenue(hero.venue.id) },
+                    )
+                }
             }
         }
 
         // 4. Roster header
         item(key = "roster-head") {
-            RosterHeader(count = venues.size)
+            Box(modifier = Modifier.softEnter(index = 3)) {
+                RosterHeader(count = venues.size)
+            }
         }
 
-        // 5. Venue rows
-        items(items = venues, key = { it.venue.id }) { venue ->
-            VenueRow(
-                venue = venue,
-                onTap = { onEnterVenue(venue.venue.id) },
-                onHeadcount = { onHeadcount(venue.venue.id) },
-                onLostFound = { onLostFound(venue.venue.id) },
-                onIncidents = { onIncidents(venue.venue.id) },
-                onManageAreas = { onManageAreas(venue.venue.id) },
-                onEdit = { onEdit(venue.venue.id) },
-                onDelete = { onDelete(venue.venue.id) },
-            )
+        // 5. Venue rows — animateItem keeps reorders fluid as venues change.
+        itemsIndexed(items = venues, key = { _, v -> v.venue.id }) { idx, venue ->
+            Box(modifier = Modifier
+                .animateItem()
+                .softEnter(index = idx + 4)) {
+                VenueRow(
+                    venue = venue,
+                    onTap = { onEnterVenue(venue.venue.id) },
+                    onHeadcount = { onHeadcount(venue.venue.id) },
+                    onLostFound = { onLostFound(venue.venue.id) },
+                    onIncidents = { onIncidents(venue.venue.id) },
+                    onManageAreas = { onManageAreas(venue.venue.id) },
+                    onEdit = { onEdit(venue.venue.id) },
+                    onDelete = { onDelete(venue.venue.id) },
+                )
+            }
         }
 
         // 6. Tool rail (Reports) + always-visible settings panel
@@ -327,7 +317,7 @@ private fun StatStrip(total: Int, live: Int, pending: Int) {
         StatDivider()
         StatCell(label = "PENDING", value = pending.toString())
     }
-    Hairline(color = MaterialTheme.colorScheme.outline)
+    Spacer(Modifier.height(20.dp))
 }
 
 @Composable
@@ -406,7 +396,7 @@ private fun LiveHero(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = venue.venue.name,
-                            style = MaterialTheme.typography.headlineLarge,
+                            style = softHeadline(28),
                             color = paper,
                         )
                         Spacer(Modifier.height(4.dp))
@@ -503,7 +493,7 @@ private fun RosterHeader(count: Int) {
             Text("§ TONIGHT", style = MonoTiny, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 text = "All venues.",
-                style = MaterialTheme.typography.headlineSmall,
+                style = softHeadline(20),
                 color = MaterialTheme.colorScheme.onBackground,
             )
         }
@@ -513,7 +503,7 @@ private fun RosterHeader(count: Int) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    Hairline()
+    Spacer(Modifier.height(10.dp))
 }
 
 // ---------------------------------------------------------------------------
@@ -536,119 +526,125 @@ private fun VenueRow(
     val progress = 0f // Awaiting live event data hook-in; 0 for now.
     var menuOpen by remember { mutableStateOf(false) }
 
-    // Staggered enter animation.
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = isActive) { onTap() }
-            .padding(horizontal = 20.dp, vertical = 14.dp)
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 10.dp)
             .alpha(if (isActive) 1f else 0.55f),
     ) {
-        Row(
+        SoftCard(
+            onClick = if (isActive) onTap else null,
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = venue.venue.name,
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontSize = MaterialTheme.typography.headlineSmall.fontSize,
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-                Text(
-                    text = "${venue.venue.code.ifBlank { "—" }} · ${venue.venue.location.ifBlank { "LOCATION UNSET" }} · CAP ${if (capacity > 0) capacity else "—"}".uppercase(),
-                    style = MonoTiny,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 3.dp),
-                )
-            }
-            Spacer(Modifier.width(10.dp))
-            if (isActive) {
-                SevPill(severity = Severity.LOW, label = "READY")
-            } else {
-                SevPill(severity = Severity.NEUTRAL, label = "IDLE")
-            }
-            Box {
-                Text(
-                    text = "⋯",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier
-                        .padding(start = 10.dp)
-                        .clickable { menuOpen = true },
-                )
-                DropdownMenu(
-                    expanded = menuOpen,
-                    onDismissRequest = { menuOpen = false },
-                    containerColor = MaterialTheme.colorScheme.background,
-                ) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                "MANAGE ZONES",
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        },
-                        onClick = { menuOpen = false; onManageAreas() },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("EDIT VENUE", style = MaterialTheme.typography.labelMedium) },
-                        onClick = { menuOpen = false; onEdit() },
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                "DELETE",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Signal
-                            )
-                        },
-                        onClick = { menuOpen = false; onDelete() },
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        if (capacity > 0 && isActive) {
-            SparkBar(progress = progress)
-            Spacer(Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "${(progress * 100).roundToInt()}% FULL",
-                    style = MonoTiny,
-                    color = capacityToneFor(progress),
-                )
-                Text(
-                    text = "${venue.areas.size} ZONES",
-                    style = MonoTiny,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = venue.venue.name,
+                            style = softHeadline(20),
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                    Text(
+                        text = "${venue.venue.code.ifBlank { "—" }} · ${venue.venue.location.ifBlank { "LOCATION UNSET" }} · CAP ${if (capacity > 0) capacity else "—"}".uppercase(),
+                        style = MonoTiny,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 3.dp),
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                if (isActive) {
+                    SevPill(severity = Severity.LOW, label = "READY")
+                } else {
+                    SevPill(severity = Severity.NEUTRAL, label = "IDLE")
+                }
+                Box {
+                    Text(
+                        text = "⋯",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier
+                            .padding(start = 10.dp)
+                            .clickable { menuOpen = true },
+                    )
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false },
+                        containerColor = MaterialTheme.colorScheme.background,
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "MANAGE ZONES",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            },
+                            onClick = { menuOpen = false; onManageAreas() },
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "EDIT VENUE",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            },
+                            onClick = { menuOpen = false; onEdit() },
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "DELETE",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Signal
+                                )
+                            },
+                            onClick = { menuOpen = false; onDelete() },
+                        )
+                    }
+                }
             }
-            Spacer(Modifier.height(10.dp))
-        }
 
-        // Feature chips
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (venue.venue.isHeadCountEnabled) {
-                FeatureChip(label = "HEADCOUNT", onClick = onHeadcount, enabled = isActive)
+            Spacer(Modifier.height(10.dp))
+
+            if (capacity > 0 && isActive) {
+                SparkBar(progress = progress)
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = "${(progress * 100).roundToInt()}% FULL",
+                        style = MonoTiny,
+                        color = capacityToneFor(progress),
+                    )
+                    Text(
+                        text = "${venue.areas.size} ZONES",
+                        style = MonoTiny,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
             }
-            if (venue.venue.isLostAndFoundEnabled) {
-                FeatureChip(label = "LOST & FND", onClick = onLostFound, enabled = isActive)
-            }
-            if (venue.venue.isIncidentReportingEnabled) {
-                FeatureChip(label = "INCIDENTS", onClick = onIncidents, enabled = isActive)
+
+            // Feature chips
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (venue.venue.isHeadCountEnabled) {
+                    FeatureChip(label = "HEADCOUNT", onClick = onHeadcount, enabled = isActive)
+                }
+                if (venue.venue.isLostAndFoundEnabled) {
+                    FeatureChip(label = "LOST & FND", onClick = onLostFound, enabled = isActive)
+                }
+                if (venue.venue.isIncidentReportingEnabled) {
+                    FeatureChip(label = "INCIDENTS", onClick = onIncidents, enabled = isActive)
+                }
             }
         }
     }
-    Hairline(color = MaterialTheme.colorScheme.outline)
 }
 
 @Composable
@@ -690,62 +686,54 @@ private fun SettingsPanel(
     onManageServiceTypes: () -> Unit,
     onSeatMapDemo: () -> Unit,
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                "⚙ SETTINGS",
-                style = MonoTiny,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = "Always on hand.",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "⚙ SETTINGS",
+                    style = MonoTiny,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "Always on hand.",
+                    style = softHeadline(20),
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        SoftCard(onClick = onManageVenues, modifier = Modifier.fillMaxWidth()) {
+            SettingsRowContent(label = "MANAGE VENUES", hint = "LOCATIONS · BRANCHES")
+        }
+        Spacer(Modifier.height(10.dp))
+        SoftCard(onClick = onManageServiceTypes, modifier = Modifier.fillMaxWidth()) {
+            SettingsRowContent(label = "MANAGE EVENT TYPES", hint = "TYPES · SCHEDULES")
+        }
+        Spacer(Modifier.height(10.dp))
+        SoftCard(onClick = onSeatMapDemo, modifier = Modifier.fillMaxWidth()) {
+            SettingsRowContent(label = "SEAT MAP DEMO", hint = "PROTOTYPE · PREVIEW")
         }
     }
-    Hairline()
-    SettingsRow(
-        label = "MANAGE VENUES",
-        hint = "LOCATIONS · BRANCHES",
-        onClick = onManageVenues,
-    )
-    Hairline(color = MaterialTheme.colorScheme.outline)
-    SettingsRow(
-        label = "MANAGE EVENT TYPES",
-        hint = "TYPES · SCHEDULES",
-        onClick = onManageServiceTypes,
-    )
-    Hairline(color = MaterialTheme.colorScheme.outline)
-    SettingsRow(
-        label = "SEAT MAP DEMO",
-        hint = "PROTOTYPE · PREVIEW",
-        onClick = onSeatMapDemo,
-    )
-    Hairline(color = MaterialTheme.colorScheme.outline)
 }
 
 @Composable
-private fun SettingsRow(label: String, hint: String, onClick: () -> Unit) {
+private fun SettingsRowContent(label: String, hint: String) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontSize = MaterialTheme.typography.headlineSmall.fontSize,
-                ),
+                style = softHeadline(18),
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
@@ -789,7 +777,6 @@ private fun Colophon(total: Int, live: Int) {
             .padding(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Hairline(color = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.height(10.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -811,7 +798,6 @@ private fun Colophon(total: Int, live: Int) {
                 style = MonoTiny,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Text("― FIELD ―", style = MonoTiny, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -822,23 +808,7 @@ private fun Colophon(total: Int, live: Int) {
 
 @Composable
 private fun LivePulse() {
-    val transition = rememberInfiniteTransition(label = "live")
-    val alpha by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = EaseInOut),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "live-alpha",
-    )
-    Box(
-        modifier = Modifier
-            .alpha(alpha)
-            .background(Signal)
-            .width(7.dp)
-            .height(7.dp),
-    )
+    SoftLivePulseDot(size = 8)
 }
 
 @Composable
@@ -873,7 +843,7 @@ private fun EmptyState(
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp)) {
                 Text(
                     text = "No venues on the roster.",
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = softHeadline(20),
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Spacer(Modifier.height(6.dp))

@@ -39,7 +39,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextAlign
@@ -50,12 +52,22 @@ import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Navy
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
-import com.eventmonitor.core.common.ui.FieldAppBar
-import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.ArcadeBackground
 import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.KeyTone
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.SoftBottomDock
+import com.eventmonitor.core.common.ui.SoftCard
+import com.eventmonitor.core.common.ui.SoftIconButton
+import com.eventmonitor.core.common.ui.SoftKey
+import com.eventmonitor.core.common.ui.SoftPrimaryButton
+import com.eventmonitor.core.common.ui.SoftSection
+import com.eventmonitor.core.common.ui.SoftToolButton
 import com.eventmonitor.core.common.ui.Hairline
 import com.eventmonitor.core.common.ui.HairlineSoft
 import com.eventmonitor.core.common.ui.ZoneChip
+import com.eventmonitor.core.common.ui.softEnter
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import com.eventmonitor.core.data.local.entities.IncidentEntity
 import com.eventmonitor.core.domain.models.IncidentSeverity
@@ -97,16 +109,12 @@ fun IncidentListScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            FieldAppBar(
+            SoftAppBar(
                 title = "DESK",
-                eyebrow = "§ INCIDENTS",
-                leading = {
-                    FieldAppBarIcon(glyph = "←", onClick = {
-                        haptic.light(); onNavigateBack()
-                    })
-                },
+                subtitle = "§ Incidents",
+                onBack = { haptic.light(); onNavigateBack() },
                 trailing = {
-                    FieldAppBarIcon(
+                    SoftIconButton(
                         glyph = if (searchOpen) "×" else "⌕",
                         onClick = {
                             haptic.light()
@@ -136,6 +144,7 @@ fun IncidentListScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
             when (val state = uiState) {
                 is IncidentListUiState.Loading -> LoadingPanel()
                 is IncidentListUiState.Empty -> EmptyDesk(
@@ -210,21 +219,33 @@ private fun IncidentDesk(
             .navigationBarsPadding(),
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
-        item(key = "headline") { DeskHeadline(total = incidents.size) }
-        item(key = "strip") { SeverityStrip(counts = sevCounts) }
+        item(key = "headline") {
+            Box(modifier = Modifier.softEnter(index = 0)) {
+                DeskHeadline(total = incidents.size)
+            }
+        }
+        item(key = "strip") {
+            Box(modifier = Modifier.softEnter(index = 1)) {
+                SeverityStrip(counts = sevCounts)
+            }
+        }
         item(key = "status-rail") {
-            StatusFilterRail(
-                selected = selectedStatus,
-                counts = statusCounts,
-                onSelect = onStatusFilter,
-            )
+            Box(modifier = Modifier.softEnter(index = 2)) {
+                StatusFilterRail(
+                    selected = selectedStatus,
+                    counts = statusCounts,
+                    onSelect = onStatusFilter,
+                )
+            }
         }
         item(key = "sev-rail") {
-            SeverityFilterRail(
-                selected = selectedSeverity,
-                counts = sevCounts,
-                onSelect = onSeverityFilter,
-            )
+            Box(modifier = Modifier.softEnter(index = 3)) {
+                SeverityFilterRail(
+                    selected = selectedSeverity,
+                    counts = sevCounts,
+                    onSelect = onSeverityFilter,
+                )
+            }
         }
         if (searchOpen) {
             item(key = "search") {
@@ -240,13 +261,15 @@ private fun IncidentDesk(
                 }
                 group.forEachIndexed { idx, inc ->
                     item(key = "row-${inc.id}") {
-                        IncidentRow(
-                            incident = inc,
-                            rowIndex = idx + 1,
-                            total = group.size,
-                            onClick = { onRowClick(inc.id) },
-                            onEdit = { onEdit(inc.id) },
-                        )
+                        Box(modifier = Modifier.animateItem()) {
+                            IncidentRow(
+                                incident = inc,
+                                rowIndex = idx + 1,
+                                total = group.size,
+                                onClick = { onRowClick(inc.id) },
+                                onEdit = { onEdit(inc.id) },
+                            )
+                        }
                     }
                 }
             }
@@ -283,7 +306,7 @@ private fun DeskHeadline(total: Int) {
         ) {
             Text(
                 "Record what went wrong.",
-                style = MaterialTheme.typography.headlineLarge,
+                style = softHeadline(28),
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
@@ -303,7 +326,7 @@ private fun DeskHeadline(total: Int) {
 
 @Composable
 private fun SeverityStrip(counts: Map<IncidentSeverity, Int>) {
-    Hairline()
+    Spacer(Modifier.height(20.dp))
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -334,7 +357,7 @@ private fun SeverityStrip(counts: Map<IncidentSeverity, Int>) {
         StripDivider()
         StripCell("LOW", (counts[IncidentSeverity.LOW] ?: 0).toString(), Sage, Modifier.weight(1f))
     }
-    Hairline()
+    Spacer(Modifier.height(20.dp))
 }
 
 @Composable
@@ -354,7 +377,7 @@ private fun StripCell(label: String, value: String, tone: Color, modifier: Modif
         Spacer(Modifier.height(2.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.headlineMedium,
+            style = softHeadline(24),
             color = MaterialTheme.colorScheme.onBackground,
         )
     }
@@ -460,7 +483,7 @@ private fun SeverityFilterRail(
                 )
             }
         }
-        HairlineSoft()
+        Spacer(Modifier.height(10.dp))
     }
 }
 
@@ -483,7 +506,7 @@ private fun InlineSearch(query: String, onChange: (String) -> Unit) {
             value = query,
             onValueChange = onChange,
             singleLine = true,
-            textStyle = MaterialTheme.typography.headlineSmall.copy(color = ink),
+            textStyle = softHeadline(20).copy(color = ink),
             cursorBrush = SolidColor(ink),
             modifier = Modifier
                 .fillMaxWidth()
@@ -494,7 +517,7 @@ private fun InlineSearch(query: String, onChange: (String) -> Unit) {
                         if (query.isEmpty()) {
                             Text(
                                 "slip, fire alarm, medical…",
-                                style = MaterialTheme.typography.headlineSmall,
+                                style = softHeadline(20),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -510,7 +533,7 @@ private fun InlineSearch(query: String, onChange: (String) -> Unit) {
             },
         )
     }
-    HairlineSoft()
+    Spacer(Modifier.height(10.dp))
 }
 
 // ---------------------------------------------------------------------------
@@ -546,7 +569,7 @@ private fun StatusSectionHeader(status: IncidentStatus, count: Int) {
                 Spacer(Modifier.height(2.dp))
                 Text(
                     sectionTitle(status),
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = softHeadline(20),
                     color = MaterialTheme.colorScheme.onBackground,
                 )
             }
@@ -557,7 +580,7 @@ private fun StatusSectionHeader(status: IncidentStatus, count: Int) {
             )
         }
     }
-    Hairline()
+    Spacer(Modifier.height(10.dp))
 }
 
 @Composable
@@ -579,13 +602,19 @@ private fun IncidentRow(
     val timeFmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val canEdit = status != IncidentStatus.RESOLVED && status != IncidentStatus.CLOSED
 
-    Row(
+    SoftCard(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-            .clickable { onClick() },
+            .padding(horizontal = 16.dp),
+        onClick = onClick,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
     ) {
-        // Severity stripe — the only hard colour on the page, aligned with CaseLedger restraint
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+        ) {
+            // Severity stripe — retained for severity signal
         Box(
             modifier = Modifier
                 .width(FieldTokens.Lane)
@@ -703,8 +732,9 @@ private fun IncidentRow(
                 }
             }
         }
+        }
     }
-    HairlineSoft()
+    Spacer(Modifier.height(10.dp))
 }
 
 @Composable
@@ -714,20 +744,20 @@ private fun RowActionChip(
     onClick: () -> Unit,
     enabled: Boolean = true,
 ) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    val paper = MaterialTheme.colorScheme.background
-    Box(
-        modifier = Modifier
-            .alpha(if (enabled) 1f else 0.35f)
-            .border(FieldTokens.Hair, ink)
-            .background(if (primary) ink else paper)
-            .clickable(enabled = enabled) { onClick() }
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+    SoftCard(
+        modifier = Modifier.alpha(if (enabled) 1f else 0.35f),
+        selected = primary,
+        onClick = if (enabled) onClick else null,
+        cornerRadius = 8,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = 12.dp,
+            vertical = 8.dp
+        ),
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = if (primary) paper else ink,
+            color = if (primary) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onBackground,
         )
     }
 }
@@ -738,57 +768,28 @@ private fun RowActionChip(
 
 @Composable
 private fun DeskActionRail(onAdd: () -> Unit, onFind: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
-            .windowInsetsPadding(WindowInsets.navigationBars),
+    SoftBottomDock(
+        modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
     ) {
-        Hairline()
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            RailButton(
-                label = "+  NEW INCIDENT",
-                inverted = true,
-                onClick = onAdd,
+            SoftToolButton(
+                label = "Find",
+                glyph = "⌕",
+                enabled = true,
                 modifier = Modifier.weight(1f),
-            )
-            RailButton(
-                label = "⌕  FIND",
-                inverted = false,
                 onClick = onFind,
-                modifier = Modifier.width(120.dp),
+            )
+            SoftPrimaryButton(
+                label = "New Incident",
+                onClick = onAdd,
+                modifier = Modifier.weight(2f),
+                trailingGlyph = "+",
             )
         }
-    }
-}
-
-@Composable
-private fun RailButton(
-    label: String,
-    inverted: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    val paper = MaterialTheme.colorScheme.background
-    Box(
-        modifier = modifier
-            .height(FieldTokens.ToolHeight)
-            .border(FieldTokens.Hair, ink)
-            .background(if (inverted) ink else paper)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (inverted) paper else ink,
-        )
     }
 }
 
@@ -799,7 +800,6 @@ private fun EmptyDesk(
     onClearFilters: () -> Unit,
 ) {
     val ink = MaterialTheme.colorScheme.onBackground
-    val paper = MaterialTheme.colorScheme.background
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -824,44 +824,46 @@ private fun EmptyDesk(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(22.dp))
-        Hairline()
-        Spacer(Modifier.height(22.dp))
 
         if (hasFilter) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(FieldTokens.Hair, ink)
-                    .clickable { onClearFilters() }
-                    .padding(vertical = 18.dp),
-                contentAlignment = Alignment.Center,
+            SoftCard(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onClearFilters,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 18.dp),
             ) {
-                Text("CLEAR FILTERS", style = MaterialTheme.typography.labelMedium, color = ink)
+                Text(
+                    "CLEAR FILTERS",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = ink,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
             }
         } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(ink)
-                    .clickable { onAdd() }
-                    .padding(horizontal = 18.dp, vertical = 20.dp),
+            SoftCard(
+                modifier = Modifier.fillMaxWidth(),
+                selected = true,
+                onClick = onAdd,
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("START", style = MonoTiny, color = paper.copy(alpha = 0.55f))
+                        Text(
+                            "START",
+                            style = MonoTiny,
+                            color = MaterialTheme.colorScheme.background.copy(alpha = 0.7f)
+                        )
                         Text(
                             "File first incident",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = paper,
+                            style = softHeadline(20),
+                            color = MaterialTheme.colorScheme.background,
                         )
                     }
                     Text(
                         "+",
                         style = MaterialTheme.typography.displaySmall,
-                        color = paper,
+                        color = MaterialTheme.colorScheme.background,
                     )
                 }
             }
@@ -915,7 +917,6 @@ private fun DeskColophon(total: Int, visible: Int) {
             .padding(horizontal = 20.dp, vertical = 22.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Hairline(color = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.height(10.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -948,8 +949,8 @@ internal fun SeverityPill(severity: IncidentSeverity) {
     val filled = severity == IncidentSeverity.CRITICAL || severity == IncidentSeverity.HIGH
     Box(
         modifier = Modifier
-            .border(FieldTokens.Hair, if (filled) tone else ink)
-            .background(if (filled) tone else paper)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+            .background(if (filled) tone else ink.copy(alpha = 0.08f))
             .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
         Text(

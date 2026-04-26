@@ -58,12 +58,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
-import com.eventmonitor.core.common.ui.FieldAppBar
-import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.ArcadeBackground
 import com.eventmonitor.core.common.ui.FieldTokens
-import com.eventmonitor.core.common.ui.Hairline
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.KeyTone
+import com.eventmonitor.core.common.ui.SoftAlertDialog
+import com.eventmonitor.core.common.ui.SoftButtonTone
+import com.eventmonitor.core.common.ui.SoftLivePulseDot
+import com.eventmonitor.core.common.ui.SoftCard
+import com.eventmonitor.core.common.ui.SoftIconButton
 import com.eventmonitor.core.common.ui.SevPill
 import com.eventmonitor.core.common.ui.Severity
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import com.eventmonitor.core.data.local.entities.VenueEntity
 
@@ -94,18 +100,12 @@ fun VenueManagementScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            FieldAppBar(
-                eyebrow = "§ REGISTRY",
+            SoftAppBar(
                 title = "Branches",
-                leading = {
-                    FieldAppBarIcon(glyph = "←", onClick = {
-                        haptic.light(); onNavigateBack()
-                    })
-                },
+                subtitle = "§ Registry",
+                onBack = { haptic.light(); onNavigateBack() },
                 trailing = {
-                    FieldAppBarIcon(glyph = "+", onClick = {
-                        haptic.medium(); onAddVenue()
-                    })
+                    SoftIconButton(glyph = "+", onClick = { haptic.medium(); onAddVenue() })
                 },
             )
         },
@@ -115,6 +115,8 @@ fun VenueManagementScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
+
             val active = venues.count { it.isActive }
             val dormant = venues.size - active
             val visible = when (filter) {
@@ -196,56 +198,21 @@ fun VenueManagementScreen(
                 }
             }
 
-            AnimatedVisibility(
-                visible = showDeleteDialog != null,
-                enter = fadeIn() + scaleIn(initialScale = 0.9f),
-                exit = fadeOut() + scaleOut(targetScale = 0.9f),
-            ) {
-                showDeleteDialog?.let { v ->
-                    AlertDialog(
-                        onDismissRequest = { showDeleteDialog = null },
-                        containerColor = MaterialTheme.colorScheme.background,
-                        title = {
-                            Column {
-                                Text(
-                                    "DELETE · BRANCH",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    "Strike “${v.name}” from the register?",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                )
-                            }
-                        },
-                        text = {
-                            Text(
-                                "This branch and its hairline in the registry will be removed. The action cannot be undone.",
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                haptic.strong()
-                                viewModel.deleteVenue(v.id)
-                                showDeleteDialog = null
-                            }) {
-                                Text(
-                                    "STRIKE",
-                                    color = Signal,
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = {
-                                haptic.light(); showDeleteDialog = null
-                            }) {
-                                Text("KEEP", style = MaterialTheme.typography.labelMedium)
-                            }
-                        },
-                    )
-                }
+            showDeleteDialog?.let { v ->
+                SoftAlertDialog(
+                    onDismiss = { haptic.light(); showDeleteDialog = null },
+                    eyebrow = "Delete · Branch",
+                    title = "Strike “${v.name}” from the register?",
+                    message = "This branch and its entry in the registry will be removed. The action cannot be undone.",
+                    confirmLabel = "Strike",
+                    dismissLabel = "Keep",
+                    confirmTone = SoftButtonTone.Destructive,
+                    onConfirm = {
+                        haptic.strong()
+                        viewModel.deleteVenue(v.id)
+                        showDeleteDialog = null
+                    },
+                )
             }
 
             AnimatedVisibility(
@@ -307,14 +274,14 @@ private fun Dateline(total: Int, live: Int) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "FIELD OFFICE · DIRECTORY OF BRANCHES",
+                text = "DIRECTORY OF BRANCHES",
                 style = MonoTiny,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 text = "The Register",
-                style = MaterialTheme.typography.headlineLarge,
+                style = softHeadline(28),
                 color = MaterialTheme.colorScheme.onBackground,
             )
         }
@@ -338,7 +305,7 @@ private fun Dateline(total: Int, live: Int) {
             )
         }
     }
-    Hairline(color = MaterialTheme.colorScheme.outline)
+    Spacer(Modifier.height(20.dp))
 }
 
 // ---------------------------------------------------------------------------
@@ -360,7 +327,7 @@ private fun RegistryStats(total: Int, active: Int, dormant: Int) {
         StatDivider()
         StatCell(label = "DORMANT", value = dormant.toString())
     }
-    Hairline(color = MaterialTheme.colorScheme.outline)
+    Spacer(Modifier.height(20.dp))
 }
 
 @Composable
@@ -408,7 +375,7 @@ private fun FileNewBranchSlab(onClick: () -> Unit) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "❖ CLASSIFIED · OPEN FOR FILING",
+                text = "OPEN FOR FILING",
                 style = MaterialTheme.typography.labelMedium,
                 color = Sage,
             )
@@ -429,12 +396,12 @@ private fun FileNewBranchSlab(onClick: () -> Unit) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "File a New",
-                            style = MaterialTheme.typography.headlineMedium,
+                            style = softHeadline(24),
                             color = paper,
                         )
                         Text(
                             text = "Branch.",
-                            style = MaterialTheme.typography.headlineLarge,
+                            style = softHeadline(28),
                             color = paper,
                         )
                         Spacer(Modifier.height(6.dp))
@@ -500,7 +467,7 @@ private fun FilterStrip(
             onClick = { onSelect(RosterFilter.IDLE) },
         )
     }
-    Hairline()
+    Spacer(Modifier.height(20.dp))
 }
 
 @Composable
@@ -560,7 +527,7 @@ private fun RosterHeader(heading: String, count: Int) {
             )
             Text(
                 text = heading,
-                style = MaterialTheme.typography.headlineSmall,
+                style = softHeadline(20),
                 color = MaterialTheme.colorScheme.onBackground,
             )
         }
@@ -570,7 +537,7 @@ private fun RosterHeader(heading: String, count: Int) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    Hairline()
+    Spacer(Modifier.height(10.dp))
 }
 
 // ---------------------------------------------------------------------------
@@ -593,124 +560,128 @@ private fun RegistryRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit() }
-            .padding(horizontal = 20.dp, vertical = 14.dp)
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 10.dp)
             .alpha(if (isActive) 1f else 0.55f),
     ) {
-        Row(verticalAlignment = Alignment.Top) {
-            // Large index number, like a newspaper column number.
-            Box(
-                modifier = Modifier.width(44.dp),
-                contentAlignment = Alignment.TopStart,
-            ) {
-                Text(
-                    text = index.toString().padStart(2, '0'),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = if (isActive) ink else muted,
-                )
-            }
+        SoftCard(
+            onClick = onEdit,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(verticalAlignment = Alignment.Top) {
+                // Large index number, like a newspaper column number.
+                Box(
+                    modifier = Modifier.width(44.dp),
+                    contentAlignment = Alignment.TopStart,
+                ) {
+                    Text(
+                        text = index.toString().padStart(2, '0'),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = if (isActive) ink else muted,
+                    )
+                }
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = venue.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = ink,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = buildString {
-                        append(venue.code.ifBlank { "—" })
-                        append(" · ")
-                        append(venue.location.ifBlank { "LOCATION UNSET" })
-                        if (venue.timezone.isNotBlank() && venue.timezone != "UTC") {
-                            append(" · ")
-                            append(venue.timezone)
-                        }
-                    }.uppercase(),
-                    style = MonoTiny,
-                    color = muted,
-                )
-
-                if (venue.contactPerson.isNotBlank() || venue.contactPhone.isNotBlank()) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = venue.name,
+                        style = softHeadline(20),
+                        color = ink,
+                    )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = buildList {
-                            if (venue.contactPerson.isNotBlank()) add(venue.contactPerson)
-                            if (venue.contactPhone.isNotBlank()) add(venue.contactPhone)
-                        }.joinToString(" · ").uppercase(),
+                        text = buildString {
+                            append(venue.code.ifBlank { "—" })
+                            append(" · ")
+                            append(venue.location.ifBlank { "LOCATION UNSET" })
+                            if (venue.timezone.isNotBlank() && venue.timezone != "UTC") {
+                                append(" · ")
+                                append(venue.timezone)
+                            }
+                        }.uppercase(),
                         style = MonoTiny,
                         color = muted,
                     )
-                }
 
-                // Feature glyphs — tiny hairline badges
-                val features = buildList {
-                    if (venue.isHeadCountEnabled) add("CNT")
-                    if (venue.isLostAndFoundEnabled) add("L&F")
-                    if (venue.isIncidentReportingEnabled) add("INC")
-                }
-                if (features.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        features.forEach { FeatureTag(it, enabled = isActive) }
+                    if (venue.contactPerson.isNotBlank() || venue.contactPhone.isNotBlank()) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = buildList {
+                                if (venue.contactPerson.isNotBlank()) add(venue.contactPerson)
+                                if (venue.contactPhone.isNotBlank()) add(venue.contactPhone)
+                            }.joinToString(" · ").uppercase(),
+                            style = MonoTiny,
+                            color = muted,
+                        )
+                    }
+
+                    // Feature glyphs
+                    val features = buildList {
+                        if (venue.isHeadCountEnabled) add("CNT")
+                        if (venue.isLostAndFoundEnabled) add("L&F")
+                        if (venue.isIncidentReportingEnabled) add("INC")
+                    }
+                    if (features.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            features.forEach { FeatureTag(it, enabled = isActive) }
+                        }
                     }
                 }
-            }
 
-            Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(10.dp))
 
-            Column(horizontalAlignment = Alignment.End) {
-                if (isActive) {
-                    SevPill(severity = Severity.LOW, label = "LIVE")
-                } else {
-                    SevPill(severity = Severity.NEUTRAL, label = "IDLE")
-                }
-                Spacer(Modifier.height(8.dp))
-                Box {
-                    Text(
-                        text = "⋯",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = ink,
-                        modifier = Modifier
-                            .clickable { menuOpen = true }
-                            .padding(start = 6.dp),
-                    )
-                    DropdownMenu(
-                        expanded = menuOpen,
-                        onDismissRequest = { menuOpen = false },
-                        containerColor = MaterialTheme.colorScheme.background,
-                    ) {
-                        DropdownMenuItem(
-                            text = {
-                                Text("EDIT", style = MaterialTheme.typography.labelMedium)
-                            },
-                            onClick = { menuOpen = false; onEdit() },
+                Column(horizontalAlignment = Alignment.End) {
+                    if (isActive) {
+                        SevPill(severity = Severity.LOW, label = "LIVE")
+                    } else {
+                        SevPill(severity = Severity.NEUTRAL, label = "IDLE")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Box {
+                        Text(
+                            text = "⋯",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = ink,
+                            modifier = Modifier
+                                .clickable { menuOpen = true }
+                                .padding(start = 6.dp),
                         )
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    if (isActive) "SEND TO IDLE" else "BRING LIVE",
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
-                            },
-                            onClick = { menuOpen = false; onToggle() },
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    "STRIKE",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = Signal,
-                                )
-                            },
-                            onClick = { menuOpen = false; onDelete() },
-                        )
+                        DropdownMenu(
+                            expanded = menuOpen,
+                            onDismissRequest = { menuOpen = false },
+                            containerColor = MaterialTheme.colorScheme.background,
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text("EDIT", style = MaterialTheme.typography.labelMedium)
+                                },
+                                onClick = { menuOpen = false; onEdit() },
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        if (isActive) "SEND TO IDLE" else "BRING LIVE",
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                },
+                                onClick = { menuOpen = false; onToggle() },
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "STRIKE",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = Signal,
+                                    )
+                                },
+                                onClick = { menuOpen = false; onDelete() },
+                            )
+                        }
                     }
                 }
             }
         }
     }
-    Hairline(color = MaterialTheme.colorScheme.outline)
 }
 
 @Composable
@@ -748,7 +719,7 @@ private fun EmptyRosterNote(filter: RosterFilter, onAdd: () -> Unit) {
                 RosterFilter.LIVE -> "No branch on the air."
                 RosterFilter.IDLE -> "No dormant entries."
             },
-            style = MaterialTheme.typography.headlineSmall,
+            style = softHeadline(20),
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.height(6.dp))
@@ -763,19 +734,17 @@ private fun EmptyRosterNote(filter: RosterFilter, onAdd: () -> Unit) {
             textAlign = TextAlign.Start,
         )
         Spacer(Modifier.height(14.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(FieldTokens.ToolHeight)
-                .border(FieldTokens.Hair, MaterialTheme.colorScheme.onBackground)
-                .clickable { onAdd() },
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "＋ FILE A BRANCH",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+        SoftCard(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "＋ FILE A BRANCH",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
         }
     }
 }
@@ -792,7 +761,6 @@ private fun Colophon(total: Int, live: Int) {
             .padding(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Hairline(color = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.height(10.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -814,7 +782,6 @@ private fun Colophon(total: Int, live: Int) {
                 style = MonoTiny,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text("― FIELD ―", style = MonoTiny, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -825,21 +792,5 @@ private fun Colophon(total: Int, live: Int) {
 
 @Composable
 private fun LivePulse() {
-    val transition = rememberInfiniteTransition(label = "live")
-    val alpha by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = EaseInOut),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "live-alpha",
-    )
-    Box(
-        modifier = Modifier
-            .alpha(alpha)
-            .background(Signal)
-            .width(7.dp)
-            .height(7.dp),
-    )
+    SoftLivePulseDot(size = 8)
 }

@@ -3,6 +3,8 @@ package com.eventmonitor.feature.incidents.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,11 +50,20 @@ import coil.size.Size
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
-import com.eventmonitor.core.common.ui.FieldAppBar
-import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.ArcadeBackground
 import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.KeyTone
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.SoftBottomDock
+import com.eventmonitor.core.common.ui.SoftCard
+import com.eventmonitor.core.common.ui.SoftIconButton
+import com.eventmonitor.core.common.ui.SoftKey
+import com.eventmonitor.core.common.ui.SoftPrimaryButton
+import com.eventmonitor.core.common.ui.SoftSection
+import com.eventmonitor.core.common.ui.SoftToolButton
 import com.eventmonitor.core.common.ui.Hairline
 import com.eventmonitor.core.common.ui.HairlineSoft
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import com.eventmonitor.core.data.local.entities.IncidentEntity
 import com.eventmonitor.core.domain.models.IncidentSeverity
@@ -85,17 +96,13 @@ fun IncidentDetailScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            FieldAppBar(
-                title = "FILE",
-                eyebrow = incident?.let { "§ INCIDENT · ${it.id.take(6).uppercase()}" }
-                    ?: "§ INCIDENT",
-                leading = {
-                    FieldAppBarIcon(glyph = "←", onClick = {
-                        haptic.light(); onNavigateBack()
-                    })
-                },
+            SoftAppBar(
+                title = "File",
+                subtitle = incident?.let { "§ Incident · ${it.id.take(6).uppercase()}" }
+                    ?: "§ Incident",
+                onBack = { haptic.light(); onNavigateBack() },
                 trailing = {
-                    FieldAppBarIcon(
+                    SoftIconButton(
                         glyph = "✎",
                         enabled = incident != null,
                         onClick = {
@@ -120,14 +127,18 @@ fun IncidentDetailScreen(
         },
     ) { padding ->
         val current = incident
-        if (current == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
+            if (current == null) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     CircularProgressIndicator(
                         color = MaterialTheme.colorScheme.onBackground,
                         strokeWidth = 2.dp,
@@ -139,21 +150,19 @@ fun IncidentDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .navigationBarsPadding(),
-            ) {
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .navigationBarsPadding(),
+                ) {
                 DossierHead(incident = current)
-                Hairline()
+                    Spacer(Modifier.height(20.dp))
 
                 if (current.photoUri.isNotBlank()) {
                     EvidenceStill(photoUri = current.photoUri)
-                    HairlineSoft()
+                    Spacer(Modifier.height(20.dp))
                 }
 
                 // 01 / BRIEF
@@ -164,7 +173,7 @@ fun IncidentDetailScreen(
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                 }
-                HairlineSoft()
+                    Spacer(Modifier.height(20.dp))
 
                 // 02 / LOCUS
                 if (current.location.isNotBlank() || current.category.isNotBlank()) {
@@ -178,7 +187,7 @@ fun IncidentDetailScreen(
                             }
                         }
                     }
-                    HairlineSoft()
+                    Spacer(Modifier.height(20.dp))
                 }
 
                 // 03 / CREDITS
@@ -195,14 +204,14 @@ fun IncidentDetailScreen(
                         )
                     }
                 }
-                HairlineSoft()
+                    Spacer(Modifier.height(20.dp))
 
                 // 04 / HANDLER
                 if (current.assignedTo.isNotBlank()) {
                     DossierSection(index = "04", label = "HANDLER") {
                         KeyValue(caption = "ASSIGNED TO", value = current.assignedTo)
                     }
-                    HairlineSoft()
+                    Spacer(Modifier.height(20.dp))
                 }
 
                 // 05 / ACTIONS
@@ -217,7 +226,7 @@ fun IncidentDetailScreen(
                             color = MaterialTheme.colorScheme.onBackground,
                         )
                     }
-                    HairlineSoft()
+                    Spacer(Modifier.height(20.dp))
                 }
 
                 // 06 / NOTES
@@ -232,7 +241,7 @@ fun IncidentDetailScreen(
                             color = MaterialTheme.colorScheme.onBackground,
                         )
                     }
-                    HairlineSoft()
+                    Spacer(Modifier.height(20.dp))
                 }
 
                 // Resolved stamp
@@ -245,6 +254,7 @@ fun IncidentDetailScreen(
 
                 Spacer(Modifier.height(8.dp))
                 FileColophon(incident = current)
+                }
             }
         }
     }
@@ -304,7 +314,7 @@ private fun DossierHead(incident: IncidentEntity) {
             Spacer(Modifier.height(8.dp))
             Text(
                 incident.title.ifBlank { "—" },
-                style = MaterialTheme.typography.headlineLarge,
+                style = softHeadline(28),
                 color = ink,
             )
             Spacer(Modifier.height(10.dp))
@@ -341,11 +351,13 @@ private fun StatusPill(status: IncidentStatus) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .border(FieldTokens.Hair, ink)
+            .clip(RoundedCornerShape(6.dp))
+            .background(ink.copy(alpha = 0.08f))
             .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
         Box(Modifier
             .size(8.dp)
+            .clip(RoundedCornerShape(2.dp))
             .background(tone))
         Spacer(Modifier.width(6.dp))
         Text(
@@ -369,7 +381,8 @@ private fun EvidenceStill(photoUri: String) {
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 16.dp)
             .height(280.dp)
-            .border(FieldTokens.HairStrong, ink),
+            .clip(RoundedCornerShape(16.dp))
+            .background(ink.copy(alpha = 0.04f)),
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
@@ -476,40 +489,31 @@ private fun KeyValue(caption: String, value: String) {
 
 @Composable
 private fun ResolvedStamp(at: Long, label: String) {
-    val paper = MaterialTheme.colorScheme.background
-    Column(
+    SoftCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 12.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(FieldTokens.HairStrong, Sage)
-                .background(paper)
-                .padding(horizontal = 14.dp, vertical = 14.dp),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("✓ $label", style = MonoTiny, color = Sage)
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        "Case closed",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
+            Column(modifier = Modifier.weight(1f)) {
+                Text("✓ $label", style = MonoTiny, color = Sage)
+                Spacer(Modifier.height(2.dp))
                 Text(
-                    SimpleDateFormat("dd MMM · HH:mm", Locale.getDefault())
-                        .format(Date(at)).uppercase(),
-                    style = MonoTiny,
-                    color = Sage,
+                    "Case closed",
+                    style = softHeadline(20),
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
             }
+            Text(
+                SimpleDateFormat("dd MMM · HH:mm", Locale.getDefault())
+                    .format(Date(at)).uppercase(),
+                style = MonoTiny,
+                color = Sage,
+            )
         }
     }
 }
@@ -522,7 +526,6 @@ private fun FileColophon(incident: IncidentEntity) {
             .padding(horizontal = 20.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Hairline(color = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.height(10.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -554,47 +557,27 @@ private fun FileColophon(incident: IncidentEntity) {
 
 @Composable
 private fun FileResolveRail(onBack: () -> Unit, onResolve: () -> Unit) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    val paper = MaterialTheme.colorScheme.background
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(paper)
-            .windowInsetsPadding(WindowInsets.navigationBars),
+    SoftBottomDock(
+        modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
     ) {
-        Hairline()
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(FieldTokens.ToolHeight)
-                    .border(FieldTokens.Hair, ink)
-                    .background(paper)
-                    .clickable { onBack() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("← BACK", style = MaterialTheme.typography.labelMedium, color = ink)
-            }
-            Box(
-                modifier = Modifier
-                    .weight(2f)
-                    .height(FieldTokens.ToolHeight)
-                    .border(FieldTokens.Hair, ink)
-                    .background(ink)
-                    .clickable { onResolve() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    "✓  MARK RESOLVED",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = paper,
-                )
-            }
+            SoftToolButton(
+                label = "Back",
+                glyph = "←",
+                enabled = true,
+                modifier = Modifier.weight(1f),
+                onClick = onBack,
+            )
+            SoftPrimaryButton(
+                label = "Resolve",
+                onClick = onResolve,
+                modifier = Modifier.weight(2f),
+                trailingGlyph = "✓",
+            )
         }
     }
 }
@@ -613,137 +596,98 @@ private fun ResolveCaseSheet(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
-                .border(FieldTokens.HairStrong, ink)
+                .clip(RoundedCornerShape(20.dp))
                 .background(paper),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "§ RESOLVE · CASE",
-                        style = MonoTiny,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        "Close the report",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = ink,
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        "ID ${incident.id.take(6).uppercase()} · ${incident.title.uppercase()}",
-                        style = MonoTiny,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(FieldTokens.AppBarIconSize)
-                        .border(FieldTokens.Hair, ink)
-                        .clickable { onDismiss() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("×", style = MaterialTheme.typography.headlineSmall, color = ink)
-                }
-            }
-            Hairline()
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-            ) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        "01",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontFamily = MonoTiny.fontFamily,
-                        ),
-                        color = ink,
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("/ ACTIONS TAKEN", style = MonoTiny, color = Signal)
-                        Text(
-                            "Describe what was done to resolve this.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                BasicTextField(
-                    value = actions,
-                    onValueChange = { actions = it },
-                    textStyle = MaterialTheme.typography.titleLarge.copy(color = ink),
-                    cursorBrush = SolidColor(ink),
+            ArcadeBackground(modifier = Modifier.matchParentSize())
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 96.dp),
-                    decorationBox = { inner ->
-                        Column {
-                            Box(Modifier.padding(vertical = 4.dp)) {
-                                if (actions.isEmpty()) {
-                                    Text(
-                                        "Cleaned spill · notified supervisor · signage posted…",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                inner()
-                            }
-                            Box(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(FieldTokens.Hair)
-                                    .background(ink),
-                            )
-                        }
-                    },
-                )
-            }
-            Hairline()
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(FieldTokens.ToolHeight)
-                        .border(FieldTokens.Hair, ink)
-                        .background(paper)
-                        .clickable { onDismiss() },
-                    contentAlignment = Alignment.Center,
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("CANCEL", style = MaterialTheme.typography.labelMedium, color = ink)
-                }
-                val enabled = actions.isNotBlank()
-                Box(
-                    modifier = Modifier
-                        .weight(2f)
-                        .height(FieldTokens.ToolHeight)
-                        .alpha(if (enabled) 1f else 0.35f)
-                        .border(FieldTokens.Hair, ink)
-                        .background(ink)
-                        .clickable(enabled = enabled) { onResolve(actions) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        "CLOSE CASE",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = paper,
+                    SoftSection(
+                        title = "Close the report",
+                        eyebrow = "Resolve · Case",
+                        hint = "ID ${
+                            incident.id.take(6).uppercase()
+                        } · ${incident.title.uppercase()}",
+                        modifier = Modifier.weight(1f),
                     )
+                    Spacer(Modifier.width(12.dp))
+                    SoftIconButton(glyph = "×", onClick = onDismiss)
+                }
+                Spacer(Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                ) {
+                    Text("ACTIONS TAKEN", style = MonoTiny, color = Signal)
+                    Text(
+                        "Describe what was done to resolve this.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    BasicTextField(
+                        value = actions,
+                        onValueChange = { actions = it },
+                        textStyle = MaterialTheme.typography.titleLarge.copy(color = ink),
+                        cursorBrush = SolidColor(ink),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 96.dp),
+                        decorationBox = { inner ->
+                            Column {
+                                Box(Modifier.padding(vertical = 4.dp)) {
+                                    if (actions.isEmpty()) {
+                                        Text(
+                                            "Cleaned spill · notified supervisor · signage posted…",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    inner()
+                                }
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .height(FieldTokens.Hair)
+                                        .background(ink),
+                                )
+                            }
+                        },
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                val enabled = actions.isNotBlank()
+                SoftBottomDock {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SoftToolButton(
+                            label = "Cancel",
+                            glyph = "×",
+                            enabled = true,
+                            modifier = Modifier.weight(1f),
+                            onClick = onDismiss,
+                        )
+                        SoftPrimaryButton(
+                            label = "Close Case",
+                            onClick = { onResolve(actions) },
+                            enabled = enabled,
+                            modifier = Modifier.weight(2f),
+                            trailingGlyph = "✓",
+                        )
+                    }
                 }
             }
         }

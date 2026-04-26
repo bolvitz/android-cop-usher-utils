@@ -59,12 +59,20 @@ import coil.size.Size
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
-import com.eventmonitor.core.common.ui.FieldAppBar
-import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.ArcadeBackground
 import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.KeyTone
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.SoftPrimaryButton
+import com.eventmonitor.core.common.ui.SoftBottomDock
+import com.eventmonitor.core.common.ui.SoftCard
+import com.eventmonitor.core.common.ui.SoftIconButton
+import com.eventmonitor.core.common.ui.SoftKey
+import com.eventmonitor.core.common.ui.SoftToolButton
 import com.eventmonitor.core.common.ui.Hairline
 import com.eventmonitor.core.common.ui.HairlineSoft
 import com.eventmonitor.core.common.ui.ZoneChip
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.domain.models.ItemCategory
@@ -137,21 +145,15 @@ fun AddEditLostItemScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            FieldAppBar(
+            SoftAppBar(
                 title = if (itemId == null) "FILE CASE" else "EDIT CASE",
-                eyebrow = "§ LOST · FOUND",
-                leading = {
-                    FieldAppBarIcon(glyph = "←", onClick = {
-                        haptic.light(); onNavigateBack()
-                    })
-                },
+                subtitle = "§ Lost · Found",
+                onBack = { haptic.light(); onNavigateBack() },
                 trailing = {
-                    FieldAppBarIcon(
+                    SoftIconButton(
                         glyph = "✓",
                         enabled = canSave,
-                        onClick = {
-                            haptic.medium(); viewModel.saveItem()
-                        },
+                        onClick = { haptic.medium(); viewModel.saveItem() },
                     )
                 },
             )
@@ -165,13 +167,16 @@ fun AddEditLostItemScreen(
             )
         },
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .navigationBarsPadding(),
-        ) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .navigationBarsPadding(),
+            ) {
             // Headline
             FileHeadline(
                 filledSteps = filledSteps,
@@ -181,7 +186,7 @@ fun AddEditLostItemScreen(
 
             // Progress tick strip
             FileProgressStrip(filled = filledSteps, total = 7)
-            Hairline()
+                Spacer(Modifier.height(20.dp))
 
             // 01 / PHOTO
             CaseStep(
@@ -195,7 +200,7 @@ fun AddEditLostItemScreen(
                     onClear = { viewModel.updatePhotoUri("") },
                 )
             }
-            HairlineSoft()
+                Spacer(Modifier.height(16.dp))
 
             // 02 / DESCRIPTION (required)
             CaseStep(
@@ -214,7 +219,7 @@ fun AddEditLostItemScreen(
                     singleLine = false,
                 )
             }
-            HairlineSoft()
+                Spacer(Modifier.height(16.dp))
 
             // 03 / ZONE (required)
             CaseStep(
@@ -232,7 +237,7 @@ fun AddEditLostItemScreen(
                     imeAction = ImeAction.Next,
                 )
             }
-            HairlineSoft()
+                Spacer(Modifier.height(16.dp))
 
             // 04 / KIND
             CaseStep(
@@ -246,7 +251,7 @@ fun AddEditLostItemScreen(
                     onSelect = { viewModel.updateCategory(it.name) },
                 )
             }
-            HairlineSoft()
+                Spacer(Modifier.height(16.dp))
 
             // 05 / EVENT (optional, only if events exist)
             if (events.isNotEmpty()) {
@@ -297,7 +302,7 @@ fun AddEditLostItemScreen(
                     )
                 }
             }
-            HairlineSoft()
+                Spacer(Modifier.height(16.dp))
 
             // 07 / CREDITS
             CaseStep(
@@ -324,7 +329,7 @@ fun AddEditLostItemScreen(
                     )
                 }
             }
-            HairlineSoft()
+                Spacer(Modifier.height(16.dp))
 
             // PREVIEW
             CaseStep(
@@ -367,6 +372,7 @@ fun AddEditLostItemScreen(
 
             Spacer(Modifier.height(8.dp))
             Colophon(isEdit = itemId != null)
+            }
         }
     }
 
@@ -905,58 +911,29 @@ private fun FileActionRail(
     onCancel: () -> Unit,
     onPrimary: () -> Unit,
 ) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    val paper = MaterialTheme.colorScheme.background
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(paper)
-            .windowInsetsPadding(WindowInsets.navigationBars),
+    val loading = primaryLabel.endsWith("…")
+    SoftBottomDock(
+        modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
     ) {
-        Hairline()
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(FieldTokens.ToolHeight)
-                    .border(FieldTokens.Hair, ink)
-                    .background(paper)
-                    .clickable { onCancel() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("CANCEL", style = MaterialTheme.typography.labelMedium, color = ink)
-            }
-            Box(
-                modifier = Modifier
-                    .weight(2f)
-                    .height(FieldTokens.ToolHeight)
-                    .alpha(if (primaryEnabled) 1f else 0.35f)
-                    .border(FieldTokens.Hair, ink)
-                    .background(ink)
-                    .clickable(enabled = primaryEnabled) { onPrimary() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (primaryLabel.endsWith("…")) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
-                            color = paper,
-                            strokeWidth = 1.5.dp,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Text(
-                        primaryLabel,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = paper,
-                    )
-                }
-            }
+            SoftToolButton(
+                label = "Cancel",
+                glyph = "×",
+                enabled = true,
+                modifier = Modifier.weight(1f),
+                onClick = onCancel,
+            )
+            SoftPrimaryButton(
+                label = primaryLabel.trimEnd('…'),
+                onClick = onPrimary,
+                enabled = primaryEnabled && !loading,
+                modifier = Modifier.weight(2f),
+                trailingGlyph = if (loading) "…" else "→",
+            )
         }
     }
 }
@@ -1013,14 +990,14 @@ private fun PhotoOptionsSheet(
                     Text("×", style = MaterialTheme.typography.headlineSmall, color = ink)
                 }
             }
-            Hairline()
+            Spacer(Modifier.height(20.dp))
             PhotoOption(
                 index = "01",
                 label = "FROM GALLERY",
                 hint = "Pick an image from this device.",
                 onClick = onPick
             )
-            HairlineSoft()
+            Spacer(Modifier.height(16.dp))
             if (hasPhoto) {
                 PhotoOption(
                     index = "02",

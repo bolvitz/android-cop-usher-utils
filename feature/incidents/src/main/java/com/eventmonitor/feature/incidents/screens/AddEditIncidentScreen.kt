@@ -6,6 +6,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,12 +61,21 @@ import coil.size.Size
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
-import com.eventmonitor.core.common.ui.FieldAppBar
-import com.eventmonitor.core.common.ui.FieldAppBarIcon
+import com.eventmonitor.core.common.ui.ArcadeBackground
 import com.eventmonitor.core.common.ui.FieldTokens
+import com.eventmonitor.core.common.ui.KeyTone
+import com.eventmonitor.core.common.ui.SoftAppBar
+import com.eventmonitor.core.common.ui.SoftBottomDock
+import com.eventmonitor.core.common.ui.SoftCard
+import com.eventmonitor.core.common.ui.SoftIconButton
+import com.eventmonitor.core.common.ui.SoftKey
+import com.eventmonitor.core.common.ui.SoftPrimaryButton
+import com.eventmonitor.core.common.ui.SoftSection
+import com.eventmonitor.core.common.ui.SoftToolButton
 import com.eventmonitor.core.common.ui.Hairline
 import com.eventmonitor.core.common.ui.HairlineSoft
 import com.eventmonitor.core.common.ui.ZoneChip
+import com.eventmonitor.core.common.ui.softHeadline
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
 import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.domain.models.IncidentSeverity
@@ -139,21 +150,15 @@ fun AddEditIncidentScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            FieldAppBar(
+            SoftAppBar(
                 title = if (incidentId == null) "LOG INCIDENT" else "EDIT INCIDENT",
-                eyebrow = "§ INCIDENT · " + if (incidentId == null) "NEW" else "AMEND",
-                leading = {
-                    FieldAppBarIcon(glyph = "←", onClick = {
-                        haptic.light(); onNavigateBack()
-                    })
-                },
+                subtitle = "§ Incident · " + if (incidentId == null) "New" else "Amend",
+                onBack = { haptic.light(); onNavigateBack() },
                 trailing = {
-                    FieldAppBarIcon(
+                    SoftIconButton(
                         glyph = "✓",
                         enabled = canSave,
-                        onClick = {
-                            haptic.medium(); viewModel.saveIncident()
-                        },
+                        onClick = { haptic.medium(); viewModel.saveIncident() },
                     )
                 },
             )
@@ -171,13 +176,16 @@ fun AddEditIncidentScreen(
             )
         },
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .navigationBarsPadding(),
-        ) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)) {
+            ArcadeBackground(modifier = Modifier.matchParentSize())
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .navigationBarsPadding(),
+            ) {
             // Headline
             LogHeadline(
                 filledSteps = filledSteps,
@@ -187,7 +195,7 @@ fun AddEditIncidentScreen(
 
             // Progress tick strip
             LogProgressStrip(filled = filledSteps, total = 8)
-            Hairline()
+                Spacer(Modifier.height(20.dp))
 
             // 01 / EVIDENCE
             CaseStep(
@@ -202,7 +210,7 @@ fun AddEditIncidentScreen(
                     onClear = { viewModel.updatePhotoUri("") },
                 )
             }
-            HairlineSoft()
+                Spacer(Modifier.height(20.dp))
 
             // 02 / HEADLINE (required)
             CaseStep(
@@ -220,7 +228,7 @@ fun AddEditIncidentScreen(
                     imeAction = ImeAction.Next,
                 )
             }
-            HairlineSoft()
+                Spacer(Modifier.height(20.dp))
 
             // 03 / BRIEF (required)
             CaseStep(
@@ -239,7 +247,7 @@ fun AddEditIncidentScreen(
                     singleLine = false,
                 )
             }
-            HairlineSoft()
+                Spacer(Modifier.height(20.dp))
 
             // 04 / SEVERITY (required-ish, default LOW)
             CaseStep(
@@ -254,7 +262,7 @@ fun AddEditIncidentScreen(
                     onSelect = { viewModel.updateSeverity(it.name) },
                 )
             }
-            HairlineSoft()
+                Spacer(Modifier.height(20.dp))
 
             // 05 / EVENT (optional — only if events exist)
             if (events.isNotEmpty()) {
@@ -270,7 +278,7 @@ fun AddEditIncidentScreen(
                         onSelect = viewModel::updateSelectedEvent,
                     )
                 }
-                HairlineSoft()
+                Spacer(Modifier.height(20.dp))
             }
 
             // 06 / LOCUS
@@ -297,7 +305,7 @@ fun AddEditIncidentScreen(
                     )
                 }
             }
-            HairlineSoft()
+                Spacer(Modifier.height(20.dp))
 
             // 07 / CREDITS
             CaseStep(
@@ -324,7 +332,7 @@ fun AddEditIncidentScreen(
                     )
                 }
             }
-            HairlineSoft()
+                Spacer(Modifier.height(20.dp))
 
             // 08 / PREVIEW
             CaseStep(
@@ -368,6 +376,7 @@ fun AddEditIncidentScreen(
 
             Spacer(Modifier.height(8.dp))
             Colophon(isEdit = incidentId != null)
+            }
         }
     }
 
@@ -422,7 +431,7 @@ private fun LogHeadline(filledSteps: Int, totalSteps: Int, isEdit: Boolean) {
         ) {
             Text(
                 if (isEdit) "Amend the report." else "File the report.",
-                style = MaterialTheme.typography.headlineLarge,
+                style = softHeadline(28),
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
@@ -541,7 +550,8 @@ private fun EvidencePanel(
         modifier = Modifier
             .fillMaxWidth()
             .height(220.dp)
-            .border(FieldTokens.HairStrong, ink)
+            .clip(RoundedCornerShape(16.dp))
+            .background(ink.copy(alpha = 0.04f))
             .clickable { onEdit() },
     ) {
         if (photoUri.isNotBlank()) {
@@ -627,16 +637,19 @@ private fun CornerMarks() {
 
 @Composable
 private fun SmallInkChip(label: String, onClick: () -> Unit) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    val paper = MaterialTheme.colorScheme.background
-    Box(
-        modifier = Modifier
-            .border(FieldTokens.Hair, ink)
-            .background(paper)
-            .clickable { onClick() }
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+    SoftCard(
+        onClick = onClick,
+        cornerRadius = 8,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = 10.dp,
+            vertical = 6.dp
+        ),
     ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = ink)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onBackground
+        )
     }
 }
 
@@ -756,49 +769,47 @@ private fun SeverityGrid(
         IncidentSeverity.entries.reversed().forEach { sev ->
             val isSelected = selected == sev
             val tone = severityTone(sev)
-            val filled =
-                isSelected && (sev == IncidentSeverity.CRITICAL || sev == IncidentSeverity.HIGH)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(FieldTokens.Hair, if (isSelected) tone else ink)
-                    .background(
-                        when {
-                            filled -> tone
-                            isSelected -> ink
-                            else -> paper
-                        }
-                    )
-                    .clickable { onSelect(sev) }
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            SoftCard(
+                modifier = Modifier.fillMaxWidth(),
+                selected = isSelected,
+                onClick = { onSelect(sev) },
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    horizontal = 14.dp,
+                    vertical = 12.dp
+                ),
             ) {
-                Box(
-                    Modifier
-                        .size(10.dp)
-                        .background(if (isSelected && !filled) paper else tone),
-                )
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    severityTag(sev),
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontFamily = MonoTiny.fontFamily,
-                    ),
-                    color = if (isSelected) paper else ink,
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    severityBlurb(sev),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (isSelected) paper else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                if (isSelected) {
-                    Text(
-                        "✓",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = paper,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier
+                            .size(10.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(tone),
                     )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        severityTag(sev),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = MonoTiny.fontFamily,
+                        ),
+                        color = if (isSelected) paper else ink,
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        severityBlurb(sev),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isSelected) paper.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (isSelected) {
+                        Text(
+                            "✓",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = paper,
+                        )
+                    }
                 }
             }
         }
@@ -862,11 +873,11 @@ private fun PreviewRow(
     val dateFmt = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
     val timeFmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(FieldTokens.Hair, ink),
+    SoftCard(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
     ) {
+        Row(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .width(FieldTokens.Lane)
@@ -931,6 +942,7 @@ private fun PreviewRow(
                 }
             }
         }
+        }
     }
 }
 
@@ -945,58 +957,29 @@ private fun LogActionRail(
     onCancel: () -> Unit,
     onPrimary: () -> Unit,
 ) {
-    val ink = MaterialTheme.colorScheme.onBackground
-    val paper = MaterialTheme.colorScheme.background
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(paper)
-            .windowInsetsPadding(WindowInsets.navigationBars),
+    val loading = primaryLabel.endsWith("…")
+    SoftBottomDock(
+        modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
     ) {
-        Hairline()
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(FieldTokens.ToolHeight)
-                    .border(FieldTokens.Hair, ink)
-                    .background(paper)
-                    .clickable { onCancel() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("CANCEL", style = MaterialTheme.typography.labelMedium, color = ink)
-            }
-            Box(
-                modifier = Modifier
-                    .weight(2f)
-                    .height(FieldTokens.ToolHeight)
-                    .alpha(if (primaryEnabled) 1f else 0.35f)
-                    .border(FieldTokens.Hair, ink)
-                    .background(ink)
-                    .clickable(enabled = primaryEnabled) { onPrimary() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (primaryLabel.endsWith("…")) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
-                            color = paper,
-                            strokeWidth = 1.5.dp,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Text(
-                        primaryLabel,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = paper,
-                    )
-                }
-            }
+            SoftToolButton(
+                label = "Cancel",
+                glyph = "×",
+                enabled = true,
+                modifier = Modifier.weight(1f),
+                onClick = onCancel,
+            )
+            SoftPrimaryButton(
+                label = primaryLabel.trimEnd('…'),
+                onClick = onPrimary,
+                enabled = primaryEnabled && !loading,
+                modifier = Modifier.weight(2f),
+                trailingGlyph = if (loading) "…" else "→",
+            )
         }
     }
 }
@@ -1018,57 +1001,47 @@ private fun EvidenceOptionsSheet(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
-                .border(FieldTokens.HairStrong, ink)
+                .clip(RoundedCornerShape(20.dp))
                 .background(paper),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "§ EVIDENCE",
-                        style = MonoTiny,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        "Attach a photo",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = ink,
-                    )
-                }
-                Box(
+            ArcadeBackground(modifier = Modifier.matchParentSize())
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
                     modifier = Modifier
-                        .size(FieldTokens.AppBarIconSize)
-                        .border(FieldTokens.Hair, ink)
-                        .clickable { onDismiss() },
-                    contentAlignment = Alignment.Center,
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("×", style = MaterialTheme.typography.headlineSmall, color = ink)
+                    SoftSection(
+                        title = "Attach a photo",
+                        eyebrow = "Evidence",
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    SoftIconButton(glyph = "×", onClick = onDismiss)
                 }
-            }
-            Hairline()
-            SheetOption(
-                index = "01",
-                label = "FROM GALLERY",
-                hint = "Pick an image from this device.",
-                onClick = onPick,
-            )
-            HairlineSoft()
-            if (hasPhoto) {
+                Spacer(Modifier.height(8.dp))
                 SheetOption(
-                    index = "02",
-                    label = "CLEAR EVIDENCE",
-                    hint = "Detach the photo from this report.",
-                    tone = Signal,
-                    onClick = onClear,
+                    index = "01",
+                    label = "FROM GALLERY",
+                    hint = "Pick an image from this device.",
+                    onClick = onPick,
                 )
+                if (hasPhoto) {
+                    Spacer(Modifier.height(8.dp))
+                    SheetOption(
+                        index = "02",
+                        label = "CLEAR EVIDENCE",
+                        hint = "Detach the photo from this report.",
+                        tone = Signal,
+                        onClick = onClear,
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
             }
         }
     }
@@ -1121,7 +1094,6 @@ private fun Colophon(isEdit: Boolean) {
             .padding(horizontal = 20.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Hairline(color = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.height(10.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),

@@ -338,3 +338,71 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
         // The foreign key already points to the renamed venues table, so no changes needed
     }
 }
+
+/**
+ * Migration from version 8 to version 9
+ * Adds:
+ * - hasSeatMap column to area_templates (per-area seat map opt-in)
+ * - seat_rows table (row layout per area)
+ * - seats table (per-seat config, stable IDs)
+ * - seat_statuses table (per-event occupancy)
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // 1. Opt-in flag on area_templates
+        db.execSQL("ALTER TABLE area_templates ADD COLUMN hasSeatMap INTEGER NOT NULL DEFAULT 0")
+
+        // 2. seat_rows
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS seat_rows (
+                id TEXT PRIMARY KEY NOT NULL,
+                areaTemplateId TEXT NOT NULL,
+                label TEXT NOT NULL,
+                displayOrder INTEGER NOT NULL,
+                createdAt INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL,
+                FOREIGN KEY(areaTemplateId) REFERENCES area_templates(id) ON DELETE CASCADE
+            )
+        """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_seat_rows_areaTemplateId ON seat_rows(areaTemplateId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_seat_rows_area_order ON seat_rows(areaTemplateId, displayOrder)")
+
+        // 3. seats
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS seats (
+                id TEXT PRIMARY KEY NOT NULL,
+                rowId TEXT NOT NULL,
+                number INTEGER NOT NULL,
+                seatType TEXT NOT NULL,
+                label TEXT NOT NULL,
+                createdAt INTEGER NOT NULL,
+                FOREIGN KEY(rowId) REFERENCES seat_rows(id) ON DELETE CASCADE
+            )
+        """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_seats_rowId ON seats(rowId)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_seats_row_number ON seats(rowId, number)")
+
+        // 4. seat_statuses
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS seat_statuses (
+                id TEXT PRIMARY KEY NOT NULL,
+                eventId TEXT NOT NULL,
+                seatId TEXT NOT NULL,
+                status TEXT NOT NULL,
+                lastUpdated INTEGER NOT NULL,
+                FOREIGN KEY(eventId) REFERENCES events(id) ON DELETE CASCADE,
+                FOREIGN KEY(seatId) REFERENCES seats(id) ON DELETE CASCADE
+            )
+        """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_seat_statuses_eventId ON seat_statuses(eventId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_seat_statuses_seatId ON seat_statuses(seatId)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_seat_statuses_event_seat ON seat_statuses(eventId, seatId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_seat_statuses_event_status ON seat_statuses(eventId, status)")
+    }
+}
