@@ -26,6 +26,7 @@ import org.koin.core.parameter.parametersOf
 fun SharedIncidentListScreen(
     venueId: String?,
     onBack: () -> Unit,
+    onOpen: (String) -> Unit,
     viewModel: IncidentListViewModel = koinViewModel { parametersOf(venueId) }
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -70,6 +71,7 @@ fun SharedIncidentListScreen(
                         items(state.incidents, key = { it.id }) { incident ->
                             IncidentCard(
                                 incident = incident,
+                                onOpen = { onOpen(incident.id) },
                                 onAdvance = { next -> viewModel.updateStatus(incident.id, next) },
                                 onDelete = { viewModel.delete(incident.id) }
                             )
@@ -111,12 +113,13 @@ private fun StatusFilterRow(selected: String?, onSelect: (String?) -> Unit) {
 @Composable
 private fun IncidentCard(
     incident: IncidentDto,
+    onOpen: () -> Unit,
     onAdvance: (String) -> Unit,
     onDelete: () -> Unit
 ) {
     val severity = IncidentSeverity.fromString(incident.severity)
     val status = IncidentStatus.fromString(incident.status)
-    Card {
+    Card(onClick = onOpen) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(incident.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)

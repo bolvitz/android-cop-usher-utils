@@ -28,6 +28,7 @@ import org.koin.core.parameter.parametersOf
 fun SharedLostAndFoundScreen(
     locationId: String?,
     onBack: () -> Unit,
+    onOpen: (String) -> Unit,
     viewModel: LostAndFoundViewModel = koinViewModel { parametersOf(locationId) }
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -69,6 +70,7 @@ fun SharedLostAndFoundScreen(
                         items(state.items, key = { it.id }) { item ->
                             LostItemCard(
                                 item = item,
+                                onOpen = { onOpen(item.id) },
                                 onClaim = { viewModel.claim(item.id, "Claimant", "") },
                                 onStatus = { status -> viewModel.updateStatus(item.id, status) },
                                 onDelete = { viewModel.delete(item.id) }
@@ -111,13 +113,14 @@ private fun StatusFilterRow(selected: String?, onSelect: (String?) -> Unit) {
 @Composable
 private fun LostItemCard(
     item: LostItemDto,
+    onOpen: () -> Unit,
     onClaim: () -> Unit,
     onStatus: (String) -> Unit,
     onDelete: () -> Unit
 ) {
     val category = ItemCategory.fromString(item.category)
     val status = ItemStatus.fromString(item.status)
-    Card {
+    Card(onClick = onOpen) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(item.description, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)

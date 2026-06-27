@@ -29,6 +29,7 @@ fun SharedVenueListScreen(
     onLostFound: (String) -> Unit,
     onEventTypes: () -> Unit,
     onReports: () -> Unit,
+    onEdit: (String) -> Unit,
     viewModel: VenueListViewModel = koinViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -70,6 +71,7 @@ fun SharedVenueListScreen(
                             onHistory = { onHistory(venue.id) },
                             onIncidents = { onIncidents(venue.id) },
                             onLostFound = { onLostFound(venue.id) },
+                            onEdit = { onEdit(venue.id) },
                             onDelete = { viewModel.deleteVenue(venue.id) }
                         )
                     }
@@ -106,6 +108,7 @@ private fun VenueRow(
     onHistory: () -> Unit,
     onIncidents: () -> Unit,
     onLostFound: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     var menu by remember { mutableStateOf(false) }
@@ -131,6 +134,7 @@ private fun VenueRow(
                     DropdownMenuItem(text = { Text("Incidents") }, onClick = { menu = false; onIncidents() })
                     DropdownMenuItem(text = { Text("Lost & Found") }, onClick = { menu = false; onLostFound() })
                     HorizontalDivider()
+                    DropdownMenuItem(text = { Text("Edit Venue") }, onClick = { menu = false; onEdit() })
                     DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; onDelete() })
                 }
             }

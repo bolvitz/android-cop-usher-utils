@@ -17,8 +17,11 @@ import com.eventmonitor.app.presentation.screens.headcounter.SharedCountingScree
 import com.eventmonitor.app.presentation.screens.venues.SharedVenueListScreen
 import com.eventmonitor.app.presentation.screens.headcounter.SharedHistoryScreen
 import com.eventmonitor.app.presentation.screens.headcounter.SharedTrendsScreen
+import com.eventmonitor.app.presentation.screens.incidents.SharedIncidentDetailScreen
 import com.eventmonitor.app.presentation.screens.incidents.SharedIncidentListScreen
 import com.eventmonitor.app.presentation.screens.lostandfound.SharedLostAndFoundScreen
+import com.eventmonitor.app.presentation.screens.lostandfound.SharedLostItemDetailScreen
+import com.eventmonitor.app.presentation.screens.venues.SharedVenueEditScreen
 import com.eventmonitor.app.presentation.screens.reports.ReportsScreen
 import com.eventmonitor.app.presentation.screens.reports.SharedReportsScreen
 import com.eventmonitor.app.presentation.screens.venues.VenueListScreen
@@ -53,7 +56,18 @@ fun NavGraph(
                 onIncidents = { venueId -> navController.navigate(Screen.SharedIncidents.createRoute(venueId)) },
                 onLostFound = { venueId -> navController.navigate(Screen.SharedLostAndFound.createRoute(venueId)) },
                 onEventTypes = { navController.navigate(Screen.SharedEventTypes.route) },
-                onReports = { navController.navigate(Screen.SharedReports.route) }
+                onReports = { navController.navigate(Screen.SharedReports.route) },
+                onEdit = { venueId -> navController.navigate(Screen.SharedVenueEdit.createRoute(venueId)) }
+            )
+        }
+
+        composable(
+            route = Screen.SharedVenueEdit.route,
+            arguments = listOf(navArgument("venueId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            SharedVenueEditScreen(
+                venueId = backStackEntry.arguments?.getString("venueId") ?: "",
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -240,6 +254,17 @@ fun NavGraph(
         ) { backStackEntry ->
             SharedIncidentListScreen(
                 venueId = backStackEntry.arguments?.getString("venueId"),
+                onBack = { navController.popBackStack() },
+                onOpen = { incidentId -> navController.navigate(Screen.SharedIncidentDetail.createRoute(incidentId)) }
+            )
+        }
+
+        composable(
+            route = Screen.SharedIncidentDetail.route,
+            arguments = listOf(navArgument("incidentId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            SharedIncidentDetailScreen(
+                incidentId = backStackEntry.arguments?.getString("incidentId") ?: "",
                 onBack = { navController.popBackStack() }
             )
         }
@@ -256,6 +281,17 @@ fun NavGraph(
         ) { backStackEntry ->
             SharedLostAndFoundScreen(
                 locationId = backStackEntry.arguments?.getString("locationId"),
+                onBack = { navController.popBackStack() },
+                onOpen = { itemId -> navController.navigate(Screen.SharedLostItemDetail.createRoute(itemId)) }
+            )
+        }
+
+        composable(
+            route = Screen.SharedLostItemDetail.route,
+            arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            SharedLostItemDetailScreen(
+                itemId = backStackEntry.arguments?.getString("itemId") ?: "",
                 onBack = { navController.popBackStack() }
             )
         }

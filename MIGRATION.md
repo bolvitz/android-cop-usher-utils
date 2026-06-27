@@ -125,13 +125,28 @@ shared repositories (the shared DAOs already support them):
 - ~~**Reports**~~ — ported (`SharedReportsScreen` + shared `ReportsViewModel`;
   period/venue/type filters, per-area stats, CSV export via the shared
   `FileExporter`; reached from the venue hub's Reports action).
-- **Incident / lost-item detail & add-edit** screens (the shared list screens
-  cover create + status + claim, but not the full detail/edit forms)
-- **Advanced venue setup** (logo, colour, contact, feature toggles)
+- ~~**Incident / lost-item detail & add-edit**~~ — ported
+  (`SharedIncidentDetailScreen`, `SharedLostItemDetailScreen` + shared
+  `IncidentDetailViewModel` / `LostItemDetailViewModel`; reached by tapping a
+  list row: edit fields, status/resolve/claim, delete).
+- ~~**Advanced venue setup**~~ — ported (`SharedVenueEditScreen` + shared
+  `VenueDetailViewModel`; venue hub "Edit Venue" action: name/location/code,
+  contact, and feature toggles).
 
-Once these are ported, delete `core/data` / `core/domain` and the
-`legacy*Module`s, and add a one-time migration of any existing legacy-DB data
-into the shared DB.
+Every feature now has a shared equivalent reachable from the shared hub, so
+`core/data` is **functionally superseded**. The only remaining UI gap is the
+per-seat tap-to-cycle grid inside the head counter (VM already supports it).
+
+### Final cleanup to delete `core/data`
+
+1. Delete the legacy Android screens + ViewModels (the `feature/*` screen
+   packages and `app/presentation/screens/*` legacy variants) and the unused
+   legacy routes in `Screen`/`NavGraph`.
+2. Remove `legacyDataModule` + `legacyViewModelModule` and the `:core:data` /
+   `:core:domain` module dependencies; delete those modules.
+3. Add a one-time migration copying any rows from the legacy
+   `event_monitor_db` into the shared `event_monitor_kmp.db` on first launch,
+   then drop the legacy file.
 
 ## Notes & follow-ups
 

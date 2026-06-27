@@ -10,6 +10,15 @@ sealed class Screen(val route: String) {
     object SharedSeatMapEditor : Screen("shared_seat_map/{areaId}") {
         fun createRoute(areaId: String) = "shared_seat_map/$areaId"
     }
+    object SharedVenueEdit : Screen("shared_venue_edit/{venueId}") {
+        fun createRoute(venueId: String) = "shared_venue_edit/$venueId"
+    }
+    object SharedIncidentDetail : Screen("shared_incident/{incidentId}") {
+        fun createRoute(incidentId: String) = "shared_incident/$incidentId"
+    }
+    object SharedLostItemDetail : Screen("shared_lost_item/{itemId}") {
+        fun createRoute(itemId: String) = "shared_lost_item/$itemId"
+    }
     object SharedEventTypes : Screen("shared_event_types")
     object SharedReports : Screen("shared_reports")
     object VenueSetup : Screen("venue_setup/{venueId}") {
