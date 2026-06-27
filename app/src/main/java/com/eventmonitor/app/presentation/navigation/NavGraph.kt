@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.eventmonitor.app.presentation.screens.areas.AreaManagementScreen
 import com.eventmonitor.app.presentation.screens.areas.ZoneEditorScreen
 import com.eventmonitor.app.presentation.screens.areas.SharedAreaManagementScreen
+import com.eventmonitor.app.presentation.screens.areas.SharedSeatMapEditorScreen
 import com.eventmonitor.app.presentation.screens.eventtypes.ServiceTypeManagementScreen
 import com.eventmonitor.app.presentation.screens.eventtypes.SharedEventTypeManagementScreen
 import com.eventmonitor.app.presentation.screens.headcounter.SharedCountingScreen
@@ -60,6 +61,17 @@ fun NavGraph(
         ) { backStackEntry ->
             SharedAreaManagementScreen(
                 venueId = backStackEntry.arguments?.getString("venueId") ?: "",
+                onBack = { navController.popBackStack() },
+                onSeatMap = { areaId -> navController.navigate(Screen.SharedSeatMapEditor.createRoute(areaId)) }
+            )
+        }
+
+        composable(
+            route = Screen.SharedSeatMapEditor.route,
+            arguments = listOf(navArgument("areaId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            SharedSeatMapEditorScreen(
+                areaTemplateId = backStackEntry.arguments?.getString("areaId") ?: "",
                 onBack = { navController.popBackStack() }
             )
         }

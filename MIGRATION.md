@@ -117,7 +117,11 @@ registered in Koin) but are **no longer reachable from the new entry point**.
 That means a few legacy-only features regress until they are ported to the
 shared repositories (the shared DAOs already support them):
 
-- **Seat-map editor** (`ZoneEditor`) — seat rows/seats/per-event statuses
+- ~~**Seat-map editor**~~ — ported (`SharedSeatMapEditorScreen` + shared
+  `SeatMapEditorViewModel`; reached from area management). Still missing: the
+  per-seat **tap-to-cycle grid inside the head counter** (the shared
+  `CountingViewModel` already exposes `observeSeatLayout` / `cycleSeatStatus`;
+  only the counter UI needs the grid).
 - **Reports** (CSV export)
 - **Incident / lost-item detail & add-edit** screens (the shared list screens
   cover create + status + claim, but not the full detail/edit forms)

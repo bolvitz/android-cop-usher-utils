@@ -24,6 +24,7 @@ import org.koin.core.parameter.parametersOf
 fun SharedAreaManagementScreen(
     venueId: String,
     onBack: () -> Unit,
+    onSeatMap: (String) -> Unit,
     viewModel: AreaManagementViewModel = koinViewModel { parametersOf(venueId) }
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -68,6 +69,7 @@ fun SharedAreaManagementScreen(
                                     Text(area.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                                     Text("Capacity ${area.capacity}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
+                                TextButton(onClick = { onSeatMap(area.id) }) { Text("Seats") }
                                 TextButton(onClick = { viewModel.deleteArea(area.id) }) { Text("Delete") }
                             }
                         }

@@ -35,6 +35,9 @@ class VenueRepositoryImpl(
     override fun getActiveAreaTemplatesByVenue(venueId: String): Flow<List<AreaTemplateDto>> =
         areaTemplateDao.getAreasByVenue(venueId).map { list -> list.filter { it.isActive }.map { it.toDto() } }
 
+    override fun getAreaTemplateById(templateId: String): Flow<AreaTemplateDto?> =
+        areaTemplateDao.getAreaById(templateId).map { it?.toDto() }
+
     override suspend fun createVenue(venue: VenueDto): Result<String> = try {
         val entity = venue.toEntity()
         venueDao.insertVenue(entity)

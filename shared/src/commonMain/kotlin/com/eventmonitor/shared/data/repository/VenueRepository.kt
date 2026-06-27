@@ -13,6 +13,7 @@ interface VenueRepository {
 
     fun getAreaTemplatesByVenue(venueId: String): Flow<List<AreaTemplateDto>>
     fun getActiveAreaTemplatesByVenue(venueId: String): Flow<List<AreaTemplateDto>>
+    fun getAreaTemplateById(templateId: String): Flow<AreaTemplateDto?>
 
     suspend fun createVenue(venue: VenueDto): Result<String>
     suspend fun updateVenue(venue: VenueDto): Result<Unit>
