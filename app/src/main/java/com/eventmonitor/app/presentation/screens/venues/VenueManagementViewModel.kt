@@ -5,13 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.eventmonitor.core.data.local.entities.VenueEntity
 import com.eventmonitor.core.domain.common.Result
 import com.eventmonitor.core.data.repository.interfaces.VenueRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class VenueManagementViewModel @Inject constructor(
+class VenueManagementViewModel constructor(
     private val venueRepository: VenueRepository
 ) : ViewModel() {
 

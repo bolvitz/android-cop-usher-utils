@@ -48,7 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import com.eventmonitor.core.common.theme.Amber
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Navy
@@ -88,7 +88,7 @@ fun LostAndFoundScreen(
     onNavigateToAddItem: (String) -> Unit,
     onNavigateToItemDetail: (String) -> Unit = {},
     onNavigateBack: () -> Unit,
-    viewModel: LostAndFoundViewModel = hiltViewModel()
+    viewModel: LostAndFoundViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val selectedStatus by viewModel.selectedStatus.collectAsState()

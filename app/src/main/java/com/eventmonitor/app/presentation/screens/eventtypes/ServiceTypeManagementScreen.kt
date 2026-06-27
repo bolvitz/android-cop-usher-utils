@@ -52,7 +52,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import com.eventmonitor.app.presentation.viewmodels.EventTypeManagementViewModel
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Sage
@@ -81,7 +81,7 @@ import com.eventmonitor.core.data.local.entities.EventTypeEntity
 
 @Composable
 fun ServiceTypeManagementScreen(
-    viewModel: EventTypeManagementViewModel = hiltViewModel(),
+    viewModel: EventTypeManagementViewModel = koinViewModel(),
     onNavigateBack: () -> Unit,
 ) {
     val haptic = rememberHapticFeedback()

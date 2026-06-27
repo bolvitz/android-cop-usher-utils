@@ -11,9 +11,8 @@ import com.eventmonitor.core.domain.validation.DomainValidators
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.util.UUID
-import javax.inject.Inject
 
-class EventTypeRepositoryImpl @Inject constructor(
+class EventTypeRepositoryImpl constructor(
     private val eventTypeDao: EventTypeDao,
     private val eventDao: EventDao
 ) : EventTypeRepository {

@@ -49,7 +49,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
@@ -69,7 +69,7 @@ import com.eventmonitor.core.domain.models.AreaType
 
 @Composable
 fun ZoneEditorScreen(
-    viewModel: ZoneEditorViewModel = hiltViewModel(),
+    viewModel: ZoneEditorViewModel = koinViewModel(),
     onNavigateBack: () -> Unit,
 ) {
     val state by viewModel.state.collectAsState()

@@ -11,9 +11,8 @@ import com.eventmonitor.core.data.repository.interfaces.LostItemRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.util.UUID
-import javax.inject.Inject
 
-class LostItemRepositoryImpl @Inject constructor(
+class LostItemRepositoryImpl constructor(
     private val lostItemDao: LostItemDao
 ) : LostItemRepository {
 

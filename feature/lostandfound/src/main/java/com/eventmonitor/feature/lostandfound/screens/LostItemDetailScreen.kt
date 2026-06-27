@@ -47,7 +47,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Size
@@ -77,7 +77,7 @@ fun LostItemDetailScreen(
     itemId: String,
     onNavigateBack: () -> Unit,
     onNavigateToEdit: (String, String) -> Unit,
-    viewModel: LostItemDetailViewModel = hiltViewModel()
+    viewModel: LostItemDetailViewModel = koinViewModel()
 ) {
     val item by viewModel.item.collectAsState(initial = null)
     var showClaimDialog by remember { mutableStateOf(false) }

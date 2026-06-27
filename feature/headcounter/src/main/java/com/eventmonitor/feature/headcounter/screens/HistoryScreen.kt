@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import com.eventmonitor.core.common.theme.Amber
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
@@ -76,7 +76,7 @@ import java.util.Locale
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HistoryScreen(
-    viewModel: HistoryViewModel = hiltViewModel(),
+    viewModel: HistoryViewModel = koinViewModel(),
     onServiceClick: (branchId: String, serviceId: String) -> Unit,
     onStartNewCount: (venueId: String) -> Unit,
     onViewTrends: (venueId: String?) -> Unit = {},

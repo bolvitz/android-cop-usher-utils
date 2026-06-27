@@ -23,13 +23,11 @@ import com.eventmonitor.core.common.theme.InkDark
 import com.eventmonitor.core.common.theme.LocalThemeMode
 import com.eventmonitor.core.common.theme.Paper
 import com.eventmonitor.core.common.theme.ThemeMode
-import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.drop
 
 private const val THEME_PREFS = "ui_prefs"
 private const val THEME_KEY_DARK = "is_dark"
 
-@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

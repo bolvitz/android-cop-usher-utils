@@ -24,9 +24,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
-import javax.inject.Inject
 
-class EventRepositoryImpl @Inject constructor(
+class EventRepositoryImpl constructor(
     private val database: AppDatabase,
     private val eventDao: EventDao,
     private val areaCountDao: AreaCountDao,

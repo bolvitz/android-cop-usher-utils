@@ -54,7 +54,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
@@ -77,7 +77,7 @@ private enum class RosterFilter { ALL, LIVE, IDLE }
 
 @Composable
 fun VenueManagementScreen(
-    viewModel: VenueManagementViewModel = hiltViewModel(),
+    viewModel: VenueManagementViewModel = koinViewModel(),
     onNavigateBack: () -> Unit,
     onAddVenue: () -> Unit,
     onEditVenue: (String) -> Unit,

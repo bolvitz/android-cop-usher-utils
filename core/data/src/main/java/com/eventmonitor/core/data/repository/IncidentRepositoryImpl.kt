@@ -11,9 +11,8 @@ import com.eventmonitor.core.data.repository.interfaces.IncidentRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.util.UUID
-import javax.inject.Inject
 
-class IncidentRepositoryImpl @Inject constructor(
+class IncidentRepositoryImpl constructor(
     private val incidentDao: IncidentDao
 ) : IncidentRepository {
 

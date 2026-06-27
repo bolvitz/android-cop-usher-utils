@@ -8,14 +8,11 @@ import com.eventmonitor.core.data.local.entities.EventWithAreaCounts
 import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import com.eventmonitor.core.data.repository.interfaces.EventRepository
 import com.eventmonitor.core.data.repository.interfaces.EventTypeRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import javax.inject.Inject
 
-@HiltViewModel
-class ReportsViewModel @Inject constructor(
+class ReportsViewModel constructor(
     private val eventRepository: EventRepository,
     private val venueRepository: VenueRepository,
     private val eventTypeRepository: EventTypeRepository

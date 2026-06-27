@@ -54,13 +54,15 @@ iosApp/     SwiftUI app         (consumes shared.framework)
   iOS `observe(flow:onEach:)` bridge. Migrated `VenueListViewModel`,
   `EventTypeManagementViewModel`, and the full head-counter `CountingViewModel`
   (with a `SeatMapRepository`); registered in `viewModelModule`.
-- **Phase 4 (started) — Android rewire.** `:app` depends on `:shared`; Koin
-  starts in `EventMonitorApp.onCreate()` alongside Hilt (coexistence). The
-  shared Room DB uses a distinct filename to avoid colliding with the legacy
-  `core/data` DB. The **head counter, incidents and lost & found are cut
-  over**: venue actions route to `SharedCountingScreen` /
-  `SharedIncidentListScreen` / `SharedLostAndFoundScreen`, Compose screens
-  resolving the shared ViewModels via `koinViewModel { parametersOf(…) }`.
+- **Phase 4 — Android rewire / Hilt removal.** **Hilt is fully removed**; Koin
+  is the single DI container. `EventMonitorApp.onCreate()` starts Koin with the
+  shared modules plus `legacyDataModule` + `legacyViewModelModule` (the former
+  Hilt `DatabaseModule`/`RepositoryModule`, now Koin: legacy `core/data` Room DB
+  with its real migrations, DAOs, repo bindings, and the remaining Android
+  ViewModels via `viewModelOf`). All 16 `@HiltViewModel`s became plain classes;
+  all screens use `koinViewModel()`. The shared Room DB uses a distinct filename
+  so it doesn't collide with the legacy DB. Head counter, incidents and lost &
+  found are cut over to shared ViewModels via `koinViewModel { parametersOf(…) }`.
 - **Phase 5 (scaffold) — SwiftUI app.** `iosApp/` with `@main` app, Koin start,
   `ContentView` tabs (Venues, Event Types, Incidents, Lost & Found), plus
   `HeadCounterView` reached from the venue list — all bound to shared
@@ -76,11 +78,11 @@ iosApp/     SwiftUI app         (consumes shared.framework)
   using the `SharedViewModel` + DTO-repository pattern: head counter
   (`History`, `Trends`, `SeatMapDemo`), lost-item & incident add/edit & detail,
   plus `VenueSetup`/`VenueManagement`/`AreaManagement`/`Reports`.
-- **Phase 4 cont. — Android rewire.** Cut over the remaining screens to shared
-  ViewModels via `koinViewModel()` (head counter is done as the reference),
-  then remove Hilt and delete `core/data` / `core/domain` once nothing
-  references them. Until then Hilt and Koin coexist and the legacy `core/data`
-  Room DB remains for not-yet-migrated features.
+- **Phase 4 cont. — finish the data unification.** Hilt is gone, but the legacy
+  Android ViewModels still resolve `core/data` repositories (Koin-bound). Port
+  the remaining ViewModels to the shared DTO repositories, then delete
+  `core/data` / `core/domain` and the `legacy*Module`s, leaving a single Room DB
+  (and migrate any existing legacy DB data into it).
 - **Phase 5 cont.** Add SwiftUI screens for the remaining features and a
   shared design system; wire navigation.
 

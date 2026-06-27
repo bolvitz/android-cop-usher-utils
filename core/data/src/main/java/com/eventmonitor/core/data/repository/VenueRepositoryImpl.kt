@@ -15,9 +15,8 @@ import com.eventmonitor.core.domain.validation.DomainValidators
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.util.UUID
-import javax.inject.Inject
 
-class VenueRepositoryImpl @Inject constructor(
+class VenueRepositoryImpl constructor(
     private val venueDao: VenueDao,
     private val areaTemplateDao: AreaTemplateDao,
     private val eventDao: EventDao

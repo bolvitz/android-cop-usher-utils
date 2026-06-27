@@ -95,7 +95,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import com.eventmonitor.core.common.theme.Amber
 import com.eventmonitor.core.common.theme.BodySans
 import com.eventmonitor.core.common.theme.DataMono
@@ -139,7 +139,7 @@ import kotlin.math.abs
 
 @Composable
 fun CountingScreen(
-    viewModel: CountingViewModel = hiltViewModel(),
+    viewModel: CountingViewModel = koinViewModel(),
     onNavigateBack: () -> Unit,
 ) {
     val haptic = rememberHapticFeedback()

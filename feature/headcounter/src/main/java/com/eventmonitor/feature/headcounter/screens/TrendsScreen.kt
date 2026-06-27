@@ -44,7 +44,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import com.eventmonitor.core.common.theme.Amber
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
@@ -67,7 +67,7 @@ import kotlin.math.abs
 
 @Composable
 fun TrendsScreen(
-    viewModel: TrendsViewModel = hiltViewModel(),
+    viewModel: TrendsViewModel = koinViewModel(),
     onNavigateBack: () -> Unit,
 ) {
     val haptic = rememberHapticFeedback()

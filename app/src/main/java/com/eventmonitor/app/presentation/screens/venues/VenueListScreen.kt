@@ -53,7 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Sage
 import com.eventmonitor.core.common.theme.Signal
@@ -77,7 +77,7 @@ import kotlin.math.roundToInt
 
 @Composable
 fun VenueListScreen(
-    viewModel: VenueListViewModel = hiltViewModel(),
+    viewModel: VenueListViewModel = koinViewModel(),
     onVenueClick: (String) -> Unit,
     onManageAreas: (String) -> Unit = {},
     onEditVenue: (String) -> Unit = {},

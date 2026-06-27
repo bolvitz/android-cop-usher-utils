@@ -15,9 +15,8 @@ import com.eventmonitor.core.data.repository.interfaces.SeatMapRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
 
-class SeatMapRepositoryImpl @Inject constructor(
+class SeatMapRepositoryImpl constructor(
     private val database: AppDatabase,
     private val seatRowDao: SeatRowDao,
     private val seatDao: SeatDao,

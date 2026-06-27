@@ -43,7 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Size
@@ -86,7 +86,7 @@ fun IncidentDetailScreen(
     incidentId: String,
     onNavigateBack: () -> Unit,
     onNavigateToEdit: (String) -> Unit,
-    viewModel: IncidentDetailViewModel = hiltViewModel()
+    viewModel: IncidentDetailViewModel = koinViewModel()
 ) {
     val incident by viewModel.incident.collectAsState(initial = null)
     var showResolveDialog by remember { mutableStateOf(false) }

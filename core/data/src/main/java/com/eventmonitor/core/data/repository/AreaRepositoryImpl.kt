@@ -8,9 +8,8 @@ import com.eventmonitor.core.data.repository.interfaces.AreaRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.util.UUID
-import javax.inject.Inject
 
-class AreaRepositoryImpl @Inject constructor(
+class AreaRepositoryImpl constructor(
     private val areaTemplateDao: AreaTemplateDao,
     private val areaCountDao: AreaCountDao
 ) : AreaRepository {

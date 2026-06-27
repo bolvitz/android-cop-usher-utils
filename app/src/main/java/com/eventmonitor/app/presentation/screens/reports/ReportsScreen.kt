@@ -43,7 +43,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Signal
 import com.eventmonitor.core.common.ui.ArcadeBackground
@@ -57,7 +57,7 @@ import com.eventmonitor.core.common.utils.rememberHapticFeedback
 
 @Composable
 fun ReportsScreen(
-    viewModel: ReportsViewModel = hiltViewModel(),
+    viewModel: ReportsViewModel = koinViewModel(),
     onNavigateBack: () -> Unit,
 ) {
     val haptic = rememberHapticFeedback()

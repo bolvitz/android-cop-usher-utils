@@ -6,13 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.eventmonitor.core.data.local.entities.EventTypeEntity
 import com.eventmonitor.core.domain.common.Result
 import com.eventmonitor.core.data.repository.interfaces.EventTypeRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class EventTypeManagementViewModel @Inject constructor(
+class EventTypeManagementViewModel constructor(
     private val eventTypeRepository: EventTypeRepository
 ) : ViewModel() {
 

@@ -7,13 +7,10 @@ import com.eventmonitor.core.data.local.entities.IncidentEntity
 import com.eventmonitor.core.domain.common.Result
 import com.eventmonitor.core.domain.models.IncidentStatus
 import com.eventmonitor.core.data.repository.interfaces.IncidentRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class IncidentDetailViewModel @Inject constructor(
+class IncidentDetailViewModel constructor(
     private val incidentRepository: IncidentRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {

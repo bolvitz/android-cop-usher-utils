@@ -8,14 +8,12 @@ import com.eventmonitor.core.data.repository.interfaces.AreaRepository
 import com.eventmonitor.core.data.repository.interfaces.SeatMapRepository
 import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import com.eventmonitor.core.domain.models.AreaType
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 enum class EditorMode { SOLO, BATCH, EDIT }
 
@@ -38,8 +36,7 @@ data class ZoneEditorState(
     val finished: Boolean = false,
 )
 
-@HiltViewModel
-class ZoneEditorViewModel @Inject constructor(
+class ZoneEditorViewModel constructor(
     private val areaRepository: AreaRepository,
     private val venueRepository: VenueRepository,
     private val seatMapRepository: SeatMapRepository,

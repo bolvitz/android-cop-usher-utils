@@ -10,16 +10,13 @@ import com.eventmonitor.core.data.local.dao.EventDao
 import com.eventmonitor.core.data.local.entities.EventWithDetails
 import com.eventmonitor.core.data.repository.interfaces.IncidentRepository
 import com.eventmonitor.feature.incidents.utils.IncidentNotificationHelper
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class AddEditIncidentViewModel @Inject constructor(
+class AddEditIncidentViewModel constructor(
     private val incidentRepository: IncidentRepository,
     private val eventDao: EventDao,
     private val application: Application,

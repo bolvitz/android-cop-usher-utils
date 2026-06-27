@@ -10,7 +10,6 @@ import com.eventmonitor.core.data.repository.interfaces.EventTypeRepository
 import com.eventmonitor.core.data.repository.interfaces.SeatMapRepository
 import com.eventmonitor.core.data.repository.interfaces.VenueRepository
 import com.eventmonitor.core.domain.models.ServiceType
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,10 +21,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import javax.inject.Inject
 
-@HiltViewModel
-class CountingViewModel @Inject constructor(
+class CountingViewModel constructor(
     private val venueRepository: VenueRepository,
     private val eventRepository: EventRepository,
     private val eventTypeRepository: EventTypeRepository,

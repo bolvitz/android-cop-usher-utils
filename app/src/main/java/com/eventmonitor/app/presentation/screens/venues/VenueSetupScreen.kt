@@ -53,7 +53,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import com.eventmonitor.core.common.theme.DataMono
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Signal
@@ -72,7 +72,7 @@ import com.eventmonitor.core.common.utils.rememberHapticFeedback
 
 @Composable
 fun VenueSetupScreen(
-    viewModel: VenueSetupViewModel = hiltViewModel(),
+    viewModel: VenueSetupViewModel = koinViewModel(),
     onNavigateBack: () -> Unit,
     onManageAreas: (String) -> Unit = {},
 ) {

@@ -6,9 +6,8 @@ import com.eventmonitor.core.data.local.entities.AreaCountWithTemplate
 import com.eventmonitor.core.data.repository.interfaces.AreaCountRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import javax.inject.Inject
 
-class AreaCountRepositoryImpl @Inject constructor(
+class AreaCountRepositoryImpl constructor(
     private val areaCountDao: AreaCountDao
 ) : AreaCountRepository {
 

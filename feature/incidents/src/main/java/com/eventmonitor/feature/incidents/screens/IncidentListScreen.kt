@@ -46,7 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import com.eventmonitor.core.common.theme.Amber
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.theme.Navy
@@ -95,7 +95,7 @@ fun IncidentListScreen(
     onNavigateToIncidentDetail: (String) -> Unit,
     onNavigateToEditIncident: (String, String) -> Unit = { _, _ -> },
     venueId: String? = null,
-    viewModel: IncidentListViewModel = hiltViewModel()
+    viewModel: IncidentListViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val selectedStatus by viewModel.selectedStatus.collectAsState()

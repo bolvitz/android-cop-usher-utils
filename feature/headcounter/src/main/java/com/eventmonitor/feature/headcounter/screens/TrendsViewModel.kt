@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eventmonitor.core.data.repository.interfaces.EventRepository
 import com.eventmonitor.core.data.repository.interfaces.VenueRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,10 +16,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import javax.inject.Inject
 
-@HiltViewModel
-class TrendsViewModel @Inject constructor(
+class TrendsViewModel constructor(
     private val eventRepository: EventRepository,
     private val venueRepository: VenueRepository,
     savedStateHandle: SavedStateHandle

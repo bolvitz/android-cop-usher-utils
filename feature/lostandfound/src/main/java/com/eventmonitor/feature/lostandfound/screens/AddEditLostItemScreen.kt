@@ -52,7 +52,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Size
@@ -96,7 +96,7 @@ fun AddEditLostItemScreen(
     locationId: String,
     itemId: String?,
     onNavigateBack: () -> Unit,
-    viewModel: AddEditLostItemViewModel = hiltViewModel()
+    viewModel: AddEditLostItemViewModel = koinViewModel()
 ) {
     val description by viewModel.description.collectAsState()
     val category by viewModel.category.collectAsState()

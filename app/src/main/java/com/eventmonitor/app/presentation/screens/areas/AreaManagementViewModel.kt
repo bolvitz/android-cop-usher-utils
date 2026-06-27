@@ -7,15 +7,12 @@ import com.eventmonitor.core.data.local.entities.AreaTemplateEntity
 import com.eventmonitor.core.domain.models.AreaType
 import com.eventmonitor.core.data.repository.interfaces.AreaRepository
 import com.eventmonitor.core.data.repository.interfaces.VenueRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class AreaManagementViewModel @Inject constructor(
+class AreaManagementViewModel constructor(
     private val areaRepository: AreaRepository,
     private val branchRepository: VenueRepository,
     savedStateHandle: SavedStateHandle

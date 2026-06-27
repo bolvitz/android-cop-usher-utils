@@ -1,8 +1,6 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("com.google.devtools.ksp")
-    id("com.google.dagger.hilt.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
     // Uncomment to enable Firebase
@@ -97,7 +95,7 @@ dependencies {
     // Shared KMP module (offline-first Room data, repositories, ViewModels)
     implementation(project(":shared"))
 
-    // Koin (shared module DI; coexists with Hilt during the incremental migration)
+    // DI: Koin (single DI container for shared + legacy Android modules)
     implementation("io.insert-koin:koin-android:3.5.6")
     implementation("io.insert-koin:koin-androidx-compose:3.5.6")
 
@@ -135,10 +133,6 @@ dependencies {
 
     // Room - provided by core:data module
 
-    // Hilt
-    implementation("com.google.dagger:hilt-android:2.51.1")
-    ksp("com.google.dagger:hilt-android-compiler:2.51.1")
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
@@ -176,8 +170,6 @@ dependencies {
 
     // Work Manager (for background sync)
     implementation("androidx.work:work-runtime-ktx:2.9.1")
-    implementation("androidx.hilt:hilt-work:1.2.0")
-    ksp("androidx.hilt:hilt-compiler:1.2.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

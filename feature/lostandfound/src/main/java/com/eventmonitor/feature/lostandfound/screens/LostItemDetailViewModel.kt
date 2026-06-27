@@ -7,13 +7,10 @@ import com.eventmonitor.core.data.local.entities.LostItemEntity
 import com.eventmonitor.core.domain.common.Result
 import com.eventmonitor.core.domain.models.ItemStatus
 import com.eventmonitor.core.data.repository.interfaces.LostItemRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class LostItemDetailViewModel @Inject constructor(
+class LostItemDetailViewModel constructor(
     private val lostItemRepository: LostItemRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
