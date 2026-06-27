@@ -41,7 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun seatStatusDao(): SeatStatusDao
 
     companion object {
-        const val DATABASE_NAME = "event_monitor_db"
+        const val DATABASE_NAME = "event_monitor_kmp.db"
     }
 }
 

@@ -94,6 +94,13 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:domain"))
 
+    // Shared KMP module (offline-first Room data, repositories, ViewModels)
+    implementation(project(":shared"))
+
+    // Koin (shared module DI; coexists with Hilt during the incremental migration)
+    implementation("io.insert-koin:koin-android:3.5.6")
+    implementation("io.insert-koin:koin-androidx-compose:3.5.6")
+
     // Feature modules
     implementation(project(":feature:headcounter"))
     implementation(project(":feature:lostandfound"))
