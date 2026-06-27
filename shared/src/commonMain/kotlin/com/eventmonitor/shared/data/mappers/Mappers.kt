@@ -128,3 +128,23 @@ fun AreaCountWithTemplate.toDto(): com.eventmonitor.shared.data.models.AreaCount
         areaCount = areaCount.toDto(),
         template = template.toDto()
     )
+
+// ---------- Incident ----------
+fun IncidentEntity.toDto() = IncidentDto(
+    id = id, venueId = venueId, eventId = eventId, title = title, description = description,
+    severity = severity, status = status, category = category, location = location,
+    photoUri = photoUri, reportedBy = reportedBy, assignedTo = assignedTo,
+    reportedAt = reportedAt, resolvedAt = resolvedAt, notes = notes,
+    actionsTaken = actionsTaken, createdAt = createdAt, updatedAt = updatedAt
+)
+
+fun IncidentDto.toEntity() = IncidentEntity(
+    id = id.ifEmpty { com.eventmonitor.shared.util.newId() },
+    venueId = venueId, eventId = eventId, title = title, description = description,
+    severity = severity, status = status, category = category, location = location,
+    photoUri = photoUri, reportedBy = reportedBy, assignedTo = assignedTo,
+    reportedAt = if (reportedAt == 0L) nowMillis() else reportedAt,
+    resolvedAt = resolvedAt, notes = notes, actionsTaken = actionsTaken,
+    createdAt = if (createdAt == 0L) nowMillis() else createdAt,
+    updatedAt = nowMillis()
+)

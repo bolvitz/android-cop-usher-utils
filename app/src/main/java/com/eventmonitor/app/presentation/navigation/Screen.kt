@@ -14,6 +14,11 @@ sealed class Screen(val route: String) {
     object SharedCounting : Screen("shared_counting/{venueId}") {
         fun createRoute(venueId: String) = "shared_counting/$venueId"
     }
+    // Incidents backed by the shared KMP IncidentListViewModel (resolved via Koin).
+    object SharedIncidents : Screen("shared_incidents?venueId={venueId}") {
+        fun createRoute(venueId: String? = null) =
+            if (venueId != null) "shared_incidents?venueId=$venueId" else "shared_incidents"
+    }
     object History : Screen("history?venueId={venueId}") {
         fun createRoute(venueId: String? = null) =
             if (venueId != null) "history?venueId=$venueId"

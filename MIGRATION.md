@@ -57,24 +57,24 @@ iosApp/     SwiftUI app         (consumes shared.framework)
 - **Phase 4 (started) — Android rewire.** `:app` depends on `:shared`; Koin
   starts in `EventMonitorApp.onCreate()` alongside Hilt (coexistence). The
   shared Room DB uses a distinct filename to avoid colliding with the legacy
-  `core/data` DB. The **head counter is cut over**: tapping a venue routes to
-  `SharedCountingScreen`, a Compose screen resolving the shared
-  `CountingViewModel` via `koinViewModel { parametersOf(venueId, null) }`.
+  `core/data` DB. The **head counter and incidents are cut over**: tapping a
+  venue routes to `SharedCountingScreen` / `SharedIncidentListScreen`, Compose
+  screens resolving the shared ViewModels via `koinViewModel { parametersOf(…) }`.
 - **Phase 5 (scaffold) — SwiftUI app.** `iosApp/` with `@main` app, Koin start,
-  `ContentView` tabs, and feature screens (`VenueListView`,
-  `EventTypeManagementView`, and `HeadCounterView` reached from the venue list)
-  bound to shared ViewModels. Reproducible Xcode project via `project.yml`
-  (XcodeGen) with the Kotlin framework embed phase.
+  `ContentView` tabs (Venues, Event Types, Incidents), plus `HeadCounterView`
+  reached from the venue list — all bound to shared ViewModels. Reproducible
+  Xcode project via `project.yml` (XcodeGen) with the Kotlin framework embed
+  phase.
 
 ### Remaining (mechanical, follows established patterns)
 
 - **Phase 2 cont.** Add Room-backed repos for the remaining domains:
-  `Incident`, `LostItem`, `Area`, `User` (`SeatMap` is done; interfaces exist
-  in the Android `core/data` to mirror).
+  `LostItem`, `Area`, `User` (`SeatMap` and `Incident` are done; interfaces
+  exist in the Android `core/data` to mirror).
 - **Phase 3 cont.** Port the remaining ViewModels into `:shared/presentation`
   using the `SharedViewModel` + DTO-repository pattern: head counter
-  (`History`, `Trends`, `SeatMapDemo`), `LostAndFound`, `Incidents`, plus
-  `VenueSetup`/`VenueManagement`/`AreaManagement`/`Reports`.
+  (`History`, `Trends`, `SeatMapDemo`), `LostAndFound`, incident add/edit &
+  detail, plus `VenueSetup`/`VenueManagement`/`AreaManagement`/`Reports`.
 - **Phase 4 cont. — Android rewire.** Cut over the remaining screens to shared
   ViewModels via `koinViewModel()` (head counter is done as the reference),
   then remove Hilt and delete `core/data` / `core/domain` once nothing

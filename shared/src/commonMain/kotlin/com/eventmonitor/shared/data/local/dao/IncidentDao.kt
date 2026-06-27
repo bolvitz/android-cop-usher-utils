@@ -69,6 +69,9 @@ interface IncidentDao {
     @Delete
     suspend fun deleteIncident(incident: IncidentEntity)
 
+    @Query("DELETE FROM incidents WHERE id = :incidentId")
+    suspend fun deleteIncidentById(incidentId: String)
+
     @Query("UPDATE incidents SET status = :status, updatedAt = :updatedAt WHERE id = :incidentId")
     suspend fun updateIncidentStatus(incidentId: String, status: String, updatedAt: Long)
 

@@ -8,6 +8,9 @@ struct ContentView: View {
 
             EventTypeManagementView()
                 .tabItem { Label("Event Types", systemImage: "calendar") }
+
+            IncidentListView()
+                .tabItem { Label("Incidents", systemImage: "exclamationmark.triangle") }
         }
     }
 }

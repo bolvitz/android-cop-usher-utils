@@ -11,6 +11,7 @@ import com.eventmonitor.app.presentation.screens.areas.AreaManagementScreen
 import com.eventmonitor.app.presentation.screens.areas.ZoneEditorScreen
 import com.eventmonitor.app.presentation.screens.eventtypes.ServiceTypeManagementScreen
 import com.eventmonitor.app.presentation.screens.headcounter.SharedCountingScreen
+import com.eventmonitor.app.presentation.screens.incidents.SharedIncidentListScreen
 import com.eventmonitor.app.presentation.screens.reports.ReportsScreen
 import com.eventmonitor.app.presentation.screens.venues.VenueListScreen
 import com.eventmonitor.app.presentation.screens.venues.VenueManagementScreen
@@ -52,7 +53,8 @@ fun NavGraph(
                     navController.navigate(Screen.History.createRoute(venueId))
                 },
                 onVenueIncidents = { venueId ->
-                    navController.navigate(Screen.IncidentList.createRoute(venueId))
+                    // Incidents now run on the shared KMP ViewModel.
+                    navController.navigate(Screen.SharedIncidents.createRoute(venueId))
                 },
                 onVenueLostAndFound = { venueId ->
                     navController.navigate(Screen.LostAndFound.createRoute(venueId))
@@ -171,6 +173,22 @@ fun NavGraph(
             val venueId = backStackEntry.arguments?.getString("venueId") ?: ""
             SharedCountingScreen(
                 venueId = venueId,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.SharedIncidents.route,
+            arguments = listOf(
+                navArgument("venueId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            SharedIncidentListScreen(
+                venueId = backStackEntry.arguments?.getString("venueId"),
                 onBack = { navController.popBackStack() }
             )
         }
