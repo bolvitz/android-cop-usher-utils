@@ -10,6 +10,10 @@ sealed class Screen(val route: String) {
             if (serviceId != null) "counting/$venueId?serviceId=$serviceId"
             else "counting/$venueId"
     }
+    // Head counter backed by the shared KMP CountingViewModel (resolved via Koin).
+    object SharedCounting : Screen("shared_counting/{venueId}") {
+        fun createRoute(venueId: String) = "shared_counting/$venueId"
+    }
     object History : Screen("history?venueId={venueId}") {
         fun createRoute(venueId: String? = null) =
             if (venueId != null) "history?venueId=$venueId"

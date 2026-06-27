@@ -1,8 +1,10 @@
 package com.eventmonitor.shared.di
 
 import com.eventmonitor.shared.presentation.eventtypes.EventTypeManagementViewModel
+import com.eventmonitor.shared.presentation.headcounter.CountingViewModel
 import com.eventmonitor.shared.presentation.venues.VenueListViewModel
 import org.koin.core.context.startKoin
+import org.koin.core.parameter.parametersOf
 import org.koin.mp.KoinPlatform
 
 /**
@@ -18,3 +20,6 @@ fun startKoinIos() {
 fun venueListViewModel(): VenueListViewModel = KoinPlatform.getKoin().get()
 
 fun eventTypeManagementViewModel(): EventTypeManagementViewModel = KoinPlatform.getKoin().get()
+
+fun countingViewModel(venueId: String, eventId: String?): CountingViewModel =
+    KoinPlatform.getKoin().get { parametersOf(venueId, eventId) }

@@ -17,7 +17,6 @@ final class EventTypeModel: ObservableObject {
 
     deinit {
         handle?.cancel()
-        viewModel.dispose()
     }
 
     func create(name: String, description: String) {

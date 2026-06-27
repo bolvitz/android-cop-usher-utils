@@ -18,7 +18,6 @@ final class VenueListModel: ObservableObject {
 
     deinit {
         handle?.cancel()
-        viewModel.dispose()
     }
 
     func delete(_ id: String) { viewModel.deleteVenue(venueId: id) }
@@ -42,12 +41,16 @@ struct VenueListView: View {
                 } else {
                     List {
                         ForEach(model.state.venues, id: \.id) { venue in
-                            VenueRow(venue: venue)
-                                .swipeActions {
-                                    Button(role: .destructive) {
-                                        model.delete(venue.id)
-                                    } label: { Label("Delete", systemImage: "trash") }
-                                }
+                            NavigationLink {
+                                HeadCounterView(venueId: venue.id, venueName: venue.name)
+                            } label: {
+                                VenueRow(venue: venue)
+                            }
+                            .swipeActions {
+                                Button(role: .destructive) {
+                                    model.delete(venue.id)
+                                } label: { Label("Delete", systemImage: "trash") }
+                            }
                         }
                     }
                 }

@@ -37,14 +37,14 @@ fun VenueDto.toEntity() = VenueEntity(
 fun AreaTemplateEntity.toDto() = AreaTemplateDto(
     id = id, venueId = venueId, name = name, type = type, capacity = capacity,
     isActive = isActive, displayOrder = displayOrder, color = color, icon = icon,
-    notes = notes, createdAt = createdAt, updatedAt = updatedAt
+    notes = notes, hasSeatMap = hasSeatMap, createdAt = createdAt, updatedAt = updatedAt
 )
 
 fun AreaTemplateDto.toEntity() = AreaTemplateEntity(
     id = id.ifEmpty { com.eventmonitor.shared.util.newId() },
     venueId = venueId, name = name, type = type, capacity = capacity,
     isActive = isActive, displayOrder = displayOrder, color = color, icon = icon,
-    notes = notes,
+    notes = notes, hasSeatMap = hasSeatMap,
     createdAt = if (createdAt == 0L) nowMillis() else createdAt,
     updatedAt = nowMillis()
 )

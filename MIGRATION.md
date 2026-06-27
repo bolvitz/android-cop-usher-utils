@@ -51,26 +51,35 @@ iosApp/     SwiftUI app         (consumes shared.framework)
   mapping entity↔DTO. Koin `dataModule` exposes DAOs + repositories;
   `platformModule` provides `AppDatabase` per platform.
 - **Phase 3 (started) — Shared ViewModels.** `SharedViewModel` base with the
-  iOS `observe(flow:onEach:)` bridge. Migrated `VenueListViewModel` and
-  `EventTypeManagementViewModel`; registered in `viewModelModule`.
+  iOS `observe(flow:onEach:)` bridge. Migrated `VenueListViewModel`,
+  `EventTypeManagementViewModel`, and the full head-counter `CountingViewModel`
+  (with a `SeatMapRepository`); registered in `viewModelModule`.
+- **Phase 4 (started) — Android rewire.** `:app` depends on `:shared`; Koin
+  starts in `EventMonitorApp.onCreate()` alongside Hilt (coexistence). The
+  shared Room DB uses a distinct filename to avoid colliding with the legacy
+  `core/data` DB. The **head counter is cut over**: tapping a venue routes to
+  `SharedCountingScreen`, a Compose screen resolving the shared
+  `CountingViewModel` via `koinViewModel { parametersOf(venueId, null) }`.
 - **Phase 5 (scaffold) — SwiftUI app.** `iosApp/` with `@main` app, Koin start,
-  `ContentView` tabs, and two feature screens (`VenueListView`,
-  `EventTypeManagementView`) bound to shared ViewModels. Reproducible Xcode
-  project via `project.yml` (XcodeGen) with the Kotlin framework embed phase.
+  `ContentView` tabs, and feature screens (`VenueListView`,
+  `EventTypeManagementView`, and `HeadCounterView` reached from the venue list)
+  bound to shared ViewModels. Reproducible Xcode project via `project.yml`
+  (XcodeGen) with the Kotlin framework embed phase.
 
 ### Remaining (mechanical, follows established patterns)
 
 - **Phase 2 cont.** Add Room-backed repos for the remaining domains:
-  `Incident`, `LostItem`, `Area`, `SeatMap`, `User` (interfaces exist in the
-  Android `core/data`; mirror them in `:shared`).
+  `Incident`, `LostItem`, `Area`, `User` (`SeatMap` is done; interfaces exist
+  in the Android `core/data` to mirror).
 - **Phase 3 cont.** Port the remaining ViewModels into `:shared/presentation`
   using the `SharedViewModel` + DTO-repository pattern: head counter
-  (`Counting`, `History`, `Trends`, `SeatMapDemo`), `LostAndFound`,
-  `Incidents`, plus `VenueSetup`/`VenueManagement`/`AreaManagement`/`Reports`.
-- **Phase 4 — Android rewire.** Point `:app` and `feature/*` at `:shared`,
-  replace Hilt with Koin (or bridge Hilt→Koin), and delete `core/data` /
-  `core/domain` once nothing references them. The Android app currently still
-  builds on its own `core/data` Room stack and is unaffected until this step.
+  (`History`, `Trends`, `SeatMapDemo`), `LostAndFound`, `Incidents`, plus
+  `VenueSetup`/`VenueManagement`/`AreaManagement`/`Reports`.
+- **Phase 4 cont. — Android rewire.** Cut over the remaining screens to shared
+  ViewModels via `koinViewModel()` (head counter is done as the reference),
+  then remove Hilt and delete `core/data` / `core/domain` once nothing
+  references them. Until then Hilt and Koin coexist and the legacy `core/data`
+  Room DB remains for not-yet-migrated features.
 - **Phase 5 cont.** Add SwiftUI screens for the remaining features and a
   shared design system; wire navigation.
 

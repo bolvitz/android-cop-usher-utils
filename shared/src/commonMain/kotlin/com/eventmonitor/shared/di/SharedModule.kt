@@ -7,9 +7,12 @@ import com.eventmonitor.shared.data.repository.EventRepository
 import com.eventmonitor.shared.data.repository.EventRepositoryImpl
 import com.eventmonitor.shared.data.repository.EventTypeRepository
 import com.eventmonitor.shared.data.repository.EventTypeRepositoryImpl
+import com.eventmonitor.shared.data.repository.SeatMapRepository
+import com.eventmonitor.shared.data.repository.SeatMapRepositoryImpl
 import com.eventmonitor.shared.data.repository.VenueRepository
 import com.eventmonitor.shared.data.repository.VenueRepositoryImpl
 import com.eventmonitor.shared.presentation.eventtypes.EventTypeManagementViewModel
+import com.eventmonitor.shared.presentation.headcounter.CountingViewModel
 import com.eventmonitor.shared.presentation.venues.VenueListViewModel
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -39,11 +42,23 @@ val dataModule = module {
     single<EventRepository> { EventRepositoryImpl(get()) }
     single<AreaCountRepository> { AreaCountRepositoryImpl(get(), get()) }
     single<EventTypeRepository> { EventTypeRepositoryImpl(get()) }
+    single<SeatMapRepository> { SeatMapRepositoryImpl(get(), get()) }
 }
 
 val viewModelModule = module {
     factory { VenueListViewModel(get()) }
     factory { EventTypeManagementViewModel(get()) }
+    factory { params ->
+        CountingViewModel(
+            venueRepository = get(),
+            eventRepository = get(),
+            eventTypeRepository = get(),
+            areaCountRepository = get(),
+            seatMapRepository = get(),
+            venueId = params.get(),
+            existingEventId = params.getOrNull()
+        )
+    }
 }
 
 val sharedModules = listOf(

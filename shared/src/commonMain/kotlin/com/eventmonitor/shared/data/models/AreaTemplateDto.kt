@@ -14,6 +14,7 @@ data class AreaTemplateDto(
     val color: String = "#4CAF50",
     val icon: String = "chair",
     val notes: String = "",
+    val hasSeatMap: Boolean = false,
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L
 )
