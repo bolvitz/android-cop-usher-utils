@@ -11,6 +11,8 @@ import com.eventmonitor.app.presentation.screens.areas.AreaManagementScreen
 import com.eventmonitor.app.presentation.screens.areas.ZoneEditorScreen
 import com.eventmonitor.app.presentation.screens.eventtypes.ServiceTypeManagementScreen
 import com.eventmonitor.app.presentation.screens.headcounter.SharedCountingScreen
+import com.eventmonitor.app.presentation.screens.headcounter.SharedHistoryScreen
+import com.eventmonitor.app.presentation.screens.headcounter.SharedTrendsScreen
 import com.eventmonitor.app.presentation.screens.incidents.SharedIncidentListScreen
 import com.eventmonitor.app.presentation.screens.lostandfound.SharedLostAndFoundScreen
 import com.eventmonitor.app.presentation.screens.reports.ReportsScreen
@@ -51,7 +53,8 @@ fun NavGraph(
                     navController.navigate(Screen.VenueSetup.createRoute(venueId))
                 },
                 onVenueHistory = { venueId ->
-                    navController.navigate(Screen.History.createRoute(venueId))
+                    // History now reads the shared KMP database.
+                    navController.navigate(Screen.SharedHistory.createRoute(venueId))
                 },
                 onVenueIncidents = { venueId ->
                     // Incidents now run on the shared KMP ViewModel.
@@ -207,6 +210,40 @@ fun NavGraph(
         ) { backStackEntry ->
             SharedLostAndFoundScreen(
                 locationId = backStackEntry.arguments?.getString("locationId"),
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.SharedHistory.route,
+            arguments = listOf(
+                navArgument("venueId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val venueId = backStackEntry.arguments?.getString("venueId")
+            SharedHistoryScreen(
+                venueId = venueId,
+                onBack = { navController.popBackStack() },
+                onOpenTrends = { navController.navigate(Screen.SharedTrends.createRoute(venueId)) }
+            )
+        }
+
+        composable(
+            route = Screen.SharedTrends.route,
+            arguments = listOf(
+                navArgument("venueId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            SharedTrendsScreen(
+                venueId = backStackEntry.arguments?.getString("venueId"),
                 onBack = { navController.popBackStack() }
             )
         }

@@ -104,6 +104,23 @@ iosApp/     SwiftUI app         (consumes shared.framework)
 cd iosApp && xcodegen generate && open iosApp.xcodeproj
 ```
 
+## ⚠️ Two-database split-brain (must resolve before release)
+
+The Android app currently runs **two Room databases**: the legacy `core/data`
+DB and the shared KMP DB (distinct filenames). Screens already cut over
+(head counter, incidents, lost & found, history, trends) read/write the
+**shared** DB; the screens still on legacy ViewModels (venue list/setup/
+management, area & zone management, event-type management, reports, and the
+incident/lost detail & add-edit screens) read/write the **legacy** DB.
+
+Because venues and area templates are still created through legacy screens,
+they land in the legacy DB and are invisible to the shared-DB screens (e.g.
+tapping a venue opens the shared head counter, which can't find that venue).
+**The keystone fix is to port the venue / area-template / event-type CRUD to
+the shared repositories** (so all writes go to the shared DB), after which the
+remaining read screens and `core/data` can be retired and the legacy DB's data
+migrated across in a one-time step.
+
 ## Notes & follow-ups
 
 - **Migrations:** the shared `AppDatabase` is at schema v9 and currently uses

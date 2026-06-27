@@ -17,6 +17,8 @@ import com.eventmonitor.shared.data.repository.VenueRepository
 import com.eventmonitor.shared.data.repository.VenueRepositoryImpl
 import com.eventmonitor.shared.presentation.eventtypes.EventTypeManagementViewModel
 import com.eventmonitor.shared.presentation.headcounter.CountingViewModel
+import com.eventmonitor.shared.presentation.headcounter.HistoryViewModel
+import com.eventmonitor.shared.presentation.headcounter.TrendsViewModel
 import com.eventmonitor.shared.presentation.incidents.IncidentListViewModel
 import com.eventmonitor.shared.presentation.lostandfound.LostAndFoundViewModel
 import com.eventmonitor.shared.presentation.venues.VenueListViewModel
@@ -69,6 +71,8 @@ val viewModelModule = module {
     }
     factory { params -> IncidentListViewModel(get(), venueId = params.getOrNull()) }
     factory { params -> LostAndFoundViewModel(get(), locationId = params.getOrNull()) }
+    factory { params -> HistoryViewModel(get(), venueId = params.getOrNull()) }
+    factory { params -> TrendsViewModel(get(), venueId = params.getOrNull()) }
 }
 
 val sharedModules = listOf(

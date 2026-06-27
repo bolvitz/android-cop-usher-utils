@@ -24,6 +24,15 @@ sealed class Screen(val route: String) {
         fun createRoute(locationId: String? = null) =
             if (locationId != null) "shared_lost_and_found?locationId=$locationId" else "shared_lost_and_found"
     }
+    // History & trends backed by the shared KMP ViewModels (resolved via Koin).
+    object SharedHistory : Screen("shared_history?venueId={venueId}") {
+        fun createRoute(venueId: String? = null) =
+            if (venueId != null) "shared_history?venueId=$venueId" else "shared_history"
+    }
+    object SharedTrends : Screen("shared_trends?venueId={venueId}") {
+        fun createRoute(venueId: String? = null) =
+            if (venueId != null) "shared_trends?venueId=$venueId" else "shared_trends"
+    }
     object History : Screen("history?venueId={venueId}") {
         fun createRoute(venueId: String? = null) =
             if (venueId != null) "history?venueId=$venueId"
