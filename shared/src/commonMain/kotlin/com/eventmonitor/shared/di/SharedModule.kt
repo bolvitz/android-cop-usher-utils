@@ -9,6 +9,8 @@ import com.eventmonitor.shared.data.repository.EventTypeRepository
 import com.eventmonitor.shared.data.repository.EventTypeRepositoryImpl
 import com.eventmonitor.shared.data.repository.VenueRepository
 import com.eventmonitor.shared.data.repository.VenueRepositoryImpl
+import com.eventmonitor.shared.presentation.eventtypes.EventTypeManagementViewModel
+import com.eventmonitor.shared.presentation.venues.VenueListViewModel
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -40,7 +42,8 @@ val dataModule = module {
 }
 
 val viewModelModule = module {
-    // Shared ViewModels are registered here in Phase 3.
+    factory { VenueListViewModel(get()) }
+    factory { EventTypeManagementViewModel(get()) }
 }
 
 val sharedModules = listOf(
