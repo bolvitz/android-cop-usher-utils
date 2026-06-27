@@ -134,8 +134,10 @@ shared repositories (the shared DAOs already support them):
   contact, and feature toggles).
 
 Every feature now has a shared equivalent reachable from the shared hub, so
-`core/data` is **functionally superseded**. The only remaining UI gap is the
-per-seat tap-to-cycle grid inside the head counter (VM already supports it).
+`core/data` is **functionally superseded**. The in-counter per-seat
+tap-to-cycle grid is now implemented too (`SharedCountingScreen` opens a seat
+grid dialog for seat-mapped areas, colouring seats by status and cycling on
+tap via the shared `CountingViewModel`).
 
 ### Final cleanup to delete `core/data`
 
