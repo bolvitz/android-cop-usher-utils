@@ -11,6 +11,7 @@ sealed class Screen(val route: String) {
         fun createRoute(areaId: String) = "shared_seat_map/$areaId"
     }
     object SharedEventTypes : Screen("shared_event_types")
+    object SharedReports : Screen("shared_reports")
     object VenueSetup : Screen("venue_setup/{venueId}") {
         fun createRoute(venueId: String = "new") = "venue_setup/$venueId"
     }

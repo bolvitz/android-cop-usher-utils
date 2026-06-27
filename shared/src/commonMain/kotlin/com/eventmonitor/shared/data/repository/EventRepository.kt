@@ -19,6 +19,12 @@ interface EventRepository {
         endDate: Long
     ): Flow<List<EventWithDetails>>
 
+    /** Events in range with their per-area counts populated (for reports). */
+    fun getEventsWithAreaCountsByDateRange(
+        startDate: Long,
+        endDate: Long
+    ): Flow<List<EventWithDetails>>
+
     suspend fun createEvent(
         venueId: String,
         eventTypeId: String?,

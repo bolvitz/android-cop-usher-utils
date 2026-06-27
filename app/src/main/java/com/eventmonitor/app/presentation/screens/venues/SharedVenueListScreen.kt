@@ -28,6 +28,7 @@ fun SharedVenueListScreen(
     onIncidents: (String) -> Unit,
     onLostFound: (String) -> Unit,
     onEventTypes: () -> Unit,
+    onReports: () -> Unit,
     viewModel: VenueListViewModel = koinViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -37,7 +38,10 @@ fun SharedVenueListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Event Monitor") },
-                actions = { TextButton(onClick = onEventTypes) { Text("Event Types") } }
+                actions = {
+                    TextButton(onClick = onReports) { Text("Reports") }
+                    TextButton(onClick = onEventTypes) { Text("Event Types") }
+                }
             )
         },
         floatingActionButton = {

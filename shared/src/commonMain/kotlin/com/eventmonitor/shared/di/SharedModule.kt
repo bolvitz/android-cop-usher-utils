@@ -23,6 +23,7 @@ import com.eventmonitor.shared.presentation.headcounter.HistoryViewModel
 import com.eventmonitor.shared.presentation.headcounter.TrendsViewModel
 import com.eventmonitor.shared.presentation.incidents.IncidentListViewModel
 import com.eventmonitor.shared.presentation.lostandfound.LostAndFoundViewModel
+import com.eventmonitor.shared.presentation.reports.ReportsViewModel
 import com.eventmonitor.shared.presentation.venues.VenueListViewModel
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -77,6 +78,7 @@ val viewModelModule = module {
     factory { params -> LostAndFoundViewModel(get(), locationId = params.getOrNull()) }
     factory { params -> HistoryViewModel(get(), venueId = params.getOrNull()) }
     factory { params -> TrendsViewModel(get(), venueId = params.getOrNull()) }
+    factory { ReportsViewModel(get(), get(), get(), get()) }
 }
 
 val sharedModules = listOf(

@@ -20,6 +20,7 @@ import com.eventmonitor.app.presentation.screens.headcounter.SharedTrendsScreen
 import com.eventmonitor.app.presentation.screens.incidents.SharedIncidentListScreen
 import com.eventmonitor.app.presentation.screens.lostandfound.SharedLostAndFoundScreen
 import com.eventmonitor.app.presentation.screens.reports.ReportsScreen
+import com.eventmonitor.app.presentation.screens.reports.SharedReportsScreen
 import com.eventmonitor.app.presentation.screens.venues.VenueListScreen
 import com.eventmonitor.app.presentation.screens.venues.VenueManagementScreen
 import com.eventmonitor.app.presentation.screens.venues.VenueSetupScreen
@@ -51,7 +52,8 @@ fun NavGraph(
                 onHistory = { venueId -> navController.navigate(Screen.SharedHistory.createRoute(venueId)) },
                 onIncidents = { venueId -> navController.navigate(Screen.SharedIncidents.createRoute(venueId)) },
                 onLostFound = { venueId -> navController.navigate(Screen.SharedLostAndFound.createRoute(venueId)) },
-                onEventTypes = { navController.navigate(Screen.SharedEventTypes.route) }
+                onEventTypes = { navController.navigate(Screen.SharedEventTypes.route) },
+                onReports = { navController.navigate(Screen.SharedReports.route) }
             )
         }
 
@@ -78,6 +80,10 @@ fun NavGraph(
 
         composable(Screen.SharedEventTypes.route) {
             SharedEventTypeManagementScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Screen.SharedReports.route) {
+            SharedReportsScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Screen.VenueList.route) {

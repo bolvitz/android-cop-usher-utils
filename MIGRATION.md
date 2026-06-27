@@ -122,7 +122,9 @@ shared repositories (the shared DAOs already support them):
   per-seat **tap-to-cycle grid inside the head counter** (the shared
   `CountingViewModel` already exposes `observeSeatLayout` / `cycleSeatStatus`;
   only the counter UI needs the grid).
-- **Reports** (CSV export)
+- ~~**Reports**~~ — ported (`SharedReportsScreen` + shared `ReportsViewModel`;
+  period/venue/type filters, per-area stats, CSV export via the shared
+  `FileExporter`; reached from the venue hub's Reports action).
 - **Incident / lost-item detail & add-edit** screens (the shared list screens
   cover create + status + claim, but not the full detail/edit forms)
 - **Advanced venue setup** (logo, colour, contact, feature toggles)

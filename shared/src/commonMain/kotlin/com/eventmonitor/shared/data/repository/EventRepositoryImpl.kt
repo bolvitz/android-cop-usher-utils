@@ -38,6 +38,10 @@ class EventRepositoryImpl(
         eventDao.getEventsAcrossVenuesByDateRange(startDate, endDate)
             .map { list -> list.map { it.toDto() } }
 
+    override fun getEventsWithAreaCountsByDateRange(startDate: Long, endDate: Long): Flow<List<EventWithDetails>> =
+        eventDao.getEventsWithAreaCountsByDateRange(startDate, endDate)
+            .map { list -> list.map { it.toDto() } }
+
     override suspend fun createEvent(
         venueId: String,
         eventTypeId: String?,
