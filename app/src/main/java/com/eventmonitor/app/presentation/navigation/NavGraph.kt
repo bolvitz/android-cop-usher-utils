@@ -9,8 +9,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.eventmonitor.app.presentation.screens.areas.AreaManagementScreen
 import com.eventmonitor.app.presentation.screens.areas.ZoneEditorScreen
+import com.eventmonitor.app.presentation.screens.areas.SharedAreaManagementScreen
 import com.eventmonitor.app.presentation.screens.eventtypes.ServiceTypeManagementScreen
+import com.eventmonitor.app.presentation.screens.eventtypes.SharedEventTypeManagementScreen
 import com.eventmonitor.app.presentation.screens.headcounter.SharedCountingScreen
+import com.eventmonitor.app.presentation.screens.venues.SharedVenueListScreen
 import com.eventmonitor.app.presentation.screens.headcounter.SharedHistoryScreen
 import com.eventmonitor.app.presentation.screens.headcounter.SharedTrendsScreen
 import com.eventmonitor.app.presentation.screens.incidents.SharedIncidentListScreen
@@ -32,7 +35,7 @@ import com.eventmonitor.feature.lostandfound.screens.LostAndFoundScreen
 @Composable
 fun NavGraph(
     navController: NavHostController,
-    startDestination: String = Screen.VenueList.route,
+    startDestination: String = Screen.SharedVenueList.route,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -40,6 +43,31 @@ fun NavGraph(
         startDestination = startDestination,
         modifier = modifier
     ) {
+        composable(Screen.SharedVenueList.route) {
+            SharedVenueListScreen(
+                onCount = { venueId -> navController.navigate(Screen.SharedCounting.createRoute(venueId)) },
+                onAreas = { venueId -> navController.navigate(Screen.SharedAreaManagement.createRoute(venueId)) },
+                onHistory = { venueId -> navController.navigate(Screen.SharedHistory.createRoute(venueId)) },
+                onIncidents = { venueId -> navController.navigate(Screen.SharedIncidents.createRoute(venueId)) },
+                onLostFound = { venueId -> navController.navigate(Screen.SharedLostAndFound.createRoute(venueId)) },
+                onEventTypes = { navController.navigate(Screen.SharedEventTypes.route) }
+            )
+        }
+
+        composable(
+            route = Screen.SharedAreaManagement.route,
+            arguments = listOf(navArgument("venueId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            SharedAreaManagementScreen(
+                venueId = backStackEntry.arguments?.getString("venueId") ?: "",
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.SharedEventTypes.route) {
+            SharedEventTypeManagementScreen(onBack = { navController.popBackStack() })
+        }
+
         composable(Screen.VenueList.route) {
             VenueListScreen(
                 onVenueClick = { venueId ->

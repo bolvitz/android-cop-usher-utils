@@ -15,6 +15,7 @@ import com.eventmonitor.shared.data.repository.SeatMapRepository
 import com.eventmonitor.shared.data.repository.SeatMapRepositoryImpl
 import com.eventmonitor.shared.data.repository.VenueRepository
 import com.eventmonitor.shared.data.repository.VenueRepositoryImpl
+import com.eventmonitor.shared.presentation.areas.AreaManagementViewModel
 import com.eventmonitor.shared.presentation.eventtypes.EventTypeManagementViewModel
 import com.eventmonitor.shared.presentation.headcounter.CountingViewModel
 import com.eventmonitor.shared.presentation.headcounter.HistoryViewModel
@@ -58,6 +59,7 @@ val dataModule = module {
 val viewModelModule = module {
     factory { VenueListViewModel(get()) }
     factory { EventTypeManagementViewModel(get()) }
+    factory { params -> AreaManagementViewModel(get(), venueId = params.get()) }
     factory { params ->
         CountingViewModel(
             venueRepository = get(),

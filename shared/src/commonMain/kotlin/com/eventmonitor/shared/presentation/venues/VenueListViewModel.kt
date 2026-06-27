@@ -39,6 +39,16 @@ class VenueListViewModel(
         }
     }
 
+    fun createVenue(name: String, location: String, code: String) {
+        viewModelScope.launch {
+            venueRepository.createVenue(
+                VenueDto(name = name, location = location, code = code)
+            ).onError { error ->
+                _uiState.value = _uiState.value.copy(errorMessage = error.toUserMessage())
+            }
+        }
+    }
+
     fun deleteVenue(venueId: String) {
         viewModelScope.launch {
             venueRepository.deleteVenue(venueId).onError { error ->

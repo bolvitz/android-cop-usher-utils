@@ -104,22 +104,28 @@ iosApp/     SwiftUI app         (consumes shared.framework)
 cd iosApp && xcodegen generate && open iosApp.xcodeproj
 ```
 
-## ⚠️ Two-database split-brain (must resolve before release)
+## Single-DB entry point (keystone done) + remaining regressions
 
-The Android app currently runs **two Room databases**: the legacy `core/data`
-DB and the shared KMP DB (distinct filenames). Screens already cut over
-(head counter, incidents, lost & found, history, trends) read/write the
-**shared** DB; the screens still on legacy ViewModels (venue list/setup/
-management, area & zone management, event-type management, reports, and the
-incident/lost detail & add-edit screens) read/write the **legacy** DB.
+The app now **starts at `SharedVenueListScreen`**, and the entire primary flow
+runs on the shared KMP database: create venue → manage area templates → head
+count (seeds area counts) → history / trends, plus per-venue incidents and lost
+& found, and global event types. All of these read/write the **shared** DB, so
+there is no split-brain along that path.
 
-Because venues and area templates are still created through legacy screens,
-they land in the legacy DB and are invisible to the shared-DB screens (e.g.
-tapping a venue opens the shared head counter, which can't find that venue).
-**The keystone fix is to port the venue / area-template / event-type CRUD to
-the shared repositories** (so all writes go to the shared DB), after which the
-remaining read screens and `core/data` can be retired and the legacy DB's data
-migrated across in a one-time step.
+The legacy `core/data` database and its Android screens still compile (and are
+registered in Koin) but are **no longer reachable from the new entry point**.
+That means a few legacy-only features regress until they are ported to the
+shared repositories (the shared DAOs already support them):
+
+- **Seat-map editor** (`ZoneEditor`) — seat rows/seats/per-event statuses
+- **Reports** (CSV export)
+- **Incident / lost-item detail & add-edit** screens (the shared list screens
+  cover create + status + claim, but not the full detail/edit forms)
+- **Advanced venue setup** (logo, colour, contact, feature toggles)
+
+Once these are ported, delete `core/data` / `core/domain` and the
+`legacy*Module`s, and add a one-time migration of any existing legacy-DB data
+into the shared DB.
 
 ## Notes & follow-ups
 

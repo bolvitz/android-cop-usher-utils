@@ -2,6 +2,12 @@ package com.eventmonitor.app.presentation.navigation
 
 sealed class Screen(val route: String) {
     object VenueList : Screen("venue_list")
+    // Shared-DB venue hub (app entry point) + venue-scoped management on :shared.
+    object SharedVenueList : Screen("shared_venue_list")
+    object SharedAreaManagement : Screen("shared_area_management/{venueId}") {
+        fun createRoute(venueId: String) = "shared_area_management/$venueId"
+    }
+    object SharedEventTypes : Screen("shared_event_types")
     object VenueSetup : Screen("venue_setup/{venueId}") {
         fun createRoute(venueId: String = "new") = "venue_setup/$venueId"
     }

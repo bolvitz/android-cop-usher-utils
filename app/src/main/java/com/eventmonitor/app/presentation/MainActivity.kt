@@ -67,7 +67,7 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     NavGraph(
                         navController = navController,
-                        startDestination = Screen.VenueList.route,
+                        startDestination = Screen.SharedVenueList.route,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
