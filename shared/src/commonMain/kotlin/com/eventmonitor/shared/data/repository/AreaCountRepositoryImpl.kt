@@ -1,231 +1,113 @@
 package com.eventmonitor.shared.data.repository
-import com.eventmonitor.shared.platform.TimeProvider
 
-import com.eventmonitor.shared.data.models.*
+import com.eventmonitor.shared.data.local.dao.AreaCountDao
+import com.eventmonitor.shared.data.local.dao.EventDao
+import com.eventmonitor.shared.data.mappers.toDto
+import com.eventmonitor.shared.data.mappers.toEntity
+import com.eventmonitor.shared.data.models.AreaCountDto
+import com.eventmonitor.shared.data.models.AreaCountWithTemplate
+import com.eventmonitor.shared.data.models.CountHistoryItem
 import com.eventmonitor.shared.domain.common.AppError
 import com.eventmonitor.shared.domain.common.Result
-import dev.gitlive.firebase.firestore.FirebaseFirestore
+import com.eventmonitor.shared.util.nowMillis
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class AreaCountRepositoryImpl(
-    private val firestore: FirebaseFirestore
+    private val areaCountDao: AreaCountDao,
+    private val eventDao: EventDao
 ) : AreaCountRepository {
 
-    private val eventsCollection = firestore.collection("events")
-    private val venuesCollection = firestore.collection("venues")
+    private val json = Json { ignoreUnknownKeys = true }
 
-    override fun getAreaCountsByEvent(eventId: String): Flow<List<AreaCountWithTemplate>> {
-        return eventsCollection
-            .document(eventId)
-            .collection("areaCounts")
-            .snapshots
-            .map { snapshot ->
-                snapshot.documents.map { doc ->
-                    val areaCount = doc.data<AreaCountDto>()
-                    enrichAreaCountWithTemplate(areaCount)
-                }
-            }
-            .catch { e ->
-                emit(emptyList())
-            }
+    override fun getAreaCountsByEvent(eventId: String): Flow<List<AreaCountWithTemplate>> =
+        areaCountDao.getAreaCountsByService(eventId).map { list -> list.map { it.toDto() } }
+
+    override fun getAreaCountById(areaCountId: String): Flow<AreaCountDto?> =
+        areaCountDao.getAreaCountById(areaCountId).map { it?.toDto() }
+
+    override suspend fun createAreaCount(areaCount: AreaCountDto): Result<String> = try {
+        val entity = areaCount.toEntity()
+        areaCountDao.insertAreaCount(entity)
+        Result.Success(entity.id)
+    } catch (e: Exception) {
+        Result.Error(AppError.DatabaseError(e.message ?: "Failed to create area count"))
     }
 
-    override fun getAreaCountById(areaCountId: String): Flow<AreaCountDto?> {
-        // Note: This requires knowing the eventId, which is a limitation
-        // In a real implementation, we might need to restructure the Firestore schema
-        return kotlinx.coroutines.flow.flow {
-            emit(null)
-        }
+    override suspend fun updateAreaCount(areaCount: AreaCountDto): Result<Unit> = try {
+        areaCountDao.updateAreaCount(areaCount.toEntity())
+        Result.Success(Unit)
+    } catch (e: Exception) {
+        Result.Error(AppError.DatabaseError(e.message ?: "Failed to update area count"))
     }
 
-    override suspend fun createAreaCount(areaCount: AreaCountDto): Result<String> {
-        return try {
-            val areaCountWithTimestamp = areaCount.copy(
-                lastUpdated = TimeProvider.currentTimeMillis()
+    override suspend fun incrementCount(eventId: String, areaCountId: String, amount: Int, action: String): Result<Unit> =
+        applyDelta(eventId, areaCountId, action) { current -> current + amount }
+
+    override suspend fun decrementCount(eventId: String, areaCountId: String, amount: Int, action: String): Result<Unit> =
+        applyDelta(eventId, areaCountId, action) { current -> maxOf(0, current - amount) }
+
+    override suspend fun updateCount(eventId: String, areaCountId: String, newCount: Int, action: String): Result<Unit> =
+        applyDelta(eventId, areaCountId, action) { _ -> maxOf(0, newCount) }
+
+    override suspend fun resetCount(eventId: String, areaCountId: String): Result<Unit> =
+        updateCount(eventId, areaCountId, 0, "RESET")
+
+    override suspend fun deleteAreaCount(areaCountId: String): Result<Unit> = try {
+        val entity = areaCountDao.getAreaCountById(areaCountId).first()
+            ?: return Result.Error(AppError.NotFound("AreaCount", areaCountId))
+        // Removing this area's contribution from the event total.
+        adjustEventTotal(entity.eventId, -entity.count)
+        areaCountDao.updateAreaCount(entity.copy(count = 0, lastUpdated = nowMillis()))
+        Result.Success(Unit)
+    } catch (e: Exception) {
+        Result.Error(AppError.DatabaseError(e.message ?: "Failed to delete area count"))
+    }
+
+    private suspend inline fun applyDelta(
+        eventId: String,
+        areaCountId: String,
+        action: String,
+        newValueOf: (Int) -> Int
+    ): Result<Unit> = try {
+        val entity = areaCountDao.getAreaCountById(areaCountId).first()
+            ?: return Result.Error(AppError.NotFound("AreaCount", areaCountId))
+        val oldCount = entity.count
+        val newCount = newValueOf(oldCount)
+        val history = decodeHistory(entity.countHistory) + CountHistoryItem(
+            timestamp = nowMillis(),
+            oldCount = oldCount,
+            newCount = newCount,
+            action = action
+        )
+        areaCountDao.updateAreaCount(
+            entity.copy(
+                count = newCount,
+                countHistory = json.encodeToString(history),
+                lastUpdated = nowMillis()
             )
-            val docRef = eventsCollection
-                .document(areaCount.eventId)
-                .collection("areaCounts")
-                .document(areaCount.id.ifEmpty { eventsCollection.document.id })
-            docRef.set(areaCountWithTimestamp)
-            Result.Success(docRef.id)
-        } catch (e: Exception) {
-            Result.Error(AppError.DatabaseError(e.message ?: "Failed to create area count"))
-        }
+        )
+        adjustEventTotal(eventId, newCount - oldCount)
+        Result.Success(Unit)
+    } catch (e: Exception) {
+        Result.Error(AppError.DatabaseError(e.message ?: "Failed to update count"))
     }
 
-    override suspend fun updateAreaCount(areaCount: AreaCountDto): Result<Unit> {
-        return try {
-            val areaCountWithTimestamp = areaCount.copy(
-                lastUpdated = TimeProvider.currentTimeMillis()
+    private suspend fun adjustEventTotal(eventId: String, delta: Int) {
+        if (delta == 0) return
+        val event = eventDao.getEventById(eventId).first()?.event ?: return
+        eventDao.updateEvent(
+            event.copy(
+                totalAttendance = maxOf(0, event.totalAttendance + delta),
+                updatedAt = nowMillis()
             )
-            eventsCollection
-                .document(areaCount.eventId)
-                .collection("areaCounts")
-                .document(areaCount.id)
-                .set(areaCountWithTimestamp)
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(AppError.DatabaseError(e.message ?: "Failed to update area count"))
-        }
-    }
-
-    override suspend fun incrementCount(
-        eventId: String,
-        areaCountId: String,
-        amount: Int,
-        action: String
-    ): Result<Unit> {
-        return try {
-            firestore.runTransaction {
-                val docRef = eventsCollection
-                    .document(eventId)
-                    .collection("areaCounts")
-                    .document(areaCountId)
-
-                val areaCount = docRef.get().data<AreaCountDto>()
-                val newCount = areaCount.count + amount
-                val historyItem = CountHistoryItem(
-                    timestamp = TimeProvider.currentTimeMillis(),
-                    oldCount = areaCount.count,
-                    newCount = newCount,
-                    action = action
-                )
-
-                val updatedAreaCount = areaCount.copy(
-                    count = newCount,
-                    countHistory = areaCount.countHistory + historyItem,
-                    lastUpdated = TimeProvider.currentTimeMillis()
-                )
-
-                docRef.set(updatedAreaCount)
-
-                // Update event total
-                updateEventTotal(eventId, amount)
-            }
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(AppError.DatabaseError(e.message ?: "Failed to increment count"))
-        }
-    }
-
-    override suspend fun decrementCount(
-        eventId: String,
-        areaCountId: String,
-        amount: Int,
-        action: String
-    ): Result<Unit> {
-        return try {
-            firestore.runTransaction {
-                val docRef = eventsCollection
-                    .document(eventId)
-                    .collection("areaCounts")
-                    .document(areaCountId)
-
-                val areaCount = docRef.get().data<AreaCountDto>()
-                val newCount = maxOf(0, areaCount.count - amount)
-                val historyItem = CountHistoryItem(
-                    timestamp = TimeProvider.currentTimeMillis(),
-                    oldCount = areaCount.count,
-                    newCount = newCount,
-                    action = action
-                )
-
-                val updatedAreaCount = areaCount.copy(
-                    count = newCount,
-                    countHistory = areaCount.countHistory + historyItem,
-                    lastUpdated = TimeProvider.currentTimeMillis()
-                )
-
-                docRef.set(updatedAreaCount)
-
-                // Update event total
-                updateEventTotal(eventId, -(areaCount.count - newCount))
-            }
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(AppError.DatabaseError(e.message ?: "Failed to decrement count"))
-        }
-    }
-
-    override suspend fun updateCount(
-        eventId: String,
-        areaCountId: String,
-        newCount: Int,
-        action: String
-    ): Result<Unit> {
-        return try {
-            firestore.runTransaction {
-                val docRef = eventsCollection
-                    .document(eventId)
-                    .collection("areaCounts")
-                    .document(areaCountId)
-
-                val areaCount = docRef.get().data<AreaCountDto>()
-                val historyItem = CountHistoryItem(
-                    timestamp = TimeProvider.currentTimeMillis(),
-                    oldCount = areaCount.count,
-                    newCount = newCount,
-                    action = action
-                )
-
-                val updatedAreaCount = areaCount.copy(
-                    count = newCount,
-                    countHistory = areaCount.countHistory + historyItem,
-                    lastUpdated = TimeProvider.currentTimeMillis()
-                )
-
-                docRef.set(updatedAreaCount)
-
-                // Update event total
-                val delta = newCount - areaCount.count
-                updateEventTotal(eventId, delta)
-            }
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(AppError.DatabaseError(e.message ?: "Failed to update count"))
-        }
-    }
-
-    override suspend fun resetCount(eventId: String, areaCountId: String): Result<Unit> {
-        return updateCount(eventId, areaCountId, 0, "RESET")
-    }
-
-    override suspend fun deleteAreaCount(areaCountId: String): Result<Unit> {
-        return try {
-            // Note: Requires eventId which is a limitation
-            Result.Error(AppError.InvalidOperation("deleteAreaCount requires eventId"))
-        } catch (e: Exception) {
-            Result.Error(AppError.DatabaseError(e.message ?: "Failed to delete area count"))
-        }
-    }
-
-    private suspend fun enrichAreaCountWithTemplate(areaCount: AreaCountDto): AreaCountWithTemplate {
-        val event = eventsCollection.document(areaCount.eventId).get().data<EventDto>()
-        val template = try {
-            venuesCollection
-                .document(event.venueId)
-                .collection("areaTemplates")
-                .document(areaCount.areaTemplateId)
-                .get()
-                .data<AreaTemplateDto>()
-        } catch (e: Exception) {
-            AreaTemplateDto(id = areaCount.areaTemplateId, name = "Unknown Area")
-        }
-
-        return AreaCountWithTemplate(areaCount, template)
-    }
-
-    private suspend fun updateEventTotal(eventId: String, delta: Int) {
-        val eventDoc = eventsCollection.document(eventId)
-        val event = eventDoc.get().data<EventDto>()
-        val newTotal = event.totalAttendance + delta
-
-        eventDoc.update(
-            "totalAttendance" to newTotal,
-            "updatedAt" to TimeProvider.currentTimeMillis()
         )
     }
+
+    private fun decodeHistory(raw: String): List<CountHistoryItem> =
+        if (raw.isEmpty()) emptyList() else json.decodeFromString(raw)
 }
