@@ -3,6 +3,7 @@ package com.eventmonitor.shared.di
 import com.eventmonitor.shared.presentation.eventtypes.EventTypeManagementViewModel
 import com.eventmonitor.shared.presentation.headcounter.CountingViewModel
 import com.eventmonitor.shared.presentation.incidents.IncidentListViewModel
+import com.eventmonitor.shared.presentation.lostandfound.LostAndFoundViewModel
 import com.eventmonitor.shared.presentation.venues.VenueListViewModel
 import org.koin.core.context.startKoin
 import org.koin.core.parameter.parametersOf
@@ -27,3 +28,6 @@ fun countingViewModel(venueId: String, eventId: String?): CountingViewModel =
 
 fun incidentListViewModel(venueId: String?): IncidentListViewModel =
     KoinPlatform.getKoin().get { parametersOf(venueId) }
+
+fun lostAndFoundViewModel(locationId: String?): LostAndFoundViewModel =
+    KoinPlatform.getKoin().get { parametersOf(locationId) }

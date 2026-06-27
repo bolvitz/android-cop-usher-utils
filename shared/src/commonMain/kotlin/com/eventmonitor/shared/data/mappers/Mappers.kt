@@ -148,3 +148,26 @@ fun IncidentDto.toEntity() = IncidentEntity(
     createdAt = if (createdAt == 0L) nowMillis() else createdAt,
     updatedAt = nowMillis()
 )
+
+// ---------- LostItem ----------
+fun LostItemEntity.toDto() = LostItemDto(
+    id = id, locationId = locationId, eventId = eventId, description = description,
+    category = category, foundZone = foundZone, foundDate = foundDate, photoUri = photoUri,
+    color = color, brand = brand, identifyingMarks = identifyingMarks, status = status,
+    claimedBy = claimedBy, claimedDate = claimedDate, claimerContact = claimerContact,
+    verificationNotes = verificationNotes, reportedBy = reportedBy, notes = notes,
+    createdAt = createdAt, updatedAt = updatedAt
+)
+
+fun LostItemDto.toEntity() = LostItemEntity(
+    id = id.ifEmpty { com.eventmonitor.shared.util.newId() },
+    locationId = locationId, eventId = eventId, description = description,
+    category = category, foundZone = foundZone,
+    foundDate = if (foundDate == 0L) nowMillis() else foundDate,
+    photoUri = photoUri, color = color, brand = brand, identifyingMarks = identifyingMarks,
+    status = status, claimedBy = claimedBy, claimedDate = claimedDate,
+    claimerContact = claimerContact, verificationNotes = verificationNotes,
+    reportedBy = reportedBy, notes = notes,
+    createdAt = if (createdAt == 0L) nowMillis() else createdAt,
+    updatedAt = nowMillis()
+)

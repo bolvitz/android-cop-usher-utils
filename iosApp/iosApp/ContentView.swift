@@ -11,6 +11,9 @@ struct ContentView: View {
 
             IncidentListView()
                 .tabItem { Label("Incidents", systemImage: "exclamationmark.triangle") }
+
+            LostAndFoundView()
+                .tabItem { Label("Lost & Found", systemImage: "bag") }
         }
     }
 }

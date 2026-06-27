@@ -19,6 +19,11 @@ sealed class Screen(val route: String) {
         fun createRoute(venueId: String? = null) =
             if (venueId != null) "shared_incidents?venueId=$venueId" else "shared_incidents"
     }
+    // Lost & found backed by the shared KMP LostAndFoundViewModel (resolved via Koin).
+    object SharedLostAndFound : Screen("shared_lost_and_found?locationId={locationId}") {
+        fun createRoute(locationId: String? = null) =
+            if (locationId != null) "shared_lost_and_found?locationId=$locationId" else "shared_lost_and_found"
+    }
     object History : Screen("history?venueId={venueId}") {
         fun createRoute(venueId: String? = null) =
             if (venueId != null) "history?venueId=$venueId"

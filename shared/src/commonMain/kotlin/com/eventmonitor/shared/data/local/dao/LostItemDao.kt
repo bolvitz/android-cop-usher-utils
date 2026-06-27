@@ -47,6 +47,9 @@ interface LostItemDao {
     @Delete
     suspend fun deleteItem(item: LostItemEntity)
 
+    @Query("DELETE FROM lost_items WHERE id = :itemId")
+    suspend fun deleteItemById(itemId: String)
+
     @Query("UPDATE lost_items SET status = :status, updatedAt = :updatedAt WHERE id = :itemId")
     suspend fun updateItemStatus(itemId: String, status: String, updatedAt: Long)
 

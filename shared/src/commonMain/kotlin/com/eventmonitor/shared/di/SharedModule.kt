@@ -9,6 +9,8 @@ import com.eventmonitor.shared.data.repository.EventTypeRepository
 import com.eventmonitor.shared.data.repository.EventTypeRepositoryImpl
 import com.eventmonitor.shared.data.repository.IncidentRepository
 import com.eventmonitor.shared.data.repository.IncidentRepositoryImpl
+import com.eventmonitor.shared.data.repository.LostItemRepository
+import com.eventmonitor.shared.data.repository.LostItemRepositoryImpl
 import com.eventmonitor.shared.data.repository.SeatMapRepository
 import com.eventmonitor.shared.data.repository.SeatMapRepositoryImpl
 import com.eventmonitor.shared.data.repository.VenueRepository
@@ -16,6 +18,7 @@ import com.eventmonitor.shared.data.repository.VenueRepositoryImpl
 import com.eventmonitor.shared.presentation.eventtypes.EventTypeManagementViewModel
 import com.eventmonitor.shared.presentation.headcounter.CountingViewModel
 import com.eventmonitor.shared.presentation.incidents.IncidentListViewModel
+import com.eventmonitor.shared.presentation.lostandfound.LostAndFoundViewModel
 import com.eventmonitor.shared.presentation.venues.VenueListViewModel
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -47,6 +50,7 @@ val dataModule = module {
     single<EventTypeRepository> { EventTypeRepositoryImpl(get()) }
     single<SeatMapRepository> { SeatMapRepositoryImpl(get(), get()) }
     single<IncidentRepository> { IncidentRepositoryImpl(get()) }
+    single<LostItemRepository> { LostItemRepositoryImpl(get()) }
 }
 
 val viewModelModule = module {
@@ -64,6 +68,7 @@ val viewModelModule = module {
         )
     }
     factory { params -> IncidentListViewModel(get(), venueId = params.getOrNull()) }
+    factory { params -> LostAndFoundViewModel(get(), locationId = params.getOrNull()) }
 }
 
 val sharedModules = listOf(

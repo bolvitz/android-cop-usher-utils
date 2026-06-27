@@ -12,6 +12,7 @@ import com.eventmonitor.app.presentation.screens.areas.ZoneEditorScreen
 import com.eventmonitor.app.presentation.screens.eventtypes.ServiceTypeManagementScreen
 import com.eventmonitor.app.presentation.screens.headcounter.SharedCountingScreen
 import com.eventmonitor.app.presentation.screens.incidents.SharedIncidentListScreen
+import com.eventmonitor.app.presentation.screens.lostandfound.SharedLostAndFoundScreen
 import com.eventmonitor.app.presentation.screens.reports.ReportsScreen
 import com.eventmonitor.app.presentation.screens.venues.VenueListScreen
 import com.eventmonitor.app.presentation.screens.venues.VenueManagementScreen
@@ -57,7 +58,8 @@ fun NavGraph(
                     navController.navigate(Screen.SharedIncidents.createRoute(venueId))
                 },
                 onVenueLostAndFound = { venueId ->
-                    navController.navigate(Screen.LostAndFound.createRoute(venueId))
+                    // Lost & found now runs on the shared KMP ViewModel.
+                    navController.navigate(Screen.SharedLostAndFound.createRoute(venueId))
                 },
                 onNavigateToReports = {
                     navController.navigate(Screen.Reports.route)
@@ -189,6 +191,22 @@ fun NavGraph(
         ) { backStackEntry ->
             SharedIncidentListScreen(
                 venueId = backStackEntry.arguments?.getString("venueId"),
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.SharedLostAndFound.route,
+            arguments = listOf(
+                navArgument("locationId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            SharedLostAndFoundScreen(
+                locationId = backStackEntry.arguments?.getString("locationId"),
                 onBack = { navController.popBackStack() }
             )
         }
