@@ -13,11 +13,3 @@ data class AreaCountDto(
     val countHistory: List<CountHistoryItem> = emptyList(),
     val lastUpdated: Long = 0L
 )
-
-@Serializable
-data class CountHistoryItem(
-    val timestamp: Long,
-    val oldCount: Int,
-    val newCount: Int,
-    val action: String
-)

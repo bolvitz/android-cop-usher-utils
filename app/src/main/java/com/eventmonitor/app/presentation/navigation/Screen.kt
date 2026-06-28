@@ -1,69 +1,57 @@
 package com.eventmonitor.app.presentation.navigation
 
+/**
+ * App navigation routes. Every screen is backed by the shared KMP module
+ * (Koin-resolved ViewModels over the single shared Room database).
+ */
 sealed class Screen(val route: String) {
-    object VenueList : Screen("venue_list")
-    object VenueSetup : Screen("venue_setup/{venueId}") {
-        fun createRoute(venueId: String = "new") = "venue_setup/$venueId"
+    object SharedVenueList : Screen("shared_venue_list")
+
+    object SharedAreaManagement : Screen("shared_area_management/{venueId}") {
+        fun createRoute(venueId: String) = "shared_area_management/$venueId"
     }
-    object Counting : Screen("counting/{venueId}?serviceId={serviceId}") {
-        fun createRoute(venueId: String, serviceId: String? = null) =
-            if (serviceId != null) "counting/$venueId?serviceId=$serviceId"
-            else "counting/$venueId"
+
+    object SharedSeatMapEditor : Screen("shared_seat_map/{areaId}") {
+        fun createRoute(areaId: String) = "shared_seat_map/$areaId"
     }
-    object History : Screen("history?venueId={venueId}") {
+
+    object SharedVenueEdit : Screen("shared_venue_edit/{venueId}") {
+        fun createRoute(venueId: String) = "shared_venue_edit/$venueId"
+    }
+
+    object SharedEventTypes : Screen("shared_event_types")
+
+    object SharedReports : Screen("shared_reports")
+
+    object SharedCounting : Screen("shared_counting/{venueId}") {
+        fun createRoute(venueId: String) = "shared_counting/$venueId"
+    }
+
+    object SharedHistory : Screen("shared_history?venueId={venueId}") {
         fun createRoute(venueId: String? = null) =
-            if (venueId != null) "history?venueId=$venueId"
-            else "history"
+            if (venueId != null) "shared_history?venueId=$venueId" else "shared_history"
     }
-    object HistoryDetail : Screen("history/{serviceId}") {
-        fun createRoute(serviceId: String) = "history/$serviceId"
+
+    object SharedTrends : Screen("shared_trends?venueId={venueId}") {
+        fun createRoute(venueId: String? = null) =
+            if (venueId != null) "shared_trends?venueId=$venueId" else "shared_trends"
     }
-    object Reports : Screen("reports")
-    object AreaManagement : Screen("area_management/{venueId}") {
-        fun createRoute(venueId: String) = "area_management/$venueId"
+
+    object SharedIncidents : Screen("shared_incidents?venueId={venueId}") {
+        fun createRoute(venueId: String? = null) =
+            if (venueId != null) "shared_incidents?venueId=$venueId" else "shared_incidents"
     }
-    object ZoneEditor : Screen("zone_editor/{venueId}?zoneId={zoneId}&mode={mode}") {
-        const val MODE_SOLO = "solo"
-        const val MODE_BATCH = "batch"
-        const val MODE_EDIT = "edit"
-        fun createRoute(venueId: String, zoneId: String? = null, mode: String = MODE_SOLO): String {
-            val resolvedMode = if (zoneId != null) MODE_EDIT else mode
-            return if (zoneId != null) "zone_editor/$venueId?zoneId=$zoneId&mode=$resolvedMode"
-            else "zone_editor/$venueId?mode=$resolvedMode"
-        }
+
+    object SharedIncidentDetail : Screen("shared_incident/{incidentId}") {
+        fun createRoute(incidentId: String) = "shared_incident/$incidentId"
     }
-    object ServiceTypeManagement : Screen("service_type_management")
-    object VenueManagement : Screen("venue_management")
-    object LostAndFound : Screen("lost_and_found?locationId={locationId}") {
+
+    object SharedLostAndFound : Screen("shared_lost_and_found?locationId={locationId}") {
         fun createRoute(locationId: String? = null) =
-            if (locationId != null) "lost_and_found?locationId=$locationId"
-            else "lost_and_found"
+            if (locationId != null) "shared_lost_and_found?locationId=$locationId" else "shared_lost_and_found"
     }
-    object AddEditLostItem : Screen("add_edit_lost_item/{locationId}?itemId={itemId}") {
-        fun createRoute(locationId: String, itemId: String? = null) =
-            if (itemId != null) "add_edit_lost_item/$locationId?itemId=$itemId"
-            else "add_edit_lost_item/$locationId"
+
+    object SharedLostItemDetail : Screen("shared_lost_item/{itemId}") {
+        fun createRoute(itemId: String) = "shared_lost_item/$itemId"
     }
-    object LostItemDetail : Screen("lost_item/{itemId}") {
-        fun createRoute(itemId: String) = "lost_item/$itemId"
-    }
-    object IncidentList : Screen("incidents?venueId={venueId}") {
-        fun createRoute(venueId: String? = null) =
-            if (venueId != null) "incidents?venueId=$venueId"
-            else "incidents"
-    }
-    object AddEditIncident : Screen("add_edit_incident/{venueId}?incidentId={incidentId}") {
-        fun createRoute(venueId: String, incidentId: String? = null) =
-            if (incidentId != null) "add_edit_incident/$venueId?incidentId=$incidentId"
-            else "add_edit_incident/$venueId"
-    }
-    object IncidentDetail : Screen("incident/{incidentId}") {
-        fun createRoute(incidentId: String) = "incident/$incidentId"
-    }
-    object Trends : Screen("trends?venueId={venueId}") {
-        fun createRoute(venueId: String? = null) =
-            if (venueId != null) "trends?venueId=$venueId"
-            else "trends"
-    }
-    object SeatMapDemo : Screen("seat_map_demo")
 }

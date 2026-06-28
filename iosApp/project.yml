@@ -1,0 +1,35 @@
+name: iosApp
+options:
+  bundleIdPrefix: com.eventmonitor
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+
+configFiles:
+  Debug: Configuration/Config.xcconfig
+  Release: Configuration/Config.xcconfig
+
+targets:
+  iosApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: iosApp
+    info:
+      path: iosApp/Info.plist
+    settings:
+      base:
+        # The Kotlin framework is produced and embedded by the script phase below.
+        FRAMEWORK_SEARCH_PATHS:
+          - "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+        OTHER_LDFLAGS:
+          - "-framework"
+          - "shared"
+        # Kotlin/Native frameworks need a non-modular include workaround disabled.
+        SWIFT_OBJC_INTEROP_MODE: objcxx
+    preBuildScripts:
+      - name: "Build & embed shared.framework (Kotlin/Native)"
+        basedOnDependencyAnalysis: false
+        script: |
+          cd "$SRCROOT/.."
+          ./gradlew :shared:embedAndSignAppleFrameworkForXcode
