@@ -89,8 +89,6 @@ android {
 dependencies {
     // Core modules
     implementation(project(":core:common"))
-    implementation(project(":core:data"))
-    implementation(project(":core:domain"))
 
     // Shared KMP module (offline-first Room data, repositories, ViewModels)
     implementation(project(":shared"))
@@ -100,9 +98,6 @@ dependencies {
     implementation("io.insert-koin:koin-androidx-compose:3.5.6")
 
     // Feature modules
-    implementation(project(":feature:headcounter"))
-    implementation(project(":feature:lostandfound"))
-    implementation(project(":feature:incidents"))
 
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.0.21")

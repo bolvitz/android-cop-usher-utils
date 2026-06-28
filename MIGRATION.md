@@ -139,16 +139,29 @@ tap-to-cycle grid is now implemented too (`SharedCountingScreen` opens a seat
 grid dialog for seat-mapped areas, colouring seats by status and cycling on
 tap via the shared `CountingViewModel`).
 
-### Final cleanup to delete `core/data`
+### Final cleanup — DONE
 
-1. Delete the legacy Android screens + ViewModels (the `feature/*` screen
-   packages and `app/presentation/screens/*` legacy variants) and the unused
-   legacy routes in `Screen`/`NavGraph`.
-2. Remove `legacyDataModule` + `legacyViewModelModule` and the `:core:data` /
-   `:core:domain` module dependencies; delete those modules.
-3. Add a one-time migration copying any rows from the legacy
-   `event_monitor_db` into the shared `event_monitor_kmp.db` on first launch,
-   then drop the legacy file.
+1. ✅ Deleted the legacy Android screens + ViewModels, the three `feature/*`
+   modules, and the legacy routes (`Screen`/`NavGraph` are now shared-only).
+2. ✅ Removed `legacyDataModule` + `legacyViewModelModule` and deleted the
+   `:core:data` / `:core:domain` modules (dropped from `settings.gradle.kts`
+   and `app/build.gradle.kts`). The app now depends only on `:core:common`
+   (theme) and `:shared`. Koin loads `sharedModules` only.
+
+The module graph is now: **`:app` (Compose UI) → `:core:common` + `:shared`**,
+and **`iosApp` (SwiftUI) → `:shared`**. There is a single Room database.
+
+### Remaining: one-time device-data migration (needs a build to verify)
+
+Existing installs may still have the old `event_monitor_db` file (written by
+the deleted `core/data` Room). The shared DB is a separate file
+(`event_monitor_kmp.db`), so that data is currently orphaned. To carry it over,
+add a first-launch step in `shared` androidMain `createAppDatabase` that, when
+the new file is absent and the old one exists, `ATTACH`es the old database and
+`INSERT … SELECT`s each table into the new one, then deletes the old file.
+(Use ATTACH + INSERT rather than a raw file copy: the two Room builders may
+compute different schema identity hashes, which would make a copied file fail
+Room's integrity check.) This must be validated on a real build/device.
 
 ## Notes & follow-ups
 
