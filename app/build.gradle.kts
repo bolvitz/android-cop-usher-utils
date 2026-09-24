@@ -100,7 +100,7 @@ dependencies {
     // Feature modules
 
     // Kotlin
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:2.0.21")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:2.1.21")
 
     // AndroidX Core
     implementation("androidx.core:core-ktx:1.15.0")

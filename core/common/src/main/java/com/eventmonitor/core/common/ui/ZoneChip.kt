@@ -67,7 +67,7 @@ fun ZoneChip(
     Box(
         modifier = modifier
             .scale(scale)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(bg)
             .clickable(
                 interactionSource = interaction,
@@ -78,9 +78,9 @@ fun ZoneChip(
     ) {
         if (selected) {
             Canvas(modifier = Modifier.matchParentSize()) {
-                val len = 7.dp.toPx()
-                val w = 1.5.dp.toPx()
-                val inset = 4.dp.toPx()
+                val len = 9.dp.toPx()
+                val w = 1.8.dp.toPx()
+                val inset = 6.dp.toPx()
                 val c = paper
                 val x0 = inset
                 val y0 = inset
@@ -100,12 +100,12 @@ fun ZoneChip(
             text = label.uppercase(),
             style = MonoTiny.copy(
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 1.4.sp,
-                fontSize = 12.sp,
-                lineHeight = 14.sp,
+                letterSpacing = 1.6.sp,
+                fontSize = 14.sp,
+                lineHeight = 16.sp,
                 color = fg.copy(alpha = labelAlpha),
             ),
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
     }
 }

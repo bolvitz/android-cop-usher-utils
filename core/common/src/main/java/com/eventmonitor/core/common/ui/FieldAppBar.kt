@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -51,14 +52,19 @@ fun FieldAppBarIcon(
     Box(
         modifier = modifier
             .size(FieldTokens.AppBarIconSize)
-            .border(FieldTokens.Hair, if (hot) hotColor else ink)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+            .border(
+                FieldTokens.HairStrong,
+                if (hot) hotColor else ink,
+                androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            )
             .background(bg)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = glyph,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.titleMedium,
             color = fg,
         )
     }
@@ -108,9 +114,10 @@ fun FieldAppBar(
                 }
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center,
+                    maxLines = 1,
                 )
             }
             Spacer(modifier = Modifier.width(10.dp))

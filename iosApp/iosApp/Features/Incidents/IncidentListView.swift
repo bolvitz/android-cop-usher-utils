@@ -5,17 +5,16 @@ import shared
 final class IncidentListModel: ObservableObject {
     private let viewModel: IncidentListViewModel
     @Published var state: IncidentListUiState
-    private var handle: Cancellable?
+    private let lifetime: ViewModelLifetime
 
     init(venueId: String? = nil) {
         viewModel = KoinIosKt.incidentListViewModel(venueId: venueId)
+        lifetime = ViewModelLifetime(viewModel)
         state = viewModel.uiState.value as! IncidentListUiState
-        handle = viewModel.observe(flow: viewModel.uiState) { [weak self] value in
-            if let next = value as? IncidentListUiState { self?.state = next }
+        lifetime.observe(viewModel.uiState, as: IncidentListUiState.self) { [weak self] in
+            self?.state = $0
         }
     }
-
-    deinit { handle?.cancel() }
 
     func filter(_ status: String?) { viewModel.filterByStatus(status: status) }
     func advance(_ id: String, to status: String) { viewModel.updateStatus(incidentId: id, status: status) }

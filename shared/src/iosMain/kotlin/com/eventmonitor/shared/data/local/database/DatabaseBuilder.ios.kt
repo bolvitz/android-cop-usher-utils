@@ -2,6 +2,7 @@ package com.eventmonitor.shared.data.local.database
 
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
@@ -16,6 +17,7 @@ fun createAppDatabase(): AppDatabase {
         .build()
 }
 
+@OptIn(ExperimentalForeignApi::class)
 private fun documentDirectory(): String {
     val documentDirectory = NSFileManager.defaultManager.URLForDirectory(
         directory = NSDocumentDirectory,

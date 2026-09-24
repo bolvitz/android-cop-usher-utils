@@ -5,17 +5,16 @@ import shared
 final class LostAndFoundModel: ObservableObject {
     private let viewModel: LostAndFoundViewModel
     @Published var state: LostAndFoundUiState
-    private var handle: Cancellable?
+    private let lifetime: ViewModelLifetime
 
     init(locationId: String? = nil) {
         viewModel = KoinIosKt.lostAndFoundViewModel(locationId: locationId)
+        lifetime = ViewModelLifetime(viewModel)
         state = viewModel.uiState.value as! LostAndFoundUiState
-        handle = viewModel.observe(flow: viewModel.uiState) { [weak self] value in
-            if let next = value as? LostAndFoundUiState { self?.state = next }
+        lifetime.observe(viewModel.uiState, as: LostAndFoundUiState.self) { [weak self] in
+            self?.state = $0
         }
     }
-
-    deinit { handle?.cancel() }
 
     func filter(_ status: String?) { viewModel.filterByStatus(status: status) }
     func updateStatus(_ id: String, to status: String) { viewModel.updateStatus(itemId: id, status: status) }

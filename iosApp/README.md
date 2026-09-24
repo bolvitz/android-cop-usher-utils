@@ -7,7 +7,7 @@ the shared `SharedViewModel`s.
 
 ## Prerequisites
 
-- macOS with Xcode 15+
+- macOS with Xcode 15+ (deployment target iOS 17)
 - JDK 17 (for the Gradle framework build)
 - [XcodeGen](https://github.com/yonyz/XcodeGen) (`brew install xcodegen`)
 
@@ -36,9 +36,36 @@ Then select the `iosApp` scheme and run on a simulator or device.
 
 ## State bridging
 
-`kotlinx-coroutines` is not exported, so a Kotlin `StateFlow<T>` appears in
-Swift with an `Any?` `value`. Each feature exposes an `ObservableObject` that
-seeds from `viewModel.uiState.value` and subscribes via
-`viewModel.observe(flow:onEach:)`, casting each emission. See
-`Common/FlowObserver.swift` for the rationale and the feature views for the
-pattern. Adding SKIE later would let you collect typed flows directly.
+`kotlinx-coroutines` is not exported, so a Kotlin `Flow<T>` appears in Swift
+as an opaque `Kotlinx_coroutines_coreFlow` with `Any?` emissions. Each feature
+exposes an `ObservableObject` that owns a `ViewModelLifetime`
+(`Common/FlowObserver.swift`): it seeds from `viewModel.uiState.value`, binds
+flows with `lifetime.observe(flow, as: T.self) { ... }`, and calls the shared
+ViewModel's `dispose()` on deinit so its coroutines are cancelled. New shared
+ViewModels need a factory in `shared/src/iosMain/.../di/KoinIos.kt`.
+
+Interop names to watch: `template` bridges as `template_`, `description` as
+`description_`, and the DTO `EventWithDetails` as `EventWithDetails_` (it
+clashes with the Room relation class of the same name).
+
+## Tests
+
+```bash
+# Shared logic on the iOS target (in-memory Room)
+./gradlew :shared:iosSimulatorArm64Test
+
+# UI smoke test: venue -> area -> count -> undo/redo -> lock -> history
+cd iosApp && xcodegen generate
+xcodebuild -project iosApp.xcodeproj -scheme iosApp \
+  -destination 'platform=iOS Simulator,name=iPhone 16' test
+```
+
+## Releasing to the App Store
+
+1. Set `DEVELOPMENT_TEAM` in `Configuration/Config.xcconfig`.
+2. Bump `CURRENT_PROJECT_VERSION` (every upload) and `MARKETING_VERSION`
+   (each user-facing release) in the same file.
+3. `xcodegen generate`, then in Xcode: Product > Archive > Distribute App.
+
+Already in place: 1024px app icon, `PrivacyInfo.xcprivacy` (no tracking, no
+data collection), `ITSAppUsesNonExemptEncryption = NO`, iPad orientations.

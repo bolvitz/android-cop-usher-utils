@@ -10,8 +10,8 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// FIELD colour schemes. Dynamic colour is disabled on purpose — the palette is
-// intentional and must read the same across every device.
+// RETRO colour schemes. Dynamic colour is disabled on purpose — the palette is
+// strict B&W + one red, and must read identically on every device.
 
 private val LightScheme = lightColorScheme(
     primary = Ink,
@@ -24,15 +24,16 @@ private val LightScheme = lightColorScheme(
     secondaryContainer = Paper2,
     onSecondaryContainer = Ink,
 
-    tertiary = Amber,
+    // Tertiary now carries the only chromatic accent — vivid signal red.
+    tertiary = Signal,
     onTertiary = Paper,
-    tertiaryContainer = Paper2,
-    onTertiaryContainer = Amber,
+    tertiaryContainer = Signal,
+    onTertiaryContainer = Paper,
 
     error = Signal,
     onError = Paper,
-    errorContainer = Paper2,
-    onErrorContainer = Signal,
+    errorContainer = Signal,
+    onErrorContainer = Paper,
 
     background = Paper,
     onBackground = Ink,
@@ -63,15 +64,15 @@ private val DarkScheme = darkColorScheme(
     secondaryContainer = InkDark2,
     onSecondaryContainer = PaperDark,
 
-    tertiary = Amber,
-    onTertiary = InkDark,
-    tertiaryContainer = InkDark2,
-    onTertiaryContainer = Amber,
+    tertiary = Signal,
+    onTertiary = PaperDark,
+    tertiaryContainer = Signal,
+    onTertiaryContainer = PaperDark,
 
     error = Signal,
     onError = PaperDark,
-    errorContainer = InkDark2,
-    onErrorContainer = Signal,
+    errorContainer = Signal,
+    onErrorContainer = PaperDark,
 
     background = InkDark,
     onBackground = PaperDark,

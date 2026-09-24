@@ -74,7 +74,9 @@ val viewModelModule = module {
             areaCountRepository = get(),
             seatMapRepository = get(),
             venueId = params.get(),
-            existingEventId = params.getOrNull()
+            // Positional on purpose: getOrNull() matches by type and would fall back to venueId
+            // (the first String) when the event id is null.
+            existingEventId = params.values.getOrNull(1) as String?
         )
     }
     factory { params -> IncidentListViewModel(get(), venueId = params.getOrNull()) }

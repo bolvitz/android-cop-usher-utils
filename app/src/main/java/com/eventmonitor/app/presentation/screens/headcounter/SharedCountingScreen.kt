@@ -2,7 +2,10 @@ package com.eventmonitor.app.presentation.screens.headcounter
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eventmonitor.shared.data.local.entities.SeatEntity
@@ -73,7 +78,9 @@ fun SharedCountingScreen(
             )
         }
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        Box(Modifier
+            .fillMaxSize()
+            .padding(padding)) {
             when {
                 state.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 state.eventId == null -> StartPrompt(
@@ -132,7 +139,9 @@ private fun StartPrompt(modifier: Modifier = Modifier, onStart: () -> Unit) {
 private fun TotalBanner(total: Int, capacity: Int) {
     Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
         Row(
-            Modifier.fillMaxWidth().padding(16.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -158,7 +167,9 @@ private fun AreaCounterCard(
     onOpenSeats: () -> Unit
 ) {
     Card {
-        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(Modifier
+            .fillMaxWidth()
+            .padding(16.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -199,7 +210,6 @@ private fun AreaCounterCard(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SeatMapDialog(
     viewModel: CountingViewModel,
@@ -226,16 +236,37 @@ private fun SeatMapDialog(
                 if (rows.isEmpty()) {
                     Text("No seats defined for this area.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items(rows, key = { it.row.id }) { rowWithSeats ->
-                            SeatRow(
-                                rowWithSeats = rowWithSeats,
-                                statusBySeat = statusBySeat,
-                                locked = locked,
-                                onTapSeat = { seat ->
-                                    viewModel.cycleSeatStatus(seat.id, statusBySeat[seat.id] ?: "AVAILABLE")
+                    // Cinema layout: the screen and every row share one center line; wide maps scroll sideways
+                    BoxWithConstraints(Modifier.weight(1f, fill = false)) {
+                        Column(
+                            Modifier
+                                .verticalScroll(rememberScrollState())
+                                .horizontalScroll(rememberScrollState())
+                                .widthIn(min = maxWidth),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Column(
+                                Modifier.width(IntrinsicSize.Max),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                CinemaScreen()
+                                rows.forEach { rowWithSeats ->
+                                    key(rowWithSeats.row.id) {
+                                        SeatRow(
+                                            rowWithSeats = rowWithSeats,
+                                            statusBySeat = statusBySeat,
+                                            locked = locked,
+                                            onTapSeat = { seat ->
+                                                viewModel.cycleSeatStatus(
+                                                    seat.id,
+                                                    statusBySeat[seat.id] ?: "AVAILABLE"
+                                                )
+                                            }
+                                        )
+                                    }
                                 }
-                            )
+                            }
                         }
                     }
                     Spacer(Modifier.height(12.dp))
@@ -246,7 +277,6 @@ private fun SeatMapDialog(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SeatRow(
     rowWithSeats: SeatRowWithSeats,
@@ -254,18 +284,58 @@ private fun SeatRow(
     locked: Boolean,
     onTapSeat: (SeatEntity) -> Unit
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(rowWithSeats.row.label, Modifier.width(28.dp), fontWeight = FontWeight.Bold)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            rowWithSeats.seats.sortedBy { it.number }.forEach { seat ->
-                SeatBox(
-                    number = seat.number,
-                    status = statusBySeat[seat.id] ?: "AVAILABLE",
-                    enabled = !locked,
-                    onClick = { onTapSeat(seat) }
-                )
-            }
+    // Labels on both sides keep the seats centered under the screen
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RowLabel(rowWithSeats.row.label)
+        rowWithSeats.seats.sortedBy { it.number }.forEach { seat ->
+            SeatBox(
+                number = seat.number,
+                status = statusBySeat[seat.id] ?: "AVAILABLE",
+                enabled = !locked,
+                onClick = { onTapSeat(seat) }
+            )
         }
+        RowLabel(rowWithSeats.row.label)
+    }
+}
+
+@Composable
+private fun RowLabel(label: String) {
+    Text(
+        label,
+        Modifier.width(24.dp),
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.labelMedium
+    )
+}
+
+@Composable
+private fun CinemaScreen() {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 28.dp)
+            .padding(bottom = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(bottomStart = 50.dp, bottomEnd = 50.dp))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "SCREEN",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            letterSpacing = 4.sp
+        )
     }
 }
 
@@ -290,10 +360,16 @@ private fun SeatBox(number: Int, status: String, enabled: Boolean, onClick: () -
 
 @Composable
 private fun SeatLegend() {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+    ) {
         listOf("AVAILABLE", "OCCUPIED", "RESERVED", "BLOCKED").forEach { s ->
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(12.dp).clip(RoundedCornerShape(3.dp)).background(seatColor(s)))
+                Box(Modifier
+                    .size(12.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(seatColor(s)))
                 Spacer(Modifier.width(4.dp))
                 Text(s.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelSmall)
             }

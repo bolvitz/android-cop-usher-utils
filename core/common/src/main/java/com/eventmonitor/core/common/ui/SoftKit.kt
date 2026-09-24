@@ -20,6 +20,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -70,8 +71,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.Animatable
-import com.eventmonitor.core.common.theme.Amber
 import com.eventmonitor.core.common.theme.DataMono
+import com.eventmonitor.core.common.theme.Muted
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.utils.HapticFeedbackHelper
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
@@ -79,14 +80,25 @@ import kotlinx.coroutines.delay
 import java.util.Locale
 
 // ---------------------------------------------------------------------------
-// Brand palette — pulled from the app icon (shield + figures on electric blue
-// with a medical-cross red accent). Used across the Soft kit to keep every
-// screen on the same hue family.
+// Brand palette — RETRO redesign: black-and-white with one vivid red accent.
+// Every primary action is ink-on-paper; red is reserved for live/destructive/
+// "transcribe-in-progress" moments. Token names retained from the previous
+// kit so feature modules continue to compile, but their hues are remapped.
 // ---------------------------------------------------------------------------
-val BrandBlue = Color(0xFF1E54D6)
-val BrandBlueDeep = Color(0xFF0B2A82)
-val BrandBlueGlow = Color(0xFF4A91E8)
-val BrandRed = Color(0xFFE63946)
+// Primary brand surface — ink in light mode, paper-cream in dark mode so
+// filled buttons and selected chips always contrast against the background.
+val BrandBlue: Color
+    @Composable get() = MaterialTheme.colorScheme.primary
+
+// Pressed-state companion to BrandBlue — slightly muted version of primary.
+val BrandBlueDeep: Color
+    @Composable get() = if (isSystemInDarkTheme()) Color(0xFFB8B5AE) else Color(0xFF1A1A1A)
+
+// Ring/halo on selected surfaces — muted variant for the expanding-ring overlay.
+val BrandBlueGlow: Color
+    @Composable get() = if (isSystemInDarkTheme()) Color(0xFFC4C0B8) else Color(0xFF3A3A3A)
+
+val BrandRed = Color(0xFFFD3436)         // the only chromatic accent
 
 // ---------------------------------------------------------------------------
 // SoftAppBar — the primary top bar for the Soft aesthetic.
@@ -123,10 +135,11 @@ fun SoftAppBar(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 22.sp,
-                        letterSpacing = (-0.2).sp,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 30.sp,
+                        lineHeight = 32.sp,
+                        letterSpacing = (-0.6).sp,
                     ),
                     color = MaterialTheme.colorScheme.onBackground,
                     maxLines = 1,
@@ -134,7 +147,10 @@ fun SoftAppBar(
                 if (!subtitle.isNullOrBlank()) {
                     Text(
                         text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                        ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                     )
@@ -225,6 +241,7 @@ fun SoftZoneChip(
     selected: Boolean,
     onClick: () -> Unit,
     count: Int? = null,
+    modeGlyph: String? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -291,32 +308,47 @@ fun SoftZoneChip(
                 drawLine(c, Offset(x1, y1), Offset(x1, y1 - len), w)
             }
         }
-        Row(
+        Column(
             modifier = Modifier.padding(
                 horizontal = if (count != null) 20.dp else 16.dp,
-                vertical = if (count != null) 14.dp else 10.dp,
+                vertical = if (count != null) 12.dp else 10.dp,
             ),
-            verticalAlignment = Alignment.CenterVertically,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                text = label.uppercase(),
-                style = MonoTiny.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.6.sp,
-                    fontSize = 14.sp,
-                    lineHeight = 16.sp,
-                ),
-                color = fg.copy(alpha = labelAlpha),
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (modeGlyph != null) {
+                    Text(
+                        text = modeGlyph,
+                        style = MonoTiny.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.sp,
+                            fontSize = 13.sp,
+                            lineHeight = 13.sp,
+                        ),
+                        color = fg.copy(alpha = if (selected) 0.95f else 0.55f),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(
+                    text = label.uppercase(),
+                    style = MonoTiny.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.6.sp,
+                        fontSize = 14.sp,
+                        lineHeight = 16.sp,
+                    ),
+                    color = fg.copy(alpha = labelAlpha),
+                )
+            }
             if (count != null) {
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
                     text = animatedCount.toString().padStart(2, '0'),
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontFamily = DataMono,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp,
-                        lineHeight = 26.sp,
+                        fontSize = 22.sp,
+                        lineHeight = 24.sp,
                         letterSpacing = 0.sp,
                         fontFeatureSettings = "tnum",
                     ),
@@ -573,8 +605,8 @@ fun SoftPrimaryButton(
     Box(
         modifier = modifier
             .scale(scale)
-            .height(56.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .height(64.dp)
+            .clip(RoundedCornerShape(20.dp))
             .background(bg)
             .clickable(
                 enabled = enabled,
@@ -589,20 +621,39 @@ fun SoftPrimaryButton(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp,
-                    letterSpacing = 0.4.sp,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    letterSpacing = (-0.2).sp,
                 ),
                 color = labelColor,
             )
             if (!trailingGlyph.isNullOrBlank()) {
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = trailingGlyph,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = labelColor,
-                )
+                Spacer(Modifier.width(12.dp))
+                // Trailing glyph rides in a small red disc to evoke the
+                // reference's "Start →" badge on the hero CTA.
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (tone == SoftButtonTone.Destructive || !enabled) {
+                                Color.Transparent
+                            } else BrandRed,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = trailingGlyph,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                        ),
+                        color = if (tone == SoftButtonTone.Destructive || !enabled) {
+                            labelColor
+                        } else Color.White,
+                    )
+                }
             }
         }
     }
@@ -641,8 +692,8 @@ fun SoftToolButton(
     Box(
         modifier = modifier
             .scale(scale)
-            .height(48.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .height(56.dp)
+            .clip(RoundedCornerShape(18.dp))
             .background(bg)
             .clickable(
                 enabled = enabled,
@@ -656,14 +707,15 @@ fun SoftToolButton(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = glyph,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
                 color = fg,
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(8.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 17.sp,
                 ),
                 color = fg,
             )
@@ -711,7 +763,7 @@ fun SoftCapacityBar(
             val active = knownCapacity && animatedPct >= segHigh - (1f / segments)
             val baseColor = when {
                 segHigh >= 0.93f -> BrandRed
-                segHigh >= 0.78f -> Amber
+                segHigh >= 0.78f -> Muted
                 else -> BrandBlue
             }
             val target = when {
@@ -891,67 +943,24 @@ fun StatStrip(
 
 @Composable
 fun ArcadeBackground(modifier: Modifier = Modifier) {
-    val accent = BrandBlue
-
-    val infinite = rememberInfiniteTransition(label = "arcadeBg")
-    val ring by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(5200, easing = LinearOutSlowInEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "ringPulse",
-    )
-    val drift by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(11000, easing = LinearOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "drift",
-    )
+    // RETRO redesign: the radial blue sweep is replaced by a steady, low-
+    // contrast ink dot grid. Negative space carries the design now.
+    val ink = MaterialTheme.colorScheme.onBackground
 
     Canvas(modifier = modifier) {
-        val step = 26.dp.toPx()
-        val dotR = 1.1.dp.toPx()
-        val cx = size.width / 2f
-        val cy = size.height * 0.32f
-        val maxR = size.maxDimension * 1.1f
-
-        val cols = (size.width / step).toInt() + 2
-        val rows = (size.height / step).toInt() + 2
-        val driftPx = drift * step
+        val step = 28.dp.toPx()
+        val dotR = 0.9.dp.toPx()
+        val cols = (size.width / step).toInt() + 1
+        val rows = (size.height / step).toInt() + 1
         for (r in 0 until rows) {
             for (c in 0 until cols) {
-                val x = c * step - driftPx * 0.5f
-                val y = r * step + driftPx * 0.3f
-                val dx = x - cx
-                val dy = y - cy
-                val d = kotlin.math.sqrt(dx * dx + dy * dy)
-                val falloff = (1f - (d / maxR).coerceIn(0f, 1f)) * 0.32f + 0.08f
                 drawCircle(
-                    color = accent.copy(alpha = falloff),
+                    color = ink.copy(alpha = 0.06f),
                     radius = dotR,
-                    center = Offset(x, y),
+                    center = Offset(c * step, r * step),
                 )
             }
         }
-
-        val ringR = maxR * ring
-        drawCircle(
-            color = BrandBlueGlow.copy(alpha = (1f - ring) * 0.30f),
-            radius = ringR,
-            center = Offset(cx, cy),
-            style = Stroke(width = 1.dp.toPx()),
-        )
-        drawCircle(
-            color = accent.copy(alpha = (1f - ring) * 0.18f),
-            radius = ringR * 0.62f,
-            center = Offset(cx, cy),
-            style = Stroke(width = 1.dp.toPx()),
-        )
     }
 }
 
@@ -1019,21 +1028,21 @@ fun SoftLivePulseDot(
 // ---------------------------------------------------------------------------
 
 @Composable
-fun softHeadline(size: Int = 22): androidx.compose.ui.text.TextStyle =
-    MaterialTheme.typography.titleLarge.copy(
-        fontWeight = FontWeight.SemiBold,
+fun softHeadline(size: Int = 28): androidx.compose.ui.text.TextStyle =
+    MaterialTheme.typography.headlineMedium.copy(
+        fontWeight = FontWeight.ExtraBold,
         fontSize = size.sp,
         lineHeight = (size + 4).sp,
-        letterSpacing = (-0.2).sp,
+        letterSpacing = (-0.4).sp,
     )
 
 @Composable
 fun softLabelStyle(): androidx.compose.ui.text.TextStyle =
     MonoTiny.copy(
         fontWeight = FontWeight.Bold,
-        fontSize = 11.sp,
+        fontSize = 12.sp,
         lineHeight = 14.sp,
-        letterSpacing = 1.6.sp,
+        letterSpacing = 1.8.sp,
     )
 
 // ---------------------------------------------------------------------------
@@ -1147,18 +1156,18 @@ fun SoftSection(
                 style = softLabelStyle(),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
         }
         Text(
             text = title,
-            style = softHeadline(20),
+            style = softHeadline(28),
             color = MaterialTheme.colorScheme.onBackground,
         )
         if (!hint.isNullOrBlank()) {
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
                 text = hint,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

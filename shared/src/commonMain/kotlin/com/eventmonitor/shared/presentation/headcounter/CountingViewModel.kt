@@ -8,6 +8,8 @@ import com.eventmonitor.shared.data.repository.EventRepository
 import com.eventmonitor.shared.data.repository.EventTypeRepository
 import com.eventmonitor.shared.data.repository.SeatMapRepository
 import com.eventmonitor.shared.data.repository.VenueRepository
+import com.eventmonitor.shared.domain.common.AppError
+import com.eventmonitor.shared.domain.common.Result
 import com.eventmonitor.shared.presentation.SharedViewModel
 import com.eventmonitor.shared.util.nowMillis
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -162,12 +164,21 @@ class CountingViewModel(
         viewModelScope.launch {
             counterMutex.withLock {
                 val old = currentCount(areaCountId)
-                if (amount >= 0) {
+                val result = if (amount >= 0) {
                     areaCountRepository.incrementCount(eventId, areaCountId, amount, "INCREMENT")
                 } else {
                     areaCountRepository.decrementCount(eventId, areaCountId, -amount, "DECREMENT")
                 }
-                pushUndo(CountAction.UpdateCount(eventId, areaCountId, old, old + amount))
+                result.onSuccess {
+                    pushUndo(
+                        CountAction.UpdateCount(
+                            eventId,
+                            areaCountId,
+                            old,
+                            maxOf(0, old + amount)
+                        )
+                    )
+                }.onError(::showError)
             }
         }
     }
@@ -181,36 +192,83 @@ class CountingViewModel(
             counterMutex.withLock {
                 val old = currentCount(areaCountId)
                 areaCountRepository.updateCount(eventId, areaCountId, newCount, "MANUAL_EDIT")
-                pushUndo(CountAction.UpdateCount(eventId, areaCountId, old, newCount))
+                    .onSuccess {
+                        pushUndo(
+                            CountAction.UpdateCount(
+                                eventId,
+                                areaCountId,
+                                old,
+                                newCount
+                            )
+                        )
+                    }
+                    .onError(::showError)
             }
         }
     }
 
     fun undo() {
-        val action = _undoStack.value.lastOrNull() ?: return
+        if (_uiState.value.isLocked) return
         viewModelScope.launch {
-            when (action) {
-                is CountAction.UpdateCount ->
-                    areaCountRepository.updateCount(action.eventId, action.areaCountId, action.oldCount, "UNDO")
-                is CountAction.SeatStatus ->
-                    seatMapRepository.setSeatStatus(action.eventId, action.seatId, action.oldStatus)
+            // Same lock as count changes, so an undo tapped right after a +/- sees that change's entry.
+            counterMutex.withLock {
+                val action = _undoStack.value.lastOrNull() ?: return@withLock
+                val ok = when (action) {
+                    is CountAction.UpdateCount ->
+                        areaCountRepository.updateCount(
+                            action.eventId,
+                            action.areaCountId,
+                            action.oldCount,
+                            "UNDO"
+                        )
+                            .onError(::showError) is Result.Success
+
+                    is CountAction.SeatStatus -> {
+                        seatMapRepository.setSeatStatus(
+                            action.eventId,
+                            action.seatId,
+                            action.oldStatus
+                        )
+                        true
+                    }
+                }
+                if (ok) {
+                    _undoStack.update { it.dropLast(1) }
+                    _redoStack.update { it + action }
+                }
             }
-            _undoStack.update { it.dropLast(1) }
-            _redoStack.update { it + action }
         }
     }
 
     fun redo() {
-        val action = _redoStack.value.lastOrNull() ?: return
+        if (_uiState.value.isLocked) return
         viewModelScope.launch {
-            when (action) {
-                is CountAction.UpdateCount ->
-                    areaCountRepository.updateCount(action.eventId, action.areaCountId, action.newCount, "REDO")
-                is CountAction.SeatStatus ->
-                    seatMapRepository.setSeatStatus(action.eventId, action.seatId, action.newStatus)
+            counterMutex.withLock {
+                val action = _redoStack.value.lastOrNull() ?: return@withLock
+                val ok = when (action) {
+                    is CountAction.UpdateCount ->
+                        areaCountRepository.updateCount(
+                            action.eventId,
+                            action.areaCountId,
+                            action.newCount,
+                            "REDO"
+                        )
+                            .onError(::showError) is Result.Success
+
+                    is CountAction.SeatStatus -> {
+                        seatMapRepository.setSeatStatus(
+                            action.eventId,
+                            action.seatId,
+                            action.newStatus
+                        )
+                        true
+                    }
+                }
+                if (ok) {
+                    _redoStack.update { it.dropLast(1) }
+                    _undoStack.update { it + action }
+                }
             }
-            _redoStack.update { it.dropLast(1) }
-            _undoStack.update { it + action }
         }
     }
 
@@ -253,6 +311,10 @@ class CountingViewModel(
     }
 
     fun clearError() = _uiState.update { it.copy(error = null) }
+
+    private fun showError(error: AppError) {
+        _uiState.update { it.copy(error = error.toUserMessage()) }
+    }
 
     private fun pushUndo(action: CountAction) {
         _undoStack.update { (it + action).takeLast(50) }

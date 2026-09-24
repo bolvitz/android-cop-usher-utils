@@ -4,11 +4,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
-// FIELD shapes are sharp. No rounded corners anywhere — data is set, not softened.
+// RETRO shapes — soft, generous corners.
+// The reference (Voice Recognition) leans on big-radius pills and rounded
+// rectangles to make tap targets feel inviting and the type feel like signage.
 val FieldShapes = Shapes(
-    extraSmall = RoundedCornerShape(0.dp),
-    small = RoundedCornerShape(0.dp),
-    medium = RoundedCornerShape(0.dp),
-    large = RoundedCornerShape(0.dp),
-    extraLarge = RoundedCornerShape(0.dp),
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(14.dp),
+    medium = RoundedCornerShape(18.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(32.dp),
 )

@@ -1,17 +1,45 @@
 import Foundation
 import shared
 
-/// Notes on Kotlin <-> Swift state bridging
+/// Kotlin <-> Swift state bridging.
 ///
 /// `kotlinx-coroutines` is not exported by the shared framework, so a Kotlin
-/// `StateFlow<T>` surfaces in Swift as an opaque flow whose `.value` is `Any?`.
-/// Each feature exposes an `ObservableObject` that:
-///   1. resolves its `SharedViewModel` from Koin,
-///   2. seeds `@Published state` from `viewModel.uiState.value`,
-///   3. subscribes via `viewModel.observe(flow:onEach:)`, casting each emission,
-///   4. cancels the returned `Cancellable` and calls `dispose()` in `deinit`.
+/// `Flow<T>` surfaces in Swift as an opaque `Kotlinx_coroutines_coreFlow` whose
+/// emissions are `Any?`. Each feature exposes an `ObservableObject` that owns a
+/// `ViewModelLifetime`, seeds `@Published` state from `uiState.value`, and binds
+/// flows with `observe(_:as:_:)`, which casts each emission.
 ///
-/// See `VenueListView` / `EventTypeManagementView` for the concrete pattern.
-/// (If you later add SKIE to the build, these casts can be replaced with typed
-/// flow collection.)
-enum FlowBridge {}
+/// When the owning model is deallocated, the lifetime disposes the shared
+/// ViewModel, cancelling its `viewModelScope` (and every observation with it).
+final class ViewModelLifetime {
+    private let viewModel: SharedViewModel
+
+    init(_ viewModel: SharedViewModel) {
+        self.viewModel = viewModel
+    }
+
+    /// Delivers each emission of `flow` that casts to `T` to `onEach` on the main thread.
+    @discardableResult
+    func observe<T>(_ flow: Kotlinx_coroutines_coreFlow, as _: T.Type, _ onEach: @escaping (T) -> Void) -> Cancellable {
+        viewModel.observe(flow: flow) { value in
+            if let typed = value as? T {
+                onEach(typed)
+            }
+        }
+    }
+
+    deinit {
+        viewModel.dispose()
+    }
+}
+
+/// Current wall-clock time in epoch millis, as the shared module stores dates.
+func nowEpochMillis() -> Int64 {
+    Int64(Date().timeIntervalSince1970 * 1000)
+}
+
+extension Date {
+    init(epochMillis: Int64) {
+        self.init(timeIntervalSince1970: TimeInterval(epochMillis) / 1000)
+    }
+}

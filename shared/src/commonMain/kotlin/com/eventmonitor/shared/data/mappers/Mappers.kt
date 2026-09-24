@@ -1,7 +1,11 @@
 package com.eventmonitor.shared.data.mappers
 
 import com.eventmonitor.shared.data.local.entities.*
+import com.eventmonitor.shared.data.local.entities.AreaCountWithTemplate as EntityAreaCountWithTemplate
+import com.eventmonitor.shared.data.local.entities.EventWithDetails as EntityEventWithDetails
 import com.eventmonitor.shared.data.models.*
+import com.eventmonitor.shared.data.models.AreaCountWithTemplate
+import com.eventmonitor.shared.data.models.EventWithDetails
 import com.eventmonitor.shared.util.nowMillis
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -107,24 +111,24 @@ fun AreaCountDto.toEntity(): AreaCountEntity = AreaCountEntity(
 )
 
 // ---------- Relations ----------
-fun EventWithDetails.toDto(): com.eventmonitor.shared.data.models.EventWithDetails =
-    com.eventmonitor.shared.data.models.EventWithDetails(
+fun EntityEventWithDetails.toDto(): EventWithDetails =
+    EventWithDetails(
         event = event.toDto(),
         venue = venue.toDto(),
         eventType = eventType?.toDto(),
         areaCounts = emptyList()
     )
 
-fun EventWithAreaCounts.toDto(): com.eventmonitor.shared.data.models.EventWithDetails =
-    com.eventmonitor.shared.data.models.EventWithDetails(
+fun EventWithAreaCounts.toDto(): EventWithDetails =
+    EventWithDetails(
         event = event.toDto(),
         venue = venue.toDto(),
         eventType = eventType?.toDto(),
         areaCounts = areaCounts.map { it.toDto() }
     )
 
-fun AreaCountWithTemplate.toDto(): com.eventmonitor.shared.data.models.AreaCountWithTemplate =
-    com.eventmonitor.shared.data.models.AreaCountWithTemplate(
+fun EntityAreaCountWithTemplate.toDto(): AreaCountWithTemplate =
+    AreaCountWithTemplate(
         areaCount = areaCount.toDto(),
         template = template.toDto()
     )

@@ -5,18 +5,14 @@ import shared
 final class EventTypeModel: ObservableObject {
     private let viewModel = KoinIosKt.eventTypeManagementViewModel()
     @Published var state: EventTypeManagementUiState
-    private var handle: Cancellable?
+    private let lifetime: ViewModelLifetime
 
     init() {
+        lifetime = ViewModelLifetime(viewModel)
         state = viewModel.uiState.value as! EventTypeManagementUiState
-        handle = viewModel.observe(flow: viewModel.uiState) { [weak self] value in
-            guard let next = value as? EventTypeManagementUiState else { return }
-            self?.state = next
+        lifetime.observe(viewModel.uiState, as: EventTypeManagementUiState.self) { [weak self] in
+            self?.state = $0
         }
-    }
-
-    deinit {
-        handle?.cancel()
     }
 
     func create(name: String, description: String) {

@@ -3,6 +3,7 @@ package com.eventmonitor.shared.data.repository
 import com.eventmonitor.shared.data.local.dao.LostItemDao
 import com.eventmonitor.shared.data.local.entities.LostItemEntity
 import com.eventmonitor.shared.data.mappers.toDto
+import com.eventmonitor.shared.data.mappers.toEntity
 import com.eventmonitor.shared.data.models.LostItemDto
 import com.eventmonitor.shared.domain.common.AppError
 import com.eventmonitor.shared.domain.common.Result

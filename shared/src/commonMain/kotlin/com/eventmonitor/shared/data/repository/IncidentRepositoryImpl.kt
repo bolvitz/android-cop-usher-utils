@@ -3,6 +3,7 @@ package com.eventmonitor.shared.data.repository
 import com.eventmonitor.shared.data.local.dao.IncidentDao
 import com.eventmonitor.shared.data.local.entities.IncidentEntity
 import com.eventmonitor.shared.data.mappers.toDto
+import com.eventmonitor.shared.data.mappers.toEntity
 import com.eventmonitor.shared.data.models.IncidentDto
 import com.eventmonitor.shared.domain.common.AppError
 import com.eventmonitor.shared.domain.common.Result

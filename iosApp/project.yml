@@ -2,7 +2,7 @@ name: iosApp
 options:
   bundleIdPrefix: com.eventmonitor
   deploymentTarget:
-    iOS: "15.0"
+    iOS: "17.0"
   createIntermediateGroups: true
 
 configFiles:
@@ -15,10 +15,10 @@ targets:
     platform: iOS
     sources:
       - path: iosApp
-    info:
-      path: iosApp/Info.plist
     settings:
       base:
+        # Hand-maintained plist (not `info:`, which XcodeGen would regenerate and overwrite).
+        INFOPLIST_FILE: iosApp/Info.plist
         # The Kotlin framework is produced and embedded by the script phase below.
         FRAMEWORK_SEARCH_PATHS:
           - "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
@@ -27,9 +27,44 @@ targets:
           - "shared"
         # Kotlin/Native frameworks need a non-modular include workaround disabled.
         SWIFT_OBJC_INTEROP_MODE: objcxx
+      configs:
+        Release:
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
     preBuildScripts:
       - name: "Build & embed shared.framework (Kotlin/Native)"
         basedOnDependencyAnalysis: false
         script: |
           cd "$SRCROOT/.."
+          # Xcode doesn't inherit the shell's JAVA_HOME; prefer JDK 17 when installed.
+          if [ -z "$JAVA_HOME" ] && /usr/libexec/java_home -v 17 >/dev/null 2>&1; then
+            export JAVA_HOME="$(/usr/libexec/java_home -v 17)"
+          fi
           ./gradlew :shared:embedAndSignAppleFrameworkForXcode
+
+  iosAppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: iosAppUITests
+    dependencies:
+      - target: iosApp
+    settings:
+      base:
+        PRODUCT_NAME: iosAppUITests
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.eventmonitor.app.uitests
+        TEST_TARGET_NAME: iosApp
+
+schemes:
+  iosApp:
+    build:
+      targets:
+        iosApp: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - iosAppUITests
+    archive:
+      config: Release
