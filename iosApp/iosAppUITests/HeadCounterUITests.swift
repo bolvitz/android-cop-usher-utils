@@ -1,6 +1,6 @@
 import XCTest
 
-/// End-to-end smoke test for the head counter: venue -> area -> count -> undo/redo -> lock.
+/// End-to-end smoke test for the head counter: venue -> area -> count -> undo/redo -> report -> lock -> history.
 final class HeadCounterUITests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -35,14 +35,13 @@ final class HeadCounterUITests: XCTestCase {
         // Start a count.
         XCTAssertTrue(venueCell.waitForExistence(timeout: 5))
         venueCell.tap()
-        let start = app.buttons["Start Head Count"]
+        // The new-count sheet requires a counter name before it can start.
+        let start = app.buttons["Start Count"]
         XCTAssertTrue(start.waitForExistence(timeout: 5))
+        XCTAssertFalse(start.isEnabled)
+        type("Usher Test", into: app.textFields["Your name"])
+        XCTAssertTrue(start.isEnabled)
         start.tap()
-        // With event types configured, "Start Head Count" is a menu.
-        let plainHeadCount = app.buttons["Head Count"]
-        if plainHeadCount.waitForExistence(timeout: 1) {
-            plainHeadCount.tap()
-        }
 
         let total = app.staticTexts["totalAttendance"]
         XCTAssertTrue(total.waitForExistence(timeout: 5))
@@ -59,8 +58,15 @@ final class HeadCounterUITests: XCTestCase {
         app.buttons["Redo"].tap(); waitForTotal("2")
 
         // Excluding the area removes it from the total.
-        app.buttons["Included"].tap(); waitForTotal("0")
+        app.buttons["In total"].tap(); waitForTotal("0")
         app.buttons["Excluded"].tap(); waitForTotal("2")
+
+        // The receipt reflects the count and who took it.
+        app.buttons["Report"].tap()
+        XCTAssertTrue(app.staticTexts["HEAD COUNT REPORT"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Usher Test"].exists)
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.staticTexts["totalAttendance"].waitForExistence(timeout: 5))
 
         // Locking disables counting.
         app.buttons["Lock count"].tap()
@@ -76,6 +82,14 @@ final class HeadCounterUITests: XCTestCase {
         venueCell.press(forDuration: 1.0)
         app.buttons["History"].tap()
         let historyRow = app.staticTexts[venueName]
+        XCTAssertTrue(historyRow.waitForExistence(timeout: 5))
+
+        // Each history entry opens its own receipt.
+        historyRow.swipeRight()
+        app.buttons["Report"].tap()
+        XCTAssertTrue(app.staticTexts["HEAD COUNT REPORT"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+
         XCTAssertTrue(historyRow.waitForExistence(timeout: 5))
         historyRow.tap()
         waitForTotal("2")

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -65,6 +66,9 @@ fun SharedCountingScreen(
                     if (state.eventId != null) {
                         TextButton(onClick = viewModel::undo, enabled = canUndo) { Text("Undo") }
                         TextButton(onClick = viewModel::redo, enabled = canRedo) { Text("Redo") }
+                        IconButton(onClick = viewModel::generateReport) {
+                            Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = "Report")
+                        }
                         IconButton(onClick = {
                             if (state.isLocked) viewModel.unlockEvent() else viewModel.lockEvent()
                         }) {
@@ -114,6 +118,10 @@ fun SharedCountingScreen(
                 }
             }
         }
+    }
+
+    state.report?.let { report ->
+        HeadCountReceiptDialog(report = report, onDismiss = viewModel::clearReport)
     }
 
     seatMapAreaId?.let { areaId ->

@@ -41,17 +41,21 @@ class CountingViewModelIosTest {
         val venueId =
             (venues.createVenue(VenueDto(name = "Venue", code = "V")) as Result.Success).data
         venues.createAreaTemplate(AreaTemplateDto(venueId = venueId, name = "Hall", capacity = 100))
+        val events = EventRepositoryImpl(db.eventDao())
+        val areaCounts = AreaCountRepositoryImpl(db.areaCountDao(), db.eventDao())
+        val seats = SeatMapRepositoryImpl(
+            db.seatRowDao(),
+            db.seatStatusDao(),
+            db.seatDao(),
+            db.areaTemplateDao()
+        )
         vm = CountingViewModel(
             venueRepository = venues,
-            eventRepository = EventRepositoryImpl(db.eventDao()),
+            eventRepository = events,
             eventTypeRepository = EventTypeRepositoryImpl(db.eventTypeDao()),
-            areaCountRepository = AreaCountRepositoryImpl(db.areaCountDao(), db.eventDao()),
-            seatMapRepository = SeatMapRepositoryImpl(
-                db.seatRowDao(),
-                db.seatStatusDao(),
-                db.seatDao(),
-                db.areaTemplateDao()
-            ),
+            areaCountRepository = areaCounts,
+            seatMapRepository = seats,
+            reportBuilder = HeadCountReportBuilder(events, areaCounts, seats),
             venueId = venueId
         )
         awaitState("venue loaded") { !it.isLoading && it.eventId == null }
@@ -98,6 +102,29 @@ class CountingViewModelIosTest {
         vm.incrementCount(area, 3); awaitState("+3") { it.totalAttendance == 3 }
         vm.toggleAreaInclusion(area); awaitState("excluded") { it.totalAttendance == 0 && it.totalCapacity == 0 }
         vm.toggleAreaInclusion(area); awaitState("included") { it.totalAttendance == 3 }
+    }
+
+    @Test
+    fun reportMatchesCountAndHonoursExclusion() = runBlocking<Unit> {
+        val area = startCount()
+        vm.incrementCount(area, 4); awaitState("+4") { it.totalAttendance == 4 }
+        vm.generateReport()
+        val report = awaitState("report") { it.report != null }.report!!
+        assertEquals(4, report.totalCount)
+        assertEquals(100, report.totalCapacity)
+        assertEquals(4, report.utilizationPercent)
+        assertEquals("Hall", report.lines.single().name)
+        assertEquals("test", report.countedBy)
+        assertTrue(report.text.startsWith("HEAD COUNT REPORT\nVENUE\n"))
+        assertTrue("Total Count:     4" in report.text)
+
+        vm.clearReport(); awaitState("cleared") { it.report == null }
+        vm.toggleAreaInclusion(area); awaitState("excluded") { it.totalAttendance == 0 }
+        vm.generateReport()
+        val excluded = awaitState("report after exclusion") { it.report != null }.report!!
+        assertEquals(0, excluded.totalCount)
+        assertFalse(excluded.lines.single().isIncluded)
+        assertTrue("Hall (excluded)" in excluded.text)
     }
 
     private suspend fun awaitState(

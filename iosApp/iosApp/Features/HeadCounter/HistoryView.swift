@@ -6,6 +6,7 @@ final class HistoryModel: ObservableObject {
     private let viewModel: HistoryViewModel
     private let lifetime: ViewModelLifetime
     @Published var state: HistoryUiState
+    @Published var report: HeadCountReport?
 
     init(venueId: String?) {
         viewModel = KoinIosKt.historyViewModel(venueId: venueId)
@@ -14,6 +15,19 @@ final class HistoryModel: ObservableObject {
         lifetime.observe(viewModel.uiState, as: HistoryUiState.self) { [weak self] in
             self?.state = $0
         }
+        // A null emission never reaches Swift, so closing the receipt clears `report` locally.
+        lifetime.observe(viewModel.report, as: HeadCountReport.self) { [weak self] in
+            self?.report = $0
+        }
+    }
+
+    func showReport(_ eventId: String) {
+        viewModel.showReport(eventId: eventId)
+    }
+
+    func clearReport() {
+        report = nil
+        viewModel.clearReport()
     }
 
     func unlock(_ eventId: String) {
@@ -53,6 +67,21 @@ struct HistoryView: View {
                         } label: {
                             HistoryRow(item: item)
                         }
+                        .swipeActions(edge: .leading) {
+                            Button {
+                                model.showReport(item.event.id)
+                            } label: {
+                                Label("Report", systemImage: "doc.plaintext")
+                            }
+                            .tint(.accentColor)
+                        }
+                        .contextMenu {
+                            Button {
+                                model.showReport(item.event.id)
+                            } label: {
+                                Label("View Report", systemImage: "doc.plaintext")
+                            }
+                        }
                         .swipeActions {
                             Button(role: .destructive) {
                                 pendingDelete = item
@@ -78,6 +107,13 @@ struct HistoryView: View {
                 Button(action: onOpenTrends) {
                     Label("Trends", systemImage: "chart.xyaxis.line")
                 }
+            }
+        }
+        .sheet(isPresented: Binding(get: { model.report != nil }, set: { if !$0 {
+            model.clearReport()
+        } })) {
+            if let report = model.report {
+                HeadCountReceiptView(report: report)
             }
         }
         .confirmationDialog(

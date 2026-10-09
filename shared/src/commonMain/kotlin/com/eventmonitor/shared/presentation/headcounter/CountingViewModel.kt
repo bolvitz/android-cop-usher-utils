@@ -35,6 +35,7 @@ class CountingViewModel(
     private val eventTypeRepository: EventTypeRepository,
     private val areaCountRepository: AreaCountRepository,
     private val seatMapRepository: SeatMapRepository,
+    private val reportBuilder: HeadCountReportBuilder,
     private val venueId: String,
     private val existingEventId: String? = null
 ) : SharedViewModel() {
@@ -142,6 +143,9 @@ class CountingViewModel(
                     s.copy(
                         venueName = snap.venue?.name ?: s.venueName,
                         venueCode = snap.venue?.code ?: s.venueCode,
+                        eventName = details.event.eventName.ifEmpty { details.eventType?.name ?: s.eventName },
+                        counterName = details.event.countedBy,
+                        eventDate = details.event.date,
                         totalAttendance = included.sumOf { it.count },
                         totalCapacity = included.sumOf { it.capacity },
                         isLocked = details.event.isLocked,
@@ -287,6 +291,17 @@ class CountingViewModel(
         viewModelScope.launch { eventRepository.updateEventNotes(eventId, notes) }
     }
 
+    /** Builds the receipt-style report for this count; totals honour the current inclusion toggles. */
+    fun generateReport() {
+        val eventId = _uiState.value.eventId ?: return
+        viewModelScope.launch {
+            val report = reportBuilder.build(eventId, _excludedAreaIds.value)
+            _uiState.update { it.copy(report = report, error = if (report == null) "Couldn't build the report." else it.error) }
+        }
+    }
+
+    fun clearReport() = _uiState.update { it.copy(report = null) }
+
     fun observeSeatLayout(areaTemplateId: String) =
         seatMapRepository.observeRowsWithSeats(areaTemplateId)
 
@@ -339,13 +354,15 @@ data class CountingUiState(
     val eventId: String? = null,
     val eventName: String = "",
     val counterName: String = "",
+    val eventDate: Long = 0L,
     val areaCounts: List<AreaCountState> = emptyList(),
     val totalAttendance: Int = 0,
     val totalCapacity: Int = 0,
     val notes: String = "",
     val isLocked: Boolean = false,
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val report: HeadCountReport? = null
 )
 
 data class AreaCountState(

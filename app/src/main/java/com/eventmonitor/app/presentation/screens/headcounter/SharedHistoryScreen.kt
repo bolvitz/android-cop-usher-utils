@@ -30,6 +30,7 @@ fun SharedHistoryScreen(
     viewModel: HistoryViewModel = koinViewModel { parametersOf(venueId) }
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val report by viewModel.report.collectAsStateWithLifecycle()
     val dateFormat = remember { SimpleDateFormat("EEE, MMM d • h:mm a", Locale.getDefault()) }
 
     Scaffold(
@@ -65,6 +66,7 @@ fun SharedHistoryScreen(
                         HistoryRow(
                             event = event,
                             dateText = dateFormat.format(Date(event.event.date)),
+                            onReport = { viewModel.showReport(event.event.id) },
                             onUnlock = { viewModel.unlockEvent(event.event.id) },
                             onDelete = { viewModel.deleteEvent(event.event.id) }
                         )
@@ -73,12 +75,15 @@ fun SharedHistoryScreen(
             }
         }
     }
+
+    report?.let { HeadCountReceiptDialog(report = it, onDismiss = viewModel::clearReport) }
 }
 
 @Composable
 private fun HistoryRow(
     event: EventWithDetails,
     dateText: String,
+    onReport: () -> Unit,
     onUnlock: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -104,6 +109,7 @@ private fun HistoryRow(
                     Text("Open", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 }
                 Spacer(Modifier.weight(1f))
+                TextButton(onClick = onReport) { Text("Report") }
                 TextButton(onClick = onDelete) { Text("Delete") }
             }
         }

@@ -19,6 +19,7 @@ import com.eventmonitor.shared.presentation.areas.AreaManagementViewModel
 import com.eventmonitor.shared.presentation.areas.SeatMapEditorViewModel
 import com.eventmonitor.shared.presentation.eventtypes.EventTypeManagementViewModel
 import com.eventmonitor.shared.presentation.headcounter.CountingViewModel
+import com.eventmonitor.shared.presentation.headcounter.HeadCountReportBuilder
 import com.eventmonitor.shared.presentation.headcounter.HistoryViewModel
 import com.eventmonitor.shared.presentation.headcounter.TrendsViewModel
 import com.eventmonitor.shared.presentation.incidents.IncidentDetailViewModel
@@ -62,6 +63,7 @@ val dataModule = module {
 }
 
 val viewModelModule = module {
+    factory { HeadCountReportBuilder(get(), get(), get()) }
     factory { VenueListViewModel(get()) }
     factory { EventTypeManagementViewModel(get()) }
     factory { params -> AreaManagementViewModel(get(), venueId = params.get()) }
@@ -73,6 +75,7 @@ val viewModelModule = module {
             eventTypeRepository = get(),
             areaCountRepository = get(),
             seatMapRepository = get(),
+            reportBuilder = get(),
             venueId = params.get(),
             // Positional on purpose: getOrNull() matches by type and would fall back to venueId
             // (the first String) when the event id is null.
@@ -81,7 +84,7 @@ val viewModelModule = module {
     }
     factory { params -> IncidentListViewModel(get(), venueId = params.getOrNull()) }
     factory { params -> LostAndFoundViewModel(get(), locationId = params.getOrNull()) }
-    factory { params -> HistoryViewModel(get(), venueId = params.getOrNull()) }
+    factory { params -> HistoryViewModel(get(), get(), venueId = params.getOrNull()) }
     factory { params -> TrendsViewModel(get(), venueId = params.getOrNull()) }
     factory { ReportsViewModel(get(), get(), get(), get()) }
     factory { params -> IncidentDetailViewModel(get(), incidentId = params.get()) }
