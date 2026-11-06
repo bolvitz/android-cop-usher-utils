@@ -45,16 +45,18 @@ private func nextStatus(after name: String) -> StatusOption? {
 }
 
 struct IncidentListView: View {
-    @StateObject private var model = IncidentListModel()
+    @StateObject private var model: IncidentListModel
+
+    init(venueId: String? = nil) {
+        _model = StateObject(wrappedValue: IncidentListModel(venueId: venueId))
+    }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                filterBar
-                content
-            }
-            .navigationTitle("Incidents")
+        VStack(spacing: 0) {
+            filterBar
+            content
         }
+        .navigationTitle("Incidents")
     }
 
     private var filterBar: some View {

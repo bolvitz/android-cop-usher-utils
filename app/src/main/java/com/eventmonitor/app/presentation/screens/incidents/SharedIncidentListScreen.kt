@@ -25,7 +25,7 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun SharedIncidentListScreen(
     venueId: String?,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onOpen: (String) -> Unit,
     viewModel: IncidentListViewModel = koinViewModel { parametersOf(venueId) }
 ) {
@@ -37,8 +37,11 @@ fun SharedIncidentListScreen(
             TopAppBar(
                 title = { Text("Incidents") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    // Null when shown as a top-level tab.
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 }
             )

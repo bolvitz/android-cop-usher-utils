@@ -5,6 +5,13 @@ package com.eventmonitor.app.presentation.navigation
  * (Koin-resolved ViewModels over the single shared Room database).
  */
 sealed class Screen(val route: String) {
+    // Top-level tabs. Each reads the venue scope from AppShellViewModel.
+    object TabLive : Screen("tab_live")
+    object TabCount : Screen("tab_count")
+    object TabIncidents : Screen("tab_incidents")
+    object TabLostFound : Screen("tab_lost_found")
+    object TabMore : Screen("tab_more")
+
     object SharedVenueList : Screen("shared_venue_list")
 
     object SharedAreaManagement : Screen("shared_area_management/{venueId}") {

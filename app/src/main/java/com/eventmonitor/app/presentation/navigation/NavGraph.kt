@@ -1,5 +1,9 @@
 package com.eventmonitor.app.presentation.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -13,6 +17,9 @@ import com.eventmonitor.app.presentation.screens.eventtypes.SharedEventTypeManag
 import com.eventmonitor.app.presentation.screens.headcounter.SharedCountingScreen
 import com.eventmonitor.app.presentation.screens.headcounter.SharedHistoryScreen
 import com.eventmonitor.app.presentation.screens.headcounter.SharedTrendsScreen
+import com.eventmonitor.app.presentation.screens.home.CountTab
+import com.eventmonitor.app.presentation.screens.home.LiveTab
+import com.eventmonitor.app.presentation.screens.home.MoreTab
 import com.eventmonitor.app.presentation.screens.incidents.SharedIncidentDetailScreen
 import com.eventmonitor.app.presentation.screens.incidents.SharedIncidentListScreen
 import com.eventmonitor.app.presentation.screens.lostandfound.SharedLostAndFoundScreen
@@ -20,18 +27,84 @@ import com.eventmonitor.app.presentation.screens.lostandfound.SharedLostItemDeta
 import com.eventmonitor.app.presentation.screens.reports.SharedReportsScreen
 import com.eventmonitor.app.presentation.screens.venues.SharedVenueEditScreen
 import com.eventmonitor.app.presentation.screens.venues.SharedVenueListScreen
+import com.eventmonitor.shared.presentation.scope.AppShellUiState
+import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 @Composable
 fun NavGraph(
     navController: NavHostController,
-    startDestination: String = Screen.SharedVenueList.route,
-    modifier: Modifier = Modifier
+    shellState: AppShellUiState,
+    onSelectVenue: (String?) -> Unit,
+    onOpenTab: (Screen) -> Unit,
+    modifier: Modifier = Modifier,
+    startDestination: String = Screen.TabLive.route
 ) {
+    val toCount: (String) -> Unit = { navController.navigate(Screen.SharedCounting.createRoute(it)) }
+    val toAreas: (String) -> Unit = { navController.navigate(Screen.SharedAreaManagement.createRoute(it)) }
+    val toHistory: (String?) -> Unit = { navController.navigate(Screen.SharedHistory.createRoute(it)) }
+    val toVenues: () -> Unit = { navController.navigate(Screen.SharedVenueList.route) }
+    // Lists keyed by scope so switching venue builds a fresh, correctly filtered ViewModel.
+    val scopeKey = shellState.selectedVenueId ?: "all"
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
         modifier = modifier
     ) {
+        composable(Screen.TabLive.route) {
+            LiveTab(
+                state = shellState,
+                onSelectVenue = onSelectVenue,
+                onCount = toCount,
+                onAreas = toAreas,
+                onHistory = toHistory,
+                onOpenIncidents = { onOpenTab(Screen.TabIncidents) },
+                onOpenLostFound = { onOpenTab(Screen.TabLostFound) },
+                onSetUpVenues = toVenues
+            )
+        }
+
+        composable(Screen.TabCount.route) {
+            CountTab(state = shellState, onCount = toCount, onSetUpVenues = toVenues)
+        }
+
+        composable(Screen.TabIncidents.route) {
+            if (!shellState.isLoading) BelowFloatingBar {
+                val venueId = shellState.selectedVenueId
+                SharedIncidentListScreen(
+                    venueId = venueId,
+                    onBack = null,
+                    onOpen = { navController.navigate(Screen.SharedIncidentDetail.createRoute(it)) },
+                    viewModel = koinViewModel(key = "incidents_$scopeKey") { parametersOf(venueId) }
+                )
+            }
+        }
+
+        composable(Screen.TabLostFound.route) {
+            if (!shellState.isLoading) BelowFloatingBar {
+                val venueId = shellState.selectedVenueId
+                SharedLostAndFoundScreen(
+                    locationId = venueId,
+                    onBack = null,
+                    onOpen = { navController.navigate(Screen.SharedLostItemDetail.createRoute(it)) },
+                    viewModel = koinViewModel(key = "lost_$scopeKey") { parametersOf(venueId) }
+                )
+            }
+        }
+
+        composable(Screen.TabMore.route) {
+            MoreTab(
+                state = shellState,
+                onHistory = { toHistory(shellState.selectedVenueId) },
+                onTrends = { navController.navigate(Screen.SharedTrends.createRoute(shellState.selectedVenueId)) },
+                onReports = { navController.navigate(Screen.SharedReports.route) },
+                onVenues = toVenues,
+                onAreas = toAreas,
+                onEventTypes = { navController.navigate(Screen.SharedEventTypes.route) }
+            )
+        }
+
         composable(Screen.SharedVenueList.route) {
             SharedVenueListScreen(
                 onCount = { venueId -> navController.navigate(Screen.SharedCounting.createRoute(venueId)) },
@@ -41,7 +114,8 @@ fun NavGraph(
                 onLostFound = { venueId -> navController.navigate(Screen.SharedLostAndFound.createRoute(venueId)) },
                 onEventTypes = { navController.navigate(Screen.SharedEventTypes.route) },
                 onReports = { navController.navigate(Screen.SharedReports.route) },
-                onEdit = { venueId -> navController.navigate(Screen.SharedVenueEdit.createRoute(venueId)) }
+                onEdit = { venueId -> navController.navigate(Screen.SharedVenueEdit.createRoute(venueId)) },
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -173,4 +247,11 @@ fun NavGraph(
             )
         }
     }
+}
+
+/** Lifts a tab screen with its own Scaffold (FAB, snackbar) clear of the floating tab bar. */
+@Composable
+private fun BelowFloatingBar(content: @Composable () -> Unit) {
+    val inset = PaddingValues(bottom = LocalFloatingBarInset.current)
+    Box(Modifier.padding(inset).consumeWindowInsets(inset)) { content() }
 }

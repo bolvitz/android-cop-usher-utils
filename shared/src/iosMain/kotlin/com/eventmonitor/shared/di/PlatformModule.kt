@@ -5,6 +5,8 @@ import com.eventmonitor.shared.data.local.database.createAppDatabase
 import com.eventmonitor.shared.platform.CoroutineDispatchers
 import com.eventmonitor.shared.platform.FileExporter
 import com.eventmonitor.shared.platform.HapticFeedback
+import com.eventmonitor.shared.platform.KeyValueStore
+import com.eventmonitor.shared.platform.UserDefaultsKeyValueStore
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -13,4 +15,5 @@ actual val platformModule: Module = module {
     single { CoroutineDispatchers() }
     factory { HapticFeedback() }
     factory { FileExporter() }
+    single<KeyValueStore> { UserDefaultsKeyValueStore() }
 }

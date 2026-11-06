@@ -8,6 +8,7 @@ import com.eventmonitor.shared.presentation.headcounter.HistoryViewModel
 import com.eventmonitor.shared.presentation.headcounter.TrendsViewModel
 import com.eventmonitor.shared.presentation.incidents.IncidentListViewModel
 import com.eventmonitor.shared.presentation.lostandfound.LostAndFoundViewModel
+import com.eventmonitor.shared.presentation.scope.AppShellViewModel
 import com.eventmonitor.shared.presentation.venues.VenueDetailViewModel
 import com.eventmonitor.shared.presentation.venues.VenueListViewModel
 import org.koin.core.context.startKoin
@@ -23,6 +24,8 @@ fun startKoinIos() {
         modules(sharedModules)
     }
 }
+
+fun appShellViewModel(): AppShellViewModel = KoinPlatform.getKoin().get()
 
 fun venueListViewModel(): VenueListViewModel = KoinPlatform.getKoin().get()
 

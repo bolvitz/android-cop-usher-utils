@@ -32,40 +32,38 @@ struct EventTypeManagementView: View {
     @State private var newDescription = ""
 
     var body: some View {
-        NavigationStack {
-            List {
-                ForEach(model.state.eventTypes, id: \.id) { type in
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text(type.name).font(.headline)
-                            if !type.description_.isEmpty {
-                                Text(type.description_)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
+        List {
+            ForEach(model.state.eventTypes, id: \.id) { type in
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text(type.name).font(.headline)
+                        if !type.description_.isEmpty {
+                            Text(type.description_)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                         }
-                        Spacer()
-                        Toggle("", isOn: Binding(
-                            get: { type.isActive },
-                            set: { model.toggle(type, isActive: $0) }
-                        ))
-                        .labelsHidden()
                     }
-                    .swipeActions {
-                        Button(role: .destructive) { model.delete(type.id) } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
+                    Spacer()
+                    Toggle("", isOn: Binding(
+                        get: { type.isActive },
+                        set: { model.toggle(type, isActive: $0) }
+                    ))
+                    .labelsHidden()
+                }
+                .swipeActions {
+                    Button(role: .destructive) { model.delete(type.id) } label: {
+                        Label("Delete", systemImage: "trash")
                     }
                 }
             }
-            .navigationTitle("Event Types")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { showingAdd = true } label: { Image(systemName: "plus") }
-                }
-            }
-            .sheet(isPresented: $showingAdd) { addSheet }
         }
+        .navigationTitle("Event Types")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { showingAdd = true } label: { Image(systemName: "plus") }
+            }
+        }
+        .sheet(isPresented: $showingAdd) { addSheet }
     }
 
     private var addSheet: some View {

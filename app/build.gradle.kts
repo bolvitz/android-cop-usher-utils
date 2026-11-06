@@ -153,6 +153,9 @@ dependencies {
     // Charts (Vico)
     implementation("com.patrykandpatrick.vico:compose-m3:2.0.0-alpha.28")
 
+    // Frosted glass tab bar. 1.1.x is the last line built on Compose 1.7 (this BOM).
+    implementation("dev.chrisbanes.haze:haze:1.1.1")
+
     // CSV Export
     implementation("com.opencsv:opencsv:5.9")
 

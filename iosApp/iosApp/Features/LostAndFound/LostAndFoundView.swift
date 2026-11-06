@@ -35,16 +35,18 @@ private let itemStatuses: [ItemStatusOption] = [
 ]
 
 struct LostAndFoundView: View {
-    @StateObject private var model = LostAndFoundModel()
+    @StateObject private var model: LostAndFoundModel
+
+    init(locationId: String? = nil) {
+        _model = StateObject(wrappedValue: LostAndFoundModel(locationId: locationId))
+    }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                filterBar
-                content
-            }
-            .navigationTitle("Lost & Found")
+        VStack(spacing: 0) {
+            filterBar
+            content
         }
+        .navigationTitle("Lost & Found")
     }
 
     private var filterBar: some View {

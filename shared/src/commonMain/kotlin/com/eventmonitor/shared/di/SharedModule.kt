@@ -27,6 +27,8 @@ import com.eventmonitor.shared.presentation.incidents.IncidentListViewModel
 import com.eventmonitor.shared.presentation.lostandfound.LostAndFoundViewModel
 import com.eventmonitor.shared.presentation.lostandfound.LostItemDetailViewModel
 import com.eventmonitor.shared.presentation.reports.ReportsViewModel
+import com.eventmonitor.shared.presentation.scope.AppShellViewModel
+import com.eventmonitor.shared.presentation.scope.ScopeHolder
 import com.eventmonitor.shared.presentation.venues.VenueDetailViewModel
 import com.eventmonitor.shared.presentation.venues.VenueListViewModel
 import org.koin.core.module.Module
@@ -60,10 +62,14 @@ val dataModule = module {
     single<SeatMapRepository> { SeatMapRepositoryImpl(get(), get(), get(), get()) }
     single<IncidentRepository> { IncidentRepositoryImpl(get()) }
     single<LostItemRepository> { LostItemRepositoryImpl(get()) }
+
+    // App-wide venue scope shared by every tab.
+    single { ScopeHolder(get()) }
 }
 
 val viewModelModule = module {
     factory { HeadCountReportBuilder(get(), get(), get()) }
+    factory { AppShellViewModel(get(), get(), get(), get()) }
     factory { VenueListViewModel(get()) }
     factory { EventTypeManagementViewModel(get()) }
     factory { params -> AreaManagementViewModel(get(), venueId = params.get()) }

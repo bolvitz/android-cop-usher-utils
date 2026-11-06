@@ -23,141 +23,142 @@ final class VenueListModel: ObservableObject {
     func clearError() { viewModel.clearError() }
 }
 
-enum VenueRoute: Hashable {
+/// Pushed screens, shared by every tab's NavigationStack.
+enum AppRoute: Hashable {
     case count(venueId: String, venueName: String)
     case areas(venueId: String)
     case seatMap(areaTemplateId: String)
     case history(venueId: String?)
     case trends(venueId: String?)
     case edit(venueId: String)
+    case venues
+    case eventTypes
 }
 
 struct VenueListView: View {
     @StateObject private var model = VenueListModel()
-    @State private var path = NavigationPath()
+    /// The owning tab's stack; this view pushes routes onto it.
+    @Binding var path: NavigationPath
     @State private var showingAdd = false
     @State private var pendingDelete: VenueDto?
 
     var body: some View {
-        NavigationStack(path: $path) {
-            Group {
-                if model.state.isLoading {
-                    ProgressView("Loading venues…")
-                } else if model.state.isEmpty {
-                    ContentUnavailableView {
-                        Label("No Venues", systemImage: "building.2")
-                    } description: {
-                        Text("Add a venue, then add the areas you want to count.")
-                    } actions: {
-                        Button("Add Venue") {
-                            showingAdd = true
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                } else {
-                    List {
-                        ForEach(model.state.venues, id: \.id) { venue in
-                            NavigationLink(value: VenueRoute.count(venueId: venue.id, venueName: venue.name)) {
-                                VenueRow(venue: venue)
-                            }
-                            .contextMenu {
-                                menuItems(for: venue)
-                            }
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    pendingDelete = venue
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                                Button {
-                                    path.append(VenueRoute.edit(venueId: venue.id))
-                                } label: {
-                                    Label("Edit", systemImage: "pencil")
-                                }
-                                .tint(.blue)
-                            }
-                            .swipeActions(edge: .leading) {
-                                Button {
-                                    path.append(VenueRoute.areas(venueId: venue.id))
-                                } label: {
-                                    Label("Areas", systemImage: "square.grid.2x2")
-                                }
-                                .tint(.indigo)
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Venues")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        path.append(VenueRoute.history(venueId: nil))
-                    } label: {
-                        Label("All History", systemImage: "clock.arrow.circlepath")
-                    }
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
+        Group {
+            if model.state.isLoading {
+                ProgressView("Loading venues…")
+            } else if model.state.isEmpty {
+                ContentUnavailableView {
+                    Label("No Venues", systemImage: "building.2")
+                } description: {
+                    Text("Add a venue, then add the areas you want to count.")
+                } actions: {
+                    Button("Add Venue") {
                         showingAdd = true
-                    } label: {
-                        Label("Add Venue", systemImage: "plus")
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            } else {
+                List {
+                    ForEach(model.state.venues, id: \.id) { venue in
+                        NavigationLink(value: AppRoute.count(venueId: venue.id, venueName: venue.name)) {
+                            VenueRow(venue: venue)
+                        }
+                        .contextMenu {
+                            menuItems(for: venue)
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                pendingDelete = venue
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            Button {
+                                path.append(AppRoute.edit(venueId: venue.id))
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            .tint(.blue)
+                        }
+                        .swipeActions(edge: .leading) {
+                            Button {
+                                path.append(AppRoute.areas(venueId: venue.id))
+                            } label: {
+                                Label("Areas", systemImage: "square.grid.2x2")
+                            }
+                            .tint(.indigo)
+                        }
                     }
                 }
             }
-            .navigationDestination(for: VenueRoute.self, destination: destination)
-            .sheet(isPresented: $showingAdd) {
-                AddVenueSheet { name, location, code in
-                    model.create(name: name, location: location, code: code)
-                }
-            }
-            .confirmationDialog(
-                "Delete \(pendingDelete?.name ?? "venue")?",
-                isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 {
-                    pendingDelete = nil
-                } }),
-                titleVisibility: .visible
-            ) {
-                Button("Delete", role: .destructive) {
-                    if let venue = pendingDelete {
-                        model.delete(venue.id)
-                    }
-                    pendingDelete = nil
-                }
-            } message: {
-                Text("This permanently deletes the venue, its areas and its count history.")
-            }
-            .alert(
-                "Error",
-                isPresented: Binding(get: { model.state.errorMessage != nil }, set: { if !$0 {
-                    model.clearError()
-                } }),
-                actions: { Button("OK", role: .cancel) {} },
-                message: { Text(model.state.errorMessage ?? "") }
-            )
         }
+        .navigationTitle("Venues")
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    path.append(AppRoute.history(venueId: nil))
+                } label: {
+                    Label("All History", systemImage: "clock.arrow.circlepath")
+                }
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showingAdd = true
+                } label: {
+                    Label("Add Venue", systemImage: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $showingAdd) {
+            AddVenueSheet { name, location, code in
+                model.create(name: name, location: location, code: code)
+            }
+        }
+        .confirmationDialog(
+            "Delete \(pendingDelete?.name ?? "venue")?",
+            isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 {
+                pendingDelete = nil
+            } }),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                if let venue = pendingDelete {
+                    model.delete(venue.id)
+                }
+                pendingDelete = nil
+            }
+        } message: {
+            Text("This permanently deletes the venue, its areas and its count history.")
+        }
+        .alert(
+            "Error",
+            isPresented: Binding(get: { model.state.errorMessage != nil }, set: { if !$0 {
+                model.clearError()
+            } }),
+            actions: { Button("OK", role: .cancel) {} },
+            message: { Text(model.state.errorMessage ?? "") }
+        )
     }
 
     @ViewBuilder
     private func menuItems(for venue: VenueDto) -> some View {
         Button {
-            path.append(VenueRoute.count(venueId: venue.id, venueName: venue.name))
+            path.append(AppRoute.count(venueId: venue.id, venueName: venue.name))
         } label: {
             Label("Head Count", systemImage: "person.3.sequence")
         }
         Button {
-            path.append(VenueRoute.areas(venueId: venue.id))
+            path.append(AppRoute.areas(venueId: venue.id))
         } label: {
             Label("Manage Areas", systemImage: "square.grid.2x2")
         }
         Button {
-            path.append(VenueRoute.history(venueId: venue.id))
+            path.append(AppRoute.history(venueId: venue.id))
         } label: {
             Label("History", systemImage: "clock.arrow.circlepath")
         }
         Divider()
         Button {
-            path.append(VenueRoute.edit(venueId: venue.id))
+            path.append(AppRoute.edit(venueId: venue.id))
         } label: {
             Label("Edit Venue", systemImage: "pencil")
         }
@@ -167,26 +168,35 @@ struct VenueListView: View {
             Label("Delete", systemImage: "trash")
         }
     }
+}
 
-    @ViewBuilder
-    private func destination(_ route: VenueRoute) -> some View {
+/// Resolves an [AppRoute]; register once per tab stack with `.navigationDestination`.
+struct AppRouteDestination: View {
+    let route: AppRoute
+    @Binding var path: NavigationPath
+
+    var body: some View {
         switch route {
         case let .count(venueId, venueName):
             HeadCounterView(venueId: venueId, venueName: venueName)
         case let .areas(venueId):
             AreaManagementView(venueId: venueId) {
-                path.append(VenueRoute.seatMap(areaTemplateId: $0))
+                path.append(AppRoute.seatMap(areaTemplateId: $0))
             }
         case let .seatMap(areaTemplateId):
             SeatMapEditorView(areaTemplateId: areaTemplateId)
         case let .history(venueId):
             HistoryView(venueId: venueId) {
-                path.append(VenueRoute.trends(venueId: venueId))
+                path.append(AppRoute.trends(venueId: venueId))
             }
         case let .trends(venueId):
             TrendsView(venueId: venueId)
         case let .edit(venueId):
             VenueEditView(venueId: venueId)
+        case .venues:
+            VenueListView(path: $path)
+        case .eventTypes:
+            EventTypeManagementView()
         }
     }
 }

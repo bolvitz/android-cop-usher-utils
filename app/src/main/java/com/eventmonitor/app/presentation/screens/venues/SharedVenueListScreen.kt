@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -30,6 +31,7 @@ fun SharedVenueListScreen(
     onEventTypes: () -> Unit,
     onReports: () -> Unit,
     onEdit: (String) -> Unit,
+    onBack: (() -> Unit)? = null,
     viewModel: VenueListViewModel = koinViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -38,7 +40,14 @@ fun SharedVenueListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Event Monitor") },
+                title = { Text("Venues") },
+                navigationIcon = {
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                },
                 actions = {
                     TextButton(onClick = onReports) { Text("Reports") }
                     TextButton(onClick = onEventTypes) { Text("Event Types") }
