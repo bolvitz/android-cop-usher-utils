@@ -51,6 +51,7 @@ final class CountingModel: ObservableObject {
     func redo() { viewModel.redo() }
     func generateReport() { viewModel.generateReport() }
     func clearReport() { viewModel.clearReport() }
+    func updateNotes(_ notes: String) { viewModel.updateNotes(notes: notes) }
 
     func toggleLock() {
         state.isLocked ? viewModel.unlockEvent() : viewModel.lockEvent()
@@ -84,19 +85,6 @@ final class CountingModel: ObservableObject {
     }
 }
 
-// MARK: - Palette (mirrors the Android counter kit)
-
-enum CounterPalette {
-    /// Live / destructive / subtract accent.
-    static let signal = Color(red: 0xFD / 255, green: 0x34 / 255, blue: 0x36 / 255)
-    static let muted = Color(red: 0x77 / 255, green: 0x70 / 255, blue: 0x69 / 255)
-    static let slab = LinearGradient(
-        colors: [Color(red: 0x1A / 255, green: 0x1A / 255, blue: 0x1A / 255), Color(red: 0x07 / 255, green: 0x1A / 255, blue: 0x55 / 255)],
-        startPoint: .top,
-        endPoint: .bottom
-    )
-}
-
 private struct SnackMessage: Equatable {
     let id = UUID()
     let text: String
@@ -107,17 +95,39 @@ private struct SnackMessage: Equatable {
 private struct FloatToken: Identifiable {
     let id: Int
     let value: Int
+    /// Horizontal position as a fraction of the pad's width.
+    let x: CGFloat
 }
+
+/// A zone's number travelling between the zone and the total when it is included or left out.
+private struct FlyToken: Equatable {
+    let id: Int
+    let text: String
+    let joining: Bool
+}
+
+private let counterSpace = "counter"
 
 struct HeadCounterView: View {
     let venueName: String
     @StateObject private var model: CountingModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedAreaId: String?
     @State private var snack: SnackMessage?
     @State private var tokens: [FloatToken] = []
-    @State private var tokenSeq = 0
+    @State private var seq = 0
     @State private var cancelledNewCount = false
+    @State private var showSeatMap = false
+    @State private var showReceipt = false
+    @State private var lockedAt: Date?
+    @State private var entryEdge: Edge = .trailing
+    @State private var dragOffset: CGFloat = 0
+    @State private var fly: FlyToken?
+    @State private var flyLanded = false
+    @State private var totalFrame: CGRect = .zero
+    @State private var zoneFrame: CGRect = .zero
+    @State private var lastPercents: [String: Int] = [:]
 
     /// Pass `eventId` to resume an existing count; otherwise the user fills in a new-count sheet first.
     init(venueId: String, venueName: String, eventId: String? = nil) {
@@ -127,7 +137,7 @@ struct HeadCounterView: View {
 
     private var areas: [AreaCountState] { model.state.areaCounts }
 
-    /// Last-tapped zone, else the first included one, else the first.
+    /// Last-picked zone, else the first included one, else the first.
     private var activeArea: AreaCountState? {
         areas.first { $0.id == selectedAreaId } ?? areas.first { $0.isIncluded } ?? areas.first
     }
@@ -136,52 +146,63 @@ struct HeadCounterView: View {
         model.state.venueName.isEmpty ? venueName : model.state.venueName
     }
 
+    private var subtitle: String {
+        let name = model.state.eventName.isEmpty ? "Live count" : model.state.eventName
+        guard model.state.eventDate > 0 else { return name }
+        let time = Date(epochMillis: model.state.eventDate).formatted(date: .omitted, time: .shortened)
+        return "\(name), started \(time)"
+    }
+
     var body: some View {
         Group {
             if model.state.isLoading {
-                ProgressView("Loading…")
+                ProgressView("Loading…").tint(CounterPalette.chalk)
             } else if model.state.eventId == nil {
-                Color(.systemBackground)
+                Color.clear
             } else if let area = activeArea {
-                countBody(area)
+                counter(area)
             } else {
                 ContentUnavailableView(
-                    "No zones configured",
+                    "No zones yet",
                     systemImage: "square.grid.2x2",
-                    description: Text("Add a zone to this venue from Manage Areas to begin counting.")
+                    description: Text("Add a zone to this venue from Manage Areas, then come back to count.")
                 )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
-        .overlay(alignment: .bottom) { snackbar }
+        .background(CounterPalette.ground.ignoresSafeArea())
+        .foregroundStyle(CounterPalette.chalk)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                VStack(spacing: 0) {
+                VStack(spacing: 1) {
                     Text(title).font(.headline)
-                    Text(model.state.eventName.isEmpty ? "Live count" : model.state.eventName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(subtitle).font(.caption).foregroundStyle(CounterPalette.pew)
                 }
             }
             if model.state.eventId != nil {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        model.toggleLock()
+                        toggleLock()
                     } label: {
                         Image(systemName: model.state.isLocked ? "lock.fill" : "lock.open")
+                            .foregroundStyle(model.state.isLocked ? CounterPalette.brass : CounterPalette.chalk)
+                            .contentTransition(.symbolEffect(.replace))
                     }
                     .accessibilityLabel(model.state.isLocked ? "Unlock count" : "Lock count")
                 }
             }
         }
+        .preferredColorScheme(.dark)
+        // The pad and dock own the bottom of the screen while counting.
+        .toolbar(.hidden, for: .tabBar)
         .fullScreenCover(isPresented: Binding(
             get: { !model.state.isLoading && model.state.eventId == nil && !cancelledNewCount },
             set: { _ in }
         )) {
             NewCountSheet(
+                venueName: title,
                 eventTypes: model.eventTypes,
                 onCancel: {
                     cancelledNewCount = true
@@ -190,148 +211,316 @@ struct HeadCounterView: View {
                 onStart: { type, countedBy in model.startCount(eventType: type, countedBy: countedBy) }
             )
         }
-        .sheet(isPresented: Binding(get: { model.state.report != nil }, set: { if !$0 { model.clearReport() } })) {
-            if let report = model.state.report {
-                HeadCountReceiptView(report: report)
+        .navigationDestination(isPresented: $showSeatMap) {
+            if let area = activeArea {
+                SeatMapView(model: model, areaTemplateId: area.template_.id, zoneName: area.template_.name)
             }
+        }
+        .fullScreenCover(isPresented: $showReceipt) {
+            if let report = model.state.report {
+                HeadCountReceiptView(
+                    report: report,
+                    notes: model.state.notes,
+                    onNotesChange: { model.updateNotes($0) },
+                    onClose: closeReceipt
+                )
+                .presentationBackground(.clear)
+            }
+        }
+        .onChange(of: model.state.report != nil) { _, hasReport in
+            // The receipt brings its own printing animation; skip the cover's slide.
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) { showReceipt = hasReport }
+        }
+        .onChange(of: areas.map { "\($0.id):\($0.count):\($0.isIncluded)" }, initial: true) { _, _ in
+            warnOnCapacityCrossing()
         }
         .alert(
             "Something went wrong",
-            isPresented: Binding(get: { model.state.error != nil }, set: { if !$0 {
-                model.clearError()
-            } }),
-            actions: { Button("OK", role: .cancel) {
-            } },
+            isPresented: Binding(get: { model.state.error != nil }, set: { if !$0 { model.clearError() } }),
+            actions: { Button("OK", role: .cancel) {} },
             message: { Text(model.state.error ?? "") }
         )
         .task(id: snack?.id) {
             guard snack != nil else { return }
-            try? await Task.sleep(for: .seconds(2.4))
+            // A newer snack cancels this task; leave it on screen instead of clearing it early.
+            guard (try? await Task.sleep(for: .seconds(3.2))) != nil else { return }
             withAnimation { snack = nil }
         }
         // Counting can take a while; keep the screen on so ushers don't lose their place.
-        .onAppear {
-            UIApplication.shared.isIdleTimerDisabled = true
+        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+    }
+
+    // MARK: Counter
+
+    private func counter(_ area: AreaCountState) -> some View {
+        let locked = model.state.isLocked
+        let zonePct = percent(Int(area.count), of: Int(area.capacity))
+
+        return ZStack(alignment: .top) {
+            VStack(spacing: 0) {
+                totalHeader
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
+                ZoneRail(areas: areas, activeId: area.id) { select($0) }
+                    .padding(.top, 10)
+                zoneStage(area)
+                    .frame(maxHeight: .infinity)
+                pad(area, locked: locked)
+                    .padding(.horizontal, 16)
+                if !area.template_.hasSeatMap {
+                    Text("Swipe up or down on the pad to count without looking.")
+                        .font(.footnote)
+                        .foregroundStyle(CounterPalette.pew)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 10)
+                        .padding(.horizontal, 24)
+                }
+                dock(locked: locked)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
+            }
+
+            flyOverlay
+            snackbar
         }
-        .onDisappear {
-            UIApplication.shared.isIdleTimerDisabled = false
+        // A background, not a ZStack child: its safe-area bleed must not resize the layout.
+        .background { RoomLevel(percent: zonePct, included: area.isIncluded) }
+        .coordinateSpace(.named(counterSpace))
+    }
+
+    private var totalHeader: some View {
+        let total = Int(model.state.totalAttendance)
+        let capacity = Int(model.state.totalCapacity)
+        let pct = percent(total, of: capacity)
+        let status = capacity > 0 && total > capacity ? "\(total - capacity) over" : "\(pct)% full"
+
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("In the room")
+                .font(.footnote)
+                .foregroundStyle(CounterPalette.pew)
+            HStack(alignment: .bottom) {
+                Odometer(value: total, size: 64)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(counterSpace)) } action: { totalFrame = $0 }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(total)")
+                    .accessibilityAddTraits(.isStaticText)
+                    .accessibilityIdentifier("totalAttendance")
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(capacity > 0 ? status : "No capacity set")
+                        .font(.headline)
+                        .foregroundStyle(CounterPalette.level(pct))
+                        .contentTransition(.numericText(value: Double(pct)))
+                    if capacity > 0 {
+                        Text("of \(capacity) capacity")
+                            .font(.footnote)
+                            .foregroundStyle(CounterPalette.pew)
+                    }
+                }
+                .padding(.bottom, 8)
+                .animation(.snappy, value: pct)
+            }
+            LevelBar(percent: pct, height: 8, color: CounterPalette.level(pct))
+                .accessibilityElement()
+                .accessibilityLabel("Capacity")
+                .accessibilityValue(capacity > 0 ? "\(pct) percent" : "Unknown")
         }
     }
 
-    // MARK: Body
+    private func zoneStage(_ area: AreaCountState) -> some View {
+        let index = areas.firstIndex { $0.id == area.id } ?? 0
+        let count = Int(area.count)
+        let capacity = Int(area.capacity)
+        let pct = percent(count, of: capacity)
+        let status: (String, Color)? = {
+            if capacity > 0 && count > capacity { return ("\(count - capacity) over capacity", CounterPalette.signal) }
+            if capacity > 0 && pct >= 100 { return ("Full", CounterPalette.signal) }
+            if pct >= 90 { return ("Nearly full", CounterPalette.brass) }
+            return nil
+        }()
+        let caption = area.template_.hasSeatMap
+            ? "\(count) of \(capacity) seats taken"
+            : (capacity > 0 ? "\(pct)% of \(capacity)" : "\(count) counted")
 
-    private func countBody(_ area: AreaCountState) -> some View {
-        let locked = model.state.isLocked
-        let total = Int(model.state.totalAttendance)
-        let capacity = Int(model.state.totalCapacity)
-        let pct = capacity > 0 ? min(Double(total) / Double(capacity), 1) : 0
-
-        return VStack(spacing: 0) {
-            VStack(spacing: 14) {
-                StatStrip(
-                    date: Date(epochMillis: model.state.eventDate),
-                    total: total,
-                    capacity: capacity,
-                    pct: pct
-                )
-                CapacityBar(pct: pct, knownCapacity: capacity > 0)
-                ZoneRail(areas: areas, activeId: area.id) { select($0) }
-                    .padding(.top, 10)
+        return VStack(spacing: 6) {
+            HStack {
+                Button { step(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44).contentShape(Rectangle()) }
+                    .disabled(index == 0)
+                    .accessibilityLabel("Previous zone")
+                Spacer()
+                Text(area.template_.name)
+                    .font(.title2.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Spacer()
+                Button { step(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44).contentShape(Rectangle()) }
+                    .disabled(index >= areas.count - 1)
+                    .accessibilityLabel("Next zone")
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
+            .buttonStyle(.plain)
+            .foregroundStyle(CounterPalette.chalk)
 
-            Group {
-                if area.template_.hasSeatMap {
-                    SeatTallyPanel(model: model, area: area, onToggleInclusion: { toggleInclusion(area) })
+            Odometer(value: count, size: 150, color: area.isIncluded ? CounterPalette.brass : CounterPalette.pew)
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(counterSpace)) } action: { zoneFrame = $0 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(area.template_.name) count")
+                .accessibilityValue("\(count)")
+
+            HStack(spacing: 8) {
+                Text(caption).foregroundStyle(CounterPalette.pew)
+                if let status {
+                    Text(status.0).fontWeight(.semibold).foregroundStyle(status.1)
+                }
+            }
+            .font(.subheadline)
+
+            LevelBar(percent: pct, height: 6, color: area.isIncluded ? CounterPalette.level(pct) : CounterPalette.pew)
+                .frame(width: 220)
+                .padding(.top, 6)
+                .accessibilityHidden(true)
+
+            InclusionToggle(included: area.isIncluded) { toggleInclusion(area) }
+                .disabled(model.state.isLocked)
+                .padding(.top, 8)
+        }
+        .padding(.horizontal, 12)
+        .id(area.id)
+        .transition(reduceMotion ? .opacity : .push(from: entryEdge))
+        .offset(x: dragOffset)
+        .contentShape(Rectangle())
+        .gesture(zoneSwipe(index: index))
+        .accessibilityAction(named: "Next zone") { step(1) }
+        .accessibilityAction(named: "Previous zone") { step(-1) }
+    }
+
+    private func zoneSwipe(index: Int) -> some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onChanged { value in
+                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                let atEdge = (value.translation.width > 0 && index == 0)
+                    || (value.translation.width < 0 && index >= areas.count - 1)
+                dragOffset = value.translation.width * (atEdge ? 0.2 : 0.6)
+            }
+            .onEnded { value in
+                let width = value.translation.width
+                if width < -80 && index < areas.count - 1 {
+                    dragOffset = 0
+                    step(1)
+                } else if width > 80 && index > 0 {
+                    dragOffset = 0
+                    step(-1)
                 } else {
-                    TallyPanel(area: area, areas: areas, onSelect: { select($0) }, onToggleInclusion: { toggleInclusion(area) })
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { dragOffset = 0 }
                 }
             }
-            .frame(maxHeight: .infinity)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+    }
 
-            VStack(spacing: 12) {
-                if locked {
-                    Banner(dot: CounterPalette.signal, text: "Count locked. Unlock from the lock button to resume.", tint: CounterPalette.signal.opacity(0.12))
+    @ViewBuilder
+    private func pad(_ area: AreaCountState, locked: Bool) -> some View {
+        let name = area.template_.name
+        ZStack {
+            if area.template_.hasSeatMap {
+                Button { showSeatMap = true } label: {
+                    VStack(spacing: 10) {
+                        Image(systemName: "square.grid.3x3.square")
+                            .font(.system(size: 36))
+                            .foregroundStyle(CounterPalette.brass)
+                        Text("Open seat map").font(.title3.weight(.semibold))
+                        Text("\(name) is counted seat by seat")
+                            .font(.footnote)
+                            .foregroundStyle(CounterPalette.pew)
+                    }
+                    .foregroundStyle(CounterPalette.chalk)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(RoundedRectangle(cornerRadius: 24))
+                    .counterGlass(RoundedRectangle(cornerRadius: 24), interactive: true)
                 }
-                if area.template_.hasSeatMap {
-                    Banner(dot: nil, text: "Tap a seat to cycle: Available → Occupied → Reserved → Blocked.", tint: Color.primary.opacity(0.06))
-                } else {
-                    HStack(spacing: 12) {
-                        KeypadKey(
-                            label: "−1",
-                            caption: "Subtract",
-                            isAdd: false,
-                            accessibilityName: "Decrease \(area.template_.name)",
-                            action: { bump(area, by: -1) }
-                        )
-                        .disabled(locked || area.count <= 0)
-                        KeypadKey(
-                            label: "+1",
-                            caption: "Tap or hold",
-                            isAdd: true,
-                            accessibilityName: "Increase \(area.template_.name)",
-                            action: { bump(area, by: 1) }
-                        )
-                        .disabled(locked)
+                .buttonStyle(.plain)
+            } else {
+                GeometryReader { geo in
+                    CounterGlassGroup(spacing: 8) {
+                        HStack(spacing: 8) {
+                            PadKey(sign: -1, title: "−1", caption: nil, accessibilityName: "Subtract one from \(name)") { bump(area, by: $0) }
+                                .frame(width: (geo.size.width - 8) / 3)
+                                .disabled(locked || area.count <= 0)
+                            PadKey(sign: 1, title: "+1", caption: "Tap or hold", accessibilityName: "Add one to \(name)") { bump(area, by: $0) }
+                                .disabled(locked)
+                        }
                     }
-                    .overlay(alignment: .top) {
-                        FloatingTokens(tokens: tokens) { done in tokens.removeAll { $0.id == done } }
-                    }
-                }
-                HStack(spacing: 8) {
-                    ToolButton(label: "Undo", glyph: "arrow.uturn.backward") {
-                        model.undo()
-                        showSnack("Undone.")
-                    }
-                    .disabled(!model.canUndo || locked)
-                    ToolButton(label: "Redo", glyph: "arrow.uturn.forward") { model.redo() }
-                        .disabled(!model.canRedo || locked)
-                    ToolButton(label: "Report", glyph: "doc.plaintext") { model.generateReport() }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: Color(.systemBackground).opacity(0.92), location: 0.28),
-                        .init(color: Color(.systemBackground), location: 1)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            Shutter(locked: locked, lockedAt: lockedAt, onUnlock: toggleLock)
+        }
+        .frame(height: 184)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .overlay(alignment: .top) {
+            FloatingTokens(tokens: tokens) { done in tokens.removeAll { $0.id == done } }
+        }
+    }
+
+    private func dock(locked: Bool) -> some View {
+        CounterGlassGroup(spacing: 8) {
+            HStack(spacing: 8) {
+                Button { model.undo() } label: {
+                    Label("Undo", systemImage: "arrow.uturn.backward").frame(maxWidth: .infinity)
+                }
+                .disabled(!model.canUndo || locked)
+                Button { model.redo() } label: {
+                    Label("Redo", systemImage: "arrow.uturn.forward").frame(maxWidth: .infinity)
+                }
+                .disabled(!model.canRedo || locked)
+                Button { model.generateReport() } label: {
+                    Label("Report", systemImage: "scroll").frame(maxWidth: .infinity)
+                }
+            }
+            .buttonStyle(GlassPillStyle())
+        }
+    }
+
+    // MARK: Overlays
+
+    @ViewBuilder
+    private var flyOverlay: some View {
+        if let fly, totalFrame != .zero, zoneFrame != .zero {
+            let from = fly.joining ? zoneFrame : totalFrame
+            let to = fly.joining ? totalFrame : zoneFrame
+            let at = flyLanded ? to : from
+            let scale: CGFloat = fly.joining ? (flyLanded ? 0.42 : 1) : (flyLanded ? 1 : 0.42)
+            Text(fly.text)
+                .font(CounterFont.digits(56, bold: true))
+                .foregroundStyle(fly.joining ? CounterPalette.brass : CounterPalette.pew)
+                .scaleEffect(scale)
+                .opacity(flyLanded ? 0 : 1)
+                .position(x: at.midX, y: at.midY)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
         }
     }
 
     @ViewBuilder
     private var snackbar: some View {
         if let snack {
-            HStack {
+            HStack(spacing: 12) {
                 Text(snack.text)
                     .font(.subheadline)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                if let areaId = snack.undoInclusionOf {
-                    Button("Undo") {
-                        model.toggleInclusion(areaId)
-                        showSnack("Undone.")
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color(.systemBackground).opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
+                if let areaId = snack.undoInclusionOf, let area = areas.first(where: { $0.id == areaId }) {
+                    Button("Undo") { toggleInclusion(area) }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(CounterPalette.brass)
                 }
             }
-            .foregroundStyle(Color(.systemBackground))
+            .foregroundStyle(CounterPalette.chalk)
+            .padding(.horizontal, 18)
+            .frame(minHeight: 52)
+            .counterGlass(Capsule())
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color.primary, in: RoundedRectangle(cornerRadius: 16))
-            .padding(16)
-            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .padding(.top, 4)
+            .transition(.move(edge: .top).combined(with: .opacity))
             .id(snack.id)
         }
     }
@@ -339,101 +528,140 @@ struct HeadCounterView: View {
     // MARK: Actions
 
     private func select(_ area: AreaCountState) {
-        selectedAreaId = area.id
+        guard area.id != activeArea?.id else { return }
+        let from = areas.firstIndex { $0.id == activeArea?.id } ?? 0
+        let to = areas.firstIndex { $0.id == area.id } ?? 0
+        entryEdge = to > from ? .trailing : .leading
+        CounterHaptics.select()
+        withAnimation(reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.38, dampingFraction: 0.86)) {
+            selectedAreaId = area.id
+        }
+    }
+
+    private func step(_ delta: Int) {
+        guard let current = activeArea, let index = areas.firstIndex(where: { $0.id == current.id }) else { return }
+        let target = index + delta
+        guard areas.indices.contains(target) else { return }
+        select(areas[target])
     }
 
     private func bump(_ area: AreaCountState, by delta: Int) {
+        guard !model.state.isLocked, delta > 0 || area.count > 0 else { return }
+        CounterHaptics.tick()
         model.bump(area.id, by: delta)
-        tokenSeq += 1
-        tokens.append(FloatToken(id: tokenSeq, value: delta))
+        seq += 1
+        let x: CGFloat = delta > 0 ? .random(in: 0.5...0.85) : .random(in: 0.1...0.22)
+        tokens.append(FloatToken(id: seq, value: delta, x: x))
     }
 
     private func toggleInclusion(_ area: AreaCountState) {
-        UISelectionFeedbackGenerator().selectionChanged()
+        // The snackbar's Undo can outlive a lock; a locked count must not change.
+        guard !model.state.isLocked else { return }
+        CounterHaptics.select()
         selectedAreaId = area.id
+        let joining = !area.isIncluded
         model.toggleInclusion(area.id)
+
+        if area.count > 0 && !reduceMotion {
+            seq += 1
+            flyLanded = false
+            fly = FlyToken(id: seq, text: "\(joining ? "+" : "−")\(area.count)", joining: joining)
+            let id = seq
+            DispatchQueue.main.async {
+                withAnimation(.timingCurve(0.5, 0, 0.3, 1, duration: 0.76)) { flyLanded = true }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                if fly?.id == id { fly = nil }
+            }
+        }
+
         let name = area.template_.name
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             snack = SnackMessage(
-                text: area.isIncluded ? "\(name) excluded from total." : "\(name) included in total.",
+                text: joining ? "\(name) counted in the total." : "\(name) left out of the total.",
                 undoInclusionOf: area.id
             )
         }
     }
 
-    private func showSnack(_ text: String) {
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-            snack = SnackMessage(text: text, undoInclusionOf: nil)
+    private func toggleLock() {
+        if model.state.isLocked {
+            CounterHaptics.soft()
+        } else {
+            lockedAt = Date()
+            CounterHaptics.heavy()
         }
+        model.toggleLock()
+    }
+
+    private func closeReceipt() {
+        var instant = Transaction()
+        instant.disablesAnimations = true
+        withTransaction(instant) { showReceipt = false }
+        model.clearReport()
+    }
+
+    /// One warning buzz when a zone or the total crosses 90% or 100% on the way up.
+    private func warnOnCapacityCrossing() {
+        var next: [String: Int] = [:]
+        var warn = false
+        for area in areas {
+            let pct = percent(Int(area.count), of: Int(area.capacity))
+            next[area.id] = pct
+            if let old = lastPercents[area.id], crossedWarning(from: old, to: pct) { warn = true }
+        }
+        let totalPct = percent(Int(model.state.totalAttendance), of: Int(model.state.totalCapacity))
+        next["total"] = totalPct
+        if let old = lastPercents["total"], crossedWarning(from: old, to: totalPct) { warn = true }
+        if warn { CounterHaptics.warning() }
+        lastPercents = next
     }
 }
 
-// MARK: - Stat strip & capacity bar
+// MARK: - Room level
 
-private struct StatStrip: View {
-    let date: Date
-    let total: Int
-    let capacity: Int
-    let pct: Double
-    @State private var live = false
+/// Brass "water line" behind the counter showing how full the selected zone is.
+private struct RoomLevel: View {
+    let percent: Int
+    let included: Bool
 
     var body: some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(CounterPalette.signal.opacity(live ? 1 : 0.35))
-                .frame(width: 10, height: 10)
-                .onAppear {
-                    withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { live = true }
-                }
-                .accessibilityHidden(true)
-            Text(date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour(.twoDigits(amPM: .omitted)).minute()).uppercased())
-                .font(.system(size: 13, weight: .medium, design: .monospaced))
-                .tracking(1.4)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(String(format: "%03d", total))
-                .font(.system(size: 48, weight: .bold, design: .monospaced))
-                .contentTransition(.numericText(value: Double(total)))
-                .animation(.snappy, value: total)
-                .accessibilityLabel("\(total)")
-                .accessibilityIdentifier("totalAttendance")
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("TOTAL")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .tracking(2)
-                Text(capacity > 0 ? "/\(capacity) · \(Int((pct * 100).rounded()))%" : "/ —")
-                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+        let color = !included ? CounterPalette.pew : percent >= 100 ? CounterPalette.signal : CounterPalette.brass
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                Rectangle().fill(color.opacity(0.45)).frame(height: 1.5)
+                Rectangle().fill(color.opacity(0.10))
+                    .frame(height: geo.size.height * CGFloat(min(percent, 100)) / 100)
             }
-            .foregroundStyle(.secondary)
         }
+        .ignoresSafeArea(edges: .bottom)
+        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: percent)
+        .animation(.easeInOut(duration: 0.3), value: included)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
-private struct CapacityBar: View {
-    let pct: Double
-    let knownCapacity: Bool
-    var segments = 18
-    @State private var pulse = false
+private struct LevelBar: View {
+    let percent: Int
+    let height: CGFloat
+    let color: Color
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<segments, id: \.self) { i in
-                let high = Double(i + 1) / Double(segments)
-                let active = knownCapacity && pct >= high - 1 / Double(segments)
-                let base: Color = high >= 0.93 ? CounterPalette.signal : high >= 0.78 ? CounterPalette.muted : .primary
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(active ? base.opacity(pct >= 0.95 && high > 0.78 && pulse ? 0.55 : 1) : Color.primary.opacity(0.10))
-                    .frame(height: 14)
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(CounterPalette.plate)
+                Capsule().fill(color)
+                    .frame(width: geo.size.width * CGFloat(min(percent, 100)) / 100)
+                Rectangle()
+                    .fill(CounterPalette.pew.opacity(0.7))
+                    .frame(width: 2, height: height + 6)
+                    .offset(x: geo.size.width * 0.9 - 1)
             }
         }
-        .animation(.easeOut(duration: 0.22), value: pct)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.72).repeatForever(autoreverses: true)) { pulse = true }
-        }
-        .accessibilityElement()
-        .accessibilityLabel("Capacity")
-        .accessibilityValue(knownCapacity ? "\(Int((pct * 100).rounded())) percent" : "Unknown")
+        .frame(height: height)
+        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: percent)
     }
 }
 
@@ -443,15 +671,19 @@ private struct ZoneRail: View {
     let areas: [AreaCountState]
     let activeId: String
     let onSelect: (AreaCountState) -> Void
+    @Namespace private var glass
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(areas, id: \.id) { area in
-                        ZoneChip(area: area, selected: area.id == activeId) { onSelect(area) }
-                            .id(area.id)
+                CounterGlassGroup(spacing: 8) {
+                    HStack(spacing: 8) {
+                        ForEach(areas, id: \.id) { area in
+                            chip(area).id(area.id)
+                        }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 6)
                 }
             }
             .onChange(of: activeId, initial: true) { _, id in
@@ -459,323 +691,173 @@ private struct ZoneRail: View {
             }
         }
     }
-}
 
-private struct ZoneChip: View {
-    let area: AreaCountState
-    let selected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                Text(area.template_.name)
-                    .font(.subheadline.weight(.semibold))
-                    .opacity(selected ? 1 : 0.78)
+    private func chip(_ area: AreaCountState) -> some View {
+        let selected = area.id == activeId
+        return Button { onSelect(area) } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(area.template_.name).font(.subheadline.weight(.medium))
                 Text("\(area.count)")
-                    .font(.system(.title3, design: .monospaced).weight(.bold))
-                    .opacity(area.count == 0 ? 0.32 : 1)
+                    .font(CounterFont.digits(19))
+                    .strikethrough(!area.isIncluded)
                     .contentTransition(.numericText(value: Double(area.count)))
             }
-            .foregroundStyle(selected ? Color(.systemBackground) : Color.primary)
-            .padding(.horizontal, 16)
-            .frame(minHeight: 68)
-            .background(selected ? Color.primary : Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+            .foregroundStyle(selected ? CounterPalette.ground : area.isIncluded ? CounterPalette.chalk : CounterPalette.pew)
+            .padding(.horizontal, 14)
+            .frame(height: 40)
+            .contentShape(Capsule())
+            .counterGlass(Capsule(), tint: selected ? CounterPalette.chalk : nil, interactive: true)
+            .counterGlassID(area.id, in: glass)
             .animation(.easeInOut(duration: 0.22), value: selected)
         }
-        .buttonStyle(PressScaleStyle())
-        .opacity(area.isIncluded ? 1 : 0.42)
-        .accessibilityLabel("\(area.template_.name), \(area.count)")
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(area.template_.name), \(area.count)\(area.isIncluded ? "" : ", left out of total")")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
-private struct PressScaleStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.95 : 1)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
-    }
-}
+// MARK: - Inclusion toggle
 
-// MARK: - Tally panel (swipe between zones)
-
-private func caption(for area: AreaCountState) -> String {
-    guard area.capacity > 0 else { return "\(area.count) counted" }
-    let pct = min(Double(area.count) / Double(area.capacity), 1) * 100
-    return "\(area.count) of \(area.capacity) · \(Int(pct.rounded()))%"
-}
-
-private struct TallyPanel: View {
-    let area: AreaCountState
-    let areas: [AreaCountState]
-    let onSelect: (AreaCountState) -> Void
-    let onToggleInclusion: () -> Void
-
-    @State private var dragOffset: CGFloat = 0
-    @State private var pulse: CGFloat = 1
-
-    private let commitThreshold: CGFloat = 96
-    private let travelLimit: CGFloat = 260
-    private let flingOffset: CGFloat = 360
-
-    private var index: Int? { areas.firstIndex { $0.id == area.id } }
-    private var prevArea: AreaCountState? { index.flatMap { $0 > 0 ? areas[$0 - 1] : nil } }
-    private var nextArea: AreaCountState? { index.flatMap { $0 < areas.count - 1 ? areas[$0 + 1] : nil } }
-
-    private var pct: Double {
-        area.capacity > 0 ? min(Double(area.count) / Double(area.capacity), 1) : 0
-    }
-
-    private var progressColor: Color {
-        pct >= 0.95 ? CounterPalette.signal : pct >= 0.80 ? CounterPalette.muted : .white
-    }
-
-    var body: some View {
-        let p = dragOffset
-        let activeAlpha = 1 - min(abs(p) / commitThreshold, 1) * 0.55
-        let prevAlpha = min(max(p / commitThreshold, 0), 1) * 0.45
-        let nextAlpha = min(max(-p / commitThreshold, 0), 1) * 0.45
-
-        VStack(spacing: 14) {
-            HStack {
-                Text(area.template_.name)
-                    .font(.system(size: 22, weight: .semibold))
-                    .lineLimit(1)
-                Spacer()
-                InclusionPill(included: area.isIncluded, action: onToggleInclusion)
-            }
-
-            ZStack {
-                if let prevArea {
-                    digit(prevArea.count).opacity(0.7 * prevAlpha).offset(x: -flingOffset + p)
-                        .accessibilityHidden(true)
-                }
-                if let nextArea {
-                    digit(nextArea.count).opacity(0.7 * nextAlpha).offset(x: flingOffset + p)
-                        .accessibilityHidden(true)
-                }
-                digit(area.count)
-                    .contentTransition(.numericText(value: Double(area.count)))
-                    .animation(.snappy, value: area.count)
-                    .scaleEffect(pulse)
-                    .opacity(activeAlpha)
-                    .offset(x: p)
-                    .accessibilityLabel("\(area.template_.name) count")
-                    .accessibilityValue("\(area.count)")
-            }
-            .frame(maxWidth: .infinity)
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.white.opacity(0.18))
-                    Capsule().fill(progressColor).frame(width: geo.size.width * pct)
-                }
-            }
-            .frame(height: 8)
-            .animation(.easeOut(duration: 0.52), value: pct)
-
-            ZStack {
-                if let prevArea {
-                    captionText(prevArea).opacity(prevAlpha).offset(x: (-flingOffset + p) * 0.55)
-                }
-                if let nextArea {
-                    captionText(nextArea).opacity(nextAlpha).offset(x: (flingOffset + p) * 0.55)
-                }
-                captionText(area).opacity(activeAlpha).offset(x: p * 0.55)
-            }
-        }
-        .foregroundStyle(.white)
-        .padding(.horizontal, 24)
-        .padding(.vertical, 20)
-        .background(CounterPalette.slab, in: RoundedRectangle(cornerRadius: 28))
-        .clipShape(RoundedRectangle(cornerRadius: 28))
-        .contentShape(Rectangle())
-        .gesture(swipe)
-        .onChange(of: area.count) { old, new in
-            guard old != new else { return }
-            pulse = 1.06
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) { pulse = 1 }
-        }
-        .accessibilityAction(named: "Next zone") { if let nextArea { onSelect(nextArea) } }
-        .accessibilityAction(named: "Previous zone") { if let prevArea { onSelect(prevArea) } }
-    }
-
-    private func digit(_ value: Int32) -> some View {
-        Text("\(value)")
-            .font(.system(size: 112, weight: .light))
-            .monospacedDigit()
-            .tracking(-6)
-            .lineLimit(1)
-            .minimumScaleFactor(0.5)
-    }
-
-    private func captionText(_ area: AreaCountState) -> some View {
-        Text(caption(for: area))
-            .font(.system(size: 15, weight: .medium, design: .monospaced))
-            .foregroundStyle(.white.opacity(0.85))
-            .lineLimit(1)
-    }
-
-    private var swipe: some Gesture {
-        DragGesture(minimumDistance: 12)
-            .onChanged { value in
-                let target = value.translation.width
-                let resisted: CGFloat
-                if (target < 0 && nextArea == nil) || (target > 0 && prevArea == nil) {
-                    resisted = target * 0.28
-                } else {
-                    resisted = target
-                }
-                dragOffset = min(max(resisted, -travelLimit), travelLimit)
-            }
-            .onEnded { _ in
-                let off = dragOffset
-                if off <= -commitThreshold, let nextArea {
-                    commit(to: nextArea, continuingFrom: flingOffset + off)
-                } else if off >= commitThreshold, let prevArea {
-                    commit(to: prevArea, continuingFrom: -flingOffset + off)
-                } else {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.62)) { dragOffset = 0 }
-                }
-            }
-    }
-
-    /// Swap zones without animation so the new zone starts where its ghost was, then settle it.
-    private func commit(to target: AreaCountState, continuingFrom position: CGFloat) {
-        UISelectionFeedbackGenerator().selectionChanged()
-        var swap = Transaction()
-        swap.disablesAnimations = true
-        withTransaction(swap) {
-            onSelect(target)
-            dragOffset = position
-        }
-        DispatchQueue.main.async {
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { dragOffset = 0 }
-        }
-    }
-}
-
-private struct InclusionPill: View {
+private struct InclusionToggle: View {
     let included: Bool
     let action: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(included ? Color.white : Color.white.opacity(0.45))
-                    .frame(width: 8, height: 8)
-                Text(included ? "IN TOTAL" : "EXCLUDED")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .tracking(1.4)
-                    .foregroundStyle(.white.opacity(included ? 0.95 : 0.65))
+            HStack(spacing: 10) {
+                ZStack(alignment: included ? .trailing : .leading) {
+                    Capsule().fill(included ? CounterPalette.brass : CounterPalette.plateHigh)
+                    Circle()
+                        .fill(included ? CounterPalette.brassInk : CounterPalette.chalk)
+                        .padding(3)
+                }
+                .frame(width: 40, height: 24)
+                Text(included ? "Counted in total" : "Left out of total")
+                    .font(.subheadline)
+                    .foregroundStyle(included ? CounterPalette.chalk : CounterPalette.pew)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.white.opacity(included ? 0.16 : 0.06), in: Capsule())
-            .overlay(Capsule().strokeBorder(Color.white.opacity(included ? 0.45 : 0.22), lineWidth: 1))
-            .animation(.easeInOut(duration: 0.22), value: included)
+            .frame(minHeight: 44)
+            .opacity(isEnabled ? 1 : 0.4)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: included)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(included ? "In total" : "Excluded")
-        .accessibilityHint("Toggles whether this zone counts toward the total")
+        .accessibilityLabel(included ? "Counted in total" : "Left out of total")
+        .accessibilityHint("Changes whether this zone counts toward the total")
     }
 }
 
-// MARK: - Keypad
+// MARK: - Pad
 
-/// Hold-to-repeat bookkeeping. A reference type on purpose: writing view state mid-press
-/// re-renders the button and can leave it stuck pressed without ever firing its action.
+/// Press bookkeeping in a reference type, so hold and swipe updates never re-render the key mid-press.
 @MainActor
-private final class KeyRepeater {
+private final class PressTracker {
+    var active = false
+    /// Set when a hold or swipe already counted, so the release doesn't add one more.
+    var consumed = false
+    var lastY: CGFloat = 0
     var task: Task<Void, Never>?
-    var didRepeat = false
 }
 
-/// Arcade key: tap to fire once, hold to repeat with accelerating cadence.
-private struct KeypadKey: View {
-    let label: String
-    let caption: String
-    let isAdd: Bool
+/// Count key: tap for one, hold to repeat faster, or swipe up/down on it to add or subtract.
+private struct PadKey: View {
+    let sign: Int
+    let title: String
+    let caption: String?
     let accessibilityName: String
-    let action: () -> Void
+    let onBump: (Int) -> Void
 
     @Environment(\.isEnabled) private var isEnabled
-    @State private var repeater = KeyRepeater()
+    @State private var tracker = PressTracker()
+    /// Resets on release and on cancellation, which `onEnded` never sees.
+    @GestureState private var pressing = false
 
     var body: some View {
         Button {
-            // A hold already fired its own repeats; the release shouldn't add one more.
-            if repeater.didRepeat {
-                repeater.didRepeat = false
-            } else {
-                fire()
-            }
+            if !tracker.consumed { onBump(sign) }
         } label: {
-            VStack(spacing: 2) {
-                Text(label)
-                    .font(.system(size: 40, weight: .bold, design: .monospaced))
-                Text(caption.uppercased())
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .tracking(1.6)
-                    .opacity(0.7)
+            VStack(spacing: 6) {
+                Text(title).font(CounterFont.digits(sign > 0 ? 72 : 44))
+                if let caption {
+                    Text(caption).font(.footnote.weight(.medium)).opacity(0.8)
+                }
             }
-            .frame(maxWidth: .infinity)
         }
-        .buttonStyle(KeyStyle(isAdd: isAdd, onPressChange: pressChanged))
+        .buttonStyle(PadKeyStyle(isAdd: sign > 0))
+        .simultaneousGesture(press)
+        .onChange(of: pressing) { _, isPressing in
+            guard !isPressing else { return }
+            tracker.task?.cancel()
+            tracker.active = false
+        }
+        .onChange(of: isEnabled) { _, enabled in
+            if !enabled { tracker.task?.cancel() }
+        }
+        .onDisappear { tracker.task?.cancel() }
         .accessibilityLabel(accessibilityName)
     }
 
-    private func fire() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        action()
+    private var press: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .global)
+            .updating($pressing) { _, state, _ in state = true }
+            .onChanged { value in
+                if !tracker.active {
+                    tracker.active = true
+                    tracker.consumed = false
+                    tracker.lastY = value.location.y
+                    startHold()
+                    return
+                }
+                let dy = tracker.lastY - value.location.y
+                if abs(dy) >= 28 {
+                    tracker.task?.cancel()
+                    tracker.consumed = true
+                    tracker.lastY = value.location.y
+                    onBump(dy > 0 ? 1 : -1)
+                }
+            }
+            .onEnded { _ in
+                tracker.task?.cancel()
+                tracker.active = false
+                // The button's own action runs on release; clear the flag after it has read it.
+                let tracker = tracker
+                DispatchQueue.main.async { tracker.consumed = false }
+            }
     }
 
-    private func pressChanged(_ pressed: Bool) {
-        repeater.task?.cancel()
-        guard pressed, isEnabled else { return }
-        let repeater = repeater
-        repeater.task = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(380))
-            var interval = 180.0
+    private func startHold() {
+        guard isEnabled else { return }
+        let tracker = tracker
+        let sign = sign
+        let onBump = onBump
+        tracker.task?.cancel()
+        tracker.task = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(420))
+            var interval = 220.0
             while !Task.isCancelled {
-                repeater.didRepeat = true
-                fire()
+                tracker.consumed = true
+                onBump(sign)
                 try? await Task.sleep(for: .milliseconds(Int(interval)))
-                interval = max(50, interval * 0.85)
+                interval = max(70, interval * 0.86)
             }
         }
     }
 }
 
-private struct KeyStyle: ButtonStyle {
+private struct PadKeyStyle: ButtonStyle {
     let isAdd: Bool
-    let onPressChange: (Bool) -> Void
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
-        let pressed = configuration.isPressed && isEnabled
-        let accent = isAdd ? Color.primary : CounterPalette.signal
-        let face: Color = !isEnabled ? Color.primary.opacity(0.05)
-            : isAdd ? (pressed ? Color.primary.opacity(0.8) : .primary)
-            : (pressed ? CounterPalette.signal.opacity(0.18) : Color.primary.opacity(0.06))
-        let fg: Color = !isEnabled ? Color.secondary.opacity(0.45) : isAdd ? Color(.systemBackground) : .primary
-
-        return ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: 22)
-                .fill(accent.opacity(0.55 * (isEnabled ? 1 : 0.18)))
-                .padding(.top, 8)
-            configuration.label
-                .foregroundStyle(fg)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(face, in: RoundedRectangle(cornerRadius: 22))
-                .padding(.bottom, 8)
-                .offset(y: pressed ? 6 : 0)
-                .animation(.spring(response: 0.25, dampingFraction: 0.5), value: pressed)
-        }
-        .frame(height: 112)
-        .onChange(of: configuration.isPressed) { _, isPressed in onPressChange(isPressed) }
+        let shape = RoundedRectangle(cornerRadius: 22)
+        configuration.label
+            .foregroundStyle(isAdd ? CounterPalette.brassInk : CounterPalette.chalk)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(shape)
+            .counterGlass(shape, tint: isAdd ? CounterPalette.brass : CounterPalette.plate.opacity(0.7), interactive: isEnabled)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(isEnabled ? 1 : 0.35)
+            .animation(.spring(response: 0.22, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
 
@@ -784,9 +866,10 @@ private struct FloatingTokens: View {
     let onComplete: (Int) -> Void
 
     var body: some View {
-        ZStack {
+        GeometryReader { geo in
             ForEach(tokens) { token in
                 FloatingTokenView(token: token) { onComplete(token.id) }
+                    .position(x: geo.size.width * token.x, y: 44)
             }
         }
         .frame(height: 0)
@@ -798,211 +881,78 @@ private struct FloatingTokens: View {
 private struct FloatingTokenView: View {
     let token: FloatToken
     let onComplete: () -> Void
-    @State private var rise: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var travel: CGFloat = 0
     @State private var fade: Double = 1
 
     var body: some View {
-        let fromAdd = token.value >= 0
-        Text(fromAdd ? "+\(token.value)" : "\(token.value)")
-            .font(.system(size: 30, weight: .bold, design: .monospaced))
-            .foregroundStyle(fromAdd ? Color.primary.opacity(0.75) : CounterPalette.signal)
+        let adding = token.value > 0
+        Text(adding ? "+1" : "−1")
+            .font(CounterFont.digits(34, bold: true))
+            .foregroundStyle(adding ? CounterPalette.brass : CounterPalette.pew)
+            .scaleEffect(adding ? 0.85 + 0.35 * (1 - fade) : 1)
             .opacity(fade)
-            .scaleEffect(0.85 + 0.25 * fade)
-            // Tokens drift slightly inward as they rise, toward the readout.
-            .offset(x: fromAdd ? -rise * 0.08 : rise * 0.08, y: rise)
-            .frame(maxWidth: .infinity, alignment: fromAdd ? .trailing : .leading)
-            .padding(.horizontal, 36)
+            .offset(y: travel)
             .task {
-                withAnimation(.easeOut(duration: 0.72)) { rise = -180 }
-                withAnimation(.easeIn(duration: 0.48).delay(0.22)) { fade = 0 }
-                try? await Task.sleep(for: .milliseconds(720))
+                let distance: CGFloat = reduceMotion ? 0 : (adding ? -170 : 90)
+                withAnimation(.easeOut(duration: 0.72)) { travel = distance }
+                withAnimation(.easeIn(duration: 0.5).delay(0.22)) { fade = 0 }
+                try? await Task.sleep(for: .milliseconds(740))
                 onComplete()
             }
     }
 }
 
-// MARK: - Dock pieces
+// MARK: - Lock shutter
 
-private struct ToolButton: View {
-    let label: String
-    let glyph: String
-    let action: () -> Void
+/// Roller shutter that drops over the pad when the count is locked, with a stamped time.
+private struct Shutter: View {
+    let locked: Bool
+    let lockedAt: Date?
+    let onUnlock: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var stamped = false
+
+    private var stampText: String {
+        guard let lockedAt else { return "Locked" }
+        return "Locked at \(lockedAt.formatted(date: .omitted, time: .shortened))"
+    }
 
     var body: some View {
-        Button(action: action) {
-            Label(label, systemImage: glyph)
-                .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-        }
-        .buttonStyle(.bordered)
-        .tint(.primary)
-    }
-}
-
-private struct Banner: View {
-    let dot: Color?
-    let text: String
-    let tint: Color
-
-    var body: some View {
-        HStack(spacing: 10) {
-            if let dot {
-                Circle().fill(dot).frame(width: 8, height: 8)
-            }
-            Text(text).font(.footnote)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(tint, in: RoundedRectangle(cornerRadius: 14))
-    }
-}
-
-// MARK: - Seat-mapped tally panel
-
-private let seatStatuses = ["AVAILABLE", "OCCUPIED", "RESERVED", "BLOCKED"]
-
-/// Seat colors tuned for the dark slab: occupied seats read as solid white.
-private func seatFill(_ status: String) -> Color {
-    switch status {
-    case "OCCUPIED": return .white
-    case "RESERVED": return CounterPalette.muted
-    case "BLOCKED": return CounterPalette.signal
-    default: return .white.opacity(0.14)
-    }
-}
-
-private struct SeatTallyPanel: View {
-    @ObservedObject var model: CountingModel
-    let area: AreaCountState
-    let onToggleInclusion: () -> Void
-    @State private var rows: [SeatRowWithSeats] = []
-    @State private var statusBySeat: [String: String] = [:]
-    @State private var handles: [Cancellable] = []
-
-    private var allSeats: [SeatEntity] { rows.flatMap { $0.seats } }
-    private var occupied: Int { allSeats.filter { statusBySeat[$0.id] == "OCCUPIED" }.count }
-    private var usable: Int { allSeats.filter { statusBySeat[$0.id] != "BLOCKED" }.count }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(area.template_.name).font(.system(size: 22, weight: .semibold))
-                    Text("\(occupied) of \(usable) seated")
-                        .font(.system(.subheadline, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.85))
-                        .contentTransition(.numericText(value: Double(occupied)))
-                }
-                Spacer()
-                InclusionPill(included: area.isIncluded, action: onToggleInclusion)
-            }
-            if rows.isEmpty {
-                Text("No rows configured. Add rows in this zone's seat map editor.")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.75))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                GeometryReader { geo in
-                    ScrollView([.horizontal, .vertical]) {
-                        VStack(spacing: 6) {
-                            screenMarker
-                            ForEach(rows, id: \.row.id) { row in
-                                // Labels on both sides keep the seats centered under the screen
-                                HStack(spacing: 4) {
-                                    rowLabel(row.row.label)
-                                    ForEach(row.seats.sorted { $0.number < $1.number }, id: \.id) { seat in
-                                        seatButton(seat)
-                                    }
-                                    rowLabel(row.row.label)
-                                }
-                            }
-                        }
-                        .padding(.vertical, 8)
-                        .frame(minWidth: geo.size.width)
+        GeometryReader { geo in
+            ZStack {
+                Canvas { context, size in
+                    var y: CGFloat = 0
+                    while y < size.height {
+                        context.fill(Path(CGRect(x: 0, y: y, width: size.width, height: 22)), with: .color(CounterPalette.plateHigh))
+                        context.fill(Path(CGRect(x: 0, y: y + 22, width: size.width, height: 2)), with: .color(CounterPalette.plate))
+                        y += 24
                     }
                 }
-                legend
-            }
-        }
-        .foregroundStyle(.white)
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(CounterPalette.slab, in: RoundedRectangle(cornerRadius: 28))
-        .task(id: area.template_.id) {
-            handles.forEach { $0.cancel() }
-            rows = []
-            statusBySeat = [:]
-            handles = model.observeSeats(
-                areaTemplateId: area.template_.id,
-                onRows: { rows = $0 },
-                onStatuses: { statusBySeat = $0 }
-            )
-        }
-        .onDisappear {
-            handles.forEach { $0.cancel() }
-            handles = []
-        }
-    }
-
-    private func seatButton(_ seat: SeatEntity) -> some View {
-        let status = statusBySeat[seat.id] ?? "AVAILABLE"
-        return Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            model.cycleSeat(seat.id, current: status)
-        } label: {
-            Text("\(seat.number)")
-                .font(.caption2.monospacedDigit())
-                .foregroundStyle(status == "OCCUPIED" ? Color.black : Color.white)
-                .frame(width: 34, height: 34)
-                .background(seatFill(status), in: RoundedRectangle(cornerRadius: 6))
-        }
-        .buttonStyle(.plain)
-        .disabled(model.state.isLocked)
-        .accessibilityLabel("Seat \(seat.label)")
-        .accessibilityValue(status.capitalized)
-    }
-
-    private func rowLabel(_ label: String) -> some View {
-        Text(label)
-            .font(.caption.bold())
-            .frame(width: 24)
-    }
-
-    /// Width of the longest row: two labels plus its seats, with 4pt spacing between each.
-    /// The horizontal scroll view proposes no width, so the screen marker needs it explicitly.
-    private var widestRowWidth: CGFloat {
-        let seats = CGFloat(rows.map { $0.seats.count }.max() ?? 0)
-        return 2 * 24 + seats * 34 + (seats + 1) * 4
-    }
-
-    private var screenMarker: some View {
-        VStack(spacing: 4) {
-            UnevenRoundedRectangle(bottomLeadingRadius: 50, bottomTrailingRadius: 50)
-                .fill(Color.white.opacity(0.6))
-                .frame(width: max(widestRowWidth - 56, 40), height: 6)
-            Text("SCREEN")
-                .font(.caption2)
-                .tracking(4)
-                .foregroundStyle(.white.opacity(0.7))
-        }
-        .padding(.bottom, 12)
-        .accessibilityHidden(true)
-    }
-
-    private var legend: some View {
-        HStack(spacing: 12) {
-            ForEach(seatStatuses, id: \.self) { status in
-                HStack(spacing: 4) {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(seatFill(status))
-                        .frame(width: 12, height: 12)
-                    Text(status.capitalized).font(.caption2)
+                VStack(spacing: 14) {
+                    Text(stampText)
+                        .font(CounterFont.digits(26, bold: true))
+                        .foregroundStyle(CounterPalette.brass)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(CounterPalette.ground, in: RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(CounterPalette.brass, lineWidth: 2))
+                        .rotationEffect(.degrees(-4))
+                        .scaleEffect(stamped ? 1 : 1.7)
+                        .opacity(stamped ? 1 : 0)
+                    Button("Unlock to keep counting", action: onUnlock)
+                        .buttonStyle(GlassPillStyle())
                 }
             }
+            .offset(y: locked ? 0 : -geo.size.height - 8)
+            .animation(reduceMotion ? .easeInOut(duration: 0.15) : .timingCurve(0.65, 0, 0.25, 1, duration: 0.52), value: locked)
         }
-        .frame(maxWidth: .infinity)
-        .accessibilityHidden(true)
+        .allowsHitTesting(locked)
+        .accessibilityHidden(!locked)
+        .onChange(of: locked, initial: true) { _, isLocked in
+            stamped = false
+            guard isLocked else { return }
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.55).delay(reduceMotion ? 0 : 0.4)) { stamped = true }
+        }
     }
 }

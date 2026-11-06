@@ -1,21 +1,18 @@
 import SwiftUI
 import shared
 
-/// Intake form shown before a new count opens: event type, auto timestamp, and who is counting.
+/// Intake shown before a new count opens: what is being counted, an automatic start time, and who is counting.
 struct NewCountSheet: View {
+    let venueName: String
     let eventTypes: [EventTypeDto]
     let onCancel: () -> Void
     let onStart: (EventTypeDto?, String) -> Void
 
-    /// nil selects the built-in generic "Head Count" type.
+    /// nil selects the built-in general "Head count" type.
     @State private var selectedTypeId: String?
     @State private var countedBy = ""
     @FocusState private var nameFocused: Bool
-    private let openedAt = Date()
-
-    private var filingNumber: String {
-        String(format: "%03d", Int(openedAt.timeIntervalSince1970) % 1000)
-    }
+    @State private var openedAt = Date()
 
     private var trimmedName: String {
         countedBy.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -23,153 +20,127 @@ struct NewCountSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Filing № \(filingNumber)")
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                    Text("New count").font(.system(size: 22, weight: .semibold))
+                    Text("New count").font(.largeTitle.weight(.bold))
+                    Text(venueName).font(.subheadline).foregroundStyle(CounterPalette.pew)
                 }
                 Spacer()
                 Button("Cancel", action: onCancel)
-                    .buttonStyle(.bordered)
-                    .tint(.primary)
+                    .buttonStyle(GlassPillStyle())
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    section(eyebrow: "01 · TYPE", title: "Type", hint: "What's on the card")
-                    VStack(spacing: 6) {
-                        typeRow(index: 1, name: "Head Count", detail: "GENERAL", id: nil)
-                        ForEach(Array(eventTypes.enumerated()), id: \.element.id) { offset, type in
-                            typeRow(
-                                index: offset + 2,
-                                name: type.name,
-                                detail: type.description_.isEmpty ? "EVENT TYPE" : type.description_.uppercased(),
-                                id: type.id
-                            )
+                VStack(alignment: .leading, spacing: 28) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("What are you counting?").font(.headline)
+                        VStack(spacing: 8) {
+                            typeRow(name: "Head count", detail: "A general count with no event type", id: nil)
+                            ForEach(eventTypes, id: \.id) { type in
+                                typeRow(
+                                    name: type.name,
+                                    detail: type.description_.isEmpty ? "Event type" : type.description_,
+                                    id: type.id
+                                )
+                            }
                         }
                     }
 
-                    section(eyebrow: "02 · STAMP", title: "Timestamp", hint: "Filed at (auto)")
-                        .padding(.top, 6)
-                    HStack(spacing: 10) {
-                        RoundedRectangle(cornerRadius: 2).fill(Color.primary).frame(width: 6, height: 6)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(openedAt.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour(.twoDigits(amPM: .omitted)).minute()).uppercased())
-                                .font(.headline)
-                            Text("LIVE · CAPTURED AT OPEN")
-                                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                                .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Started").font(.headline)
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(openedAt.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()))
+                                .font(CounterFont.digits(30))
+                            Spacer()
+                            Text("Set automatically").font(.footnote).foregroundStyle(CounterPalette.pew)
                         }
-                        Spacer()
-                        Text("NOW").font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .background(CounterPalette.plate, in: RoundedRectangle(cornerRadius: 16))
                     }
-                    .padding(16)
-                    .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 14))
 
-                    section(eyebrow: "03 · COUNTER", title: "Counter", hint: "Who's on the clicker")
-                        .padding(.top, 6)
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Who is counting?").font(.headline)
                         TextField("Your name", text: $countedBy)
-                            .font(.title2)
+                            .font(.title3)
+                            .textContentType(.name)
                             .textInputAutocapitalization(.words)
                             .submitLabel(.go)
                             .focused($nameFocused)
                             .onSubmit(start)
-                            .padding(.vertical, 10)
-                        Divider()
-                        HStack {
-                            Text("SIGN OFF · REQUIRED")
-                            Spacer()
-                            Text(trimmedName.isEmpty ? "—" : "\(countedBy.count) CHAR")
-                        }
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                            .padding(.horizontal, 16)
+                            .frame(height: 56)
+                            .background(CounterPalette.plate, in: RoundedRectangle(cornerRadius: 16))
+                        Text("Your name goes on the report.")
+                            .font(.footnote)
+                            .foregroundStyle(CounterPalette.pew)
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 20)
-                .padding(.bottom, 48)
+                .padding(.top, 24)
+                .padding(.bottom, 32)
             }
             .scrollDismissesKeyboard(.interactively)
 
-            HStack(spacing: 10) {
-                Button(action: onCancel) {
-                    Text("Cancel").frame(maxWidth: .infinity).padding(.vertical, 14)
-                }
-                .buttonStyle(.bordered)
-                .tint(.primary)
-                Button(action: start) {
-                    VStack(spacing: 2) {
-                        Text("START COUNT").font(.system(size: 17, weight: .bold, design: .monospaced))
-                        Text("BEGIN").font(.system(size: 10, design: .monospaced)).opacity(0.7)
-                    }
+            Button(action: start) {
+                Text("Start count")
+                    .font(CounterFont.digits(26))
+                    .foregroundStyle(CounterPalette.brassInk)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.primary)
-                .foregroundStyle(Color(.systemBackground))
-                .disabled(trimmedName.isEmpty)
-                .layoutPriority(1)
-                .accessibilityLabel("Start Count")
+                    .frame(height: 60)
+                    .contentShape(Capsule())
+                    .counterGlass(Capsule(), tint: CounterPalette.brass, interactive: !trimmedName.isEmpty)
+                    .opacity(trimmedName.isEmpty ? 0.4 : 1)
             }
+            .buttonStyle(.plain)
+            .disabled(trimmedName.isEmpty)
+            .animation(.easeInOut(duration: 0.2), value: trimmedName.isEmpty)
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
-            .background(.bar)
         }
-        .background(Color(.systemBackground))
+        .foregroundStyle(CounterPalette.chalk)
+        .background(CounterPalette.ground.ignoresSafeArea())
+        .preferredColorScheme(.dark)
         .onAppear { nameFocused = true }
     }
 
     private func start() {
         guard !trimmedName.isEmpty else { return }
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        CounterHaptics.success()
         onStart(eventTypes.first { $0.id == selectedTypeId }, trimmedName)
     }
 
-    private func section(eyebrow: String, title: String, hint: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(eyebrow)
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .tracking(1.4)
-                .foregroundStyle(.secondary)
-            HStack(alignment: .firstTextBaseline) {
-                Text(title).font(.title3.weight(.semibold))
-                Spacer()
-                Text(hint).font(.caption).foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func typeRow(index: Int, name: String, detail: String, id: String?) -> some View {
+    private func typeRow(name: String, detail: String, id: String?) -> some View {
         let selected = selectedTypeId == id
         return Button {
-            UISelectionFeedbackGenerator().selectionChanged()
-            selectedTypeId = id
+            CounterHaptics.select()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { selectedTypeId = id }
         } label: {
-            HStack {
-                Text(String(format: "%02d", index))
-                    .font(.system(size: 11, design: .monospaced))
-                    .opacity(0.6)
-                    .frame(width: 28, alignment: .leading)
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle().strokeBorder(selected ? CounterPalette.brass : CounterPalette.pew, lineWidth: 2)
+                    if selected {
+                        Circle().fill(CounterPalette.brass).padding(5).transition(.scale)
+                    }
+                }
+                .frame(width: 20, height: 20)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(name).font(.headline)
-                    Text(detail)
-                        .font(.system(size: 11, design: .monospaced))
-                        .opacity(0.6)
-                        .lineLimit(1)
+                    Text(name).font(.body.weight(.medium))
+                    Text(detail).font(.footnote).foregroundStyle(CounterPalette.pew).lineLimit(1)
                 }
                 Spacer()
-                Image(systemName: selected ? "largecircle.fill.circle" : "circle")
             }
-            .foregroundStyle(selected ? Color(.systemBackground) : Color.primary)
-            .padding(14)
-            .background(selected ? Color.primary : Color(.systemBackground))
-            .contentShape(Rectangle())
+            .foregroundStyle(CounterPalette.chalk)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 60)
+            .contentShape(RoundedRectangle(cornerRadius: 16))
+            .background(selected ? CounterPalette.plate : .clear, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(selected ? CounterPalette.brass : CounterPalette.line, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
