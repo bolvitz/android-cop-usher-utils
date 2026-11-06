@@ -2,100 +2,85 @@ package com.eventmonitor.core.common.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.eventmonitor.shared.design.DesignTokens
+import com.eventmonitor.shared.design.ThemedColor
 
-// RETRO colour schemes. Dynamic colour is disabled on purpose — the palette is
-// strict B&W + one red, and must read identically on every device.
+// Colour schemes built from the shared DesignTokens. Dynamic colour is off on
+// purpose: the palette must read the same on every device and on iOS.
 
-private val LightScheme = lightColorScheme(
-    primary = Ink,
-    onPrimary = Paper,
-    primaryContainer = Ink,
-    onPrimaryContainer = Paper,
+private fun scheme(dark: Boolean): ColorScheme {
+    fun ThemedColor.pick() = if (dark) darkColor else lightColor
+    val t = DesignTokens
+    val ground = t.ground.pick()
+    val plate = t.plate.pick()
+    val plateHigh = t.plateHigh.pick()
+    val brass = t.brass.pick()
+    val brassInk = t.brassInk.pick()
+    val chalk = t.chalk.pick()
+    val pew = t.pew.pick()
+    val signal = t.signal.pick()
+    val line = chalk.copy(alpha = DesignTokens.LINE_ALPHA.toFloat())
+    val base = if (dark) darkColorScheme() else lightColorScheme()
+    return base.copy(
+        primary = brass,
+        onPrimary = brassInk,
+        primaryContainer = plateHigh,
+        onPrimaryContainer = brass,
+        inversePrimary = brass,
 
-    secondary = Muted,
-    onSecondary = Paper,
-    secondaryContainer = Paper2,
-    onSecondaryContainer = Ink,
+        secondary = pew,
+        onSecondary = ground,
+        secondaryContainer = plate,
+        onSecondaryContainer = chalk,
 
-    // Tertiary now carries the only chromatic accent — vivid signal red.
-    tertiary = Signal,
-    onTertiary = Paper,
-    tertiaryContainer = Signal,
-    onTertiaryContainer = Paper,
+        tertiary = brass,
+        onTertiary = brassInk,
+        tertiaryContainer = plateHigh,
+        onTertiaryContainer = brass,
 
-    error = Signal,
-    onError = Paper,
-    errorContainer = Signal,
-    onErrorContainer = Paper,
+        error = signal,
+        onError = Color.White,
+        errorContainer = signal,
+        onErrorContainer = Color.White,
 
-    background = Paper,
-    onBackground = Ink,
-    surface = Paper,
-    onSurface = Ink,
+        background = ground,
+        onBackground = chalk,
+        surface = ground,
+        onSurface = chalk,
+        surfaceVariant = plate,
+        onSurfaceVariant = pew,
+        surfaceTint = Color.Transparent,
+        surfaceContainerLowest = ground,
+        surfaceContainerLow = plate,
+        surfaceContainer = plate,
+        surfaceContainerHigh = plateHigh,
+        surfaceContainerHighest = plateHigh,
 
-    surfaceVariant = Paper2,
-    onSurfaceVariant = Muted,
-    surfaceTint = Paper,
+        outline = line.copy(alpha = 0.24f),
+        outlineVariant = line,
 
-    outline = Hairline,
-    outlineVariant = Hairline2,
+        scrim = Color.Black,
+        inverseSurface = chalk,
+        inverseOnSurface = ground,
+    )
+}
 
-    scrim = Ink,
-    inverseSurface = Ink,
-    inverseOnSurface = Paper,
-    inversePrimary = Signal,
-)
-
-private val DarkScheme = darkColorScheme(
-    primary = PaperDark,
-    onPrimary = InkDark,
-    primaryContainer = PaperDark,
-    onPrimaryContainer = InkDark,
-
-    secondary = MutedDark,
-    onSecondary = InkDark,
-    secondaryContainer = InkDark2,
-    onSecondaryContainer = PaperDark,
-
-    tertiary = Signal,
-    onTertiary = PaperDark,
-    tertiaryContainer = Signal,
-    onTertiaryContainer = PaperDark,
-
-    error = Signal,
-    onError = PaperDark,
-    errorContainer = Signal,
-    onErrorContainer = PaperDark,
-
-    background = InkDark,
-    onBackground = PaperDark,
-    surface = InkDark,
-    onSurface = PaperDark,
-
-    surfaceVariant = InkDark2,
-    onSurfaceVariant = MutedDark,
-    surfaceTint = InkDark,
-
-    outline = HairlineDark,
-    outlineVariant = HairlineDark2,
-
-    scrim = InkDark,
-    inverseSurface = PaperDark,
-    inverseOnSurface = InkDark,
-    inversePrimary = Signal,
-)
+private val LightScheme = scheme(dark = false)
+private val DarkScheme = scheme(dark = true)
 
 @Composable
 fun HeadCounterTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic colour intentionally ignored — FIELD palette is the brand.
+    // Dynamic colour intentionally ignored: the shared palette is the brand.
     @Suppress("UNUSED_PARAMETER") dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {

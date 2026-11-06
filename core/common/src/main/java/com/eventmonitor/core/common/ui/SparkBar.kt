@@ -16,7 +16,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.eventmonitor.core.common.theme.Signal
 
 /** RETRO inline progress bar — ink fill, red flash above 95%, rounded ends. */
 @Composable
@@ -28,7 +27,7 @@ fun SparkBar(
 ) {
     val clamped = progress.coerceIn(0f, 1f)
     val fill = when {
-        clamped >= 0.95f -> Signal
+        clamped >= 0.95f -> MaterialTheme.colorScheme.error
         clamped >= 0.05f -> MaterialTheme.colorScheme.onBackground
         else -> MaterialTheme.colorScheme.outline
     }
@@ -56,7 +55,7 @@ fun SparkBar(
 /** Capacity tone — collapses to ink under capacity, red at danger. */
 @Composable
 fun capacityToneFor(progress: Float): Color = when {
-    progress >= 0.95f -> Signal
+    progress >= 0.95f -> MaterialTheme.colorScheme.error
     progress > 0f -> MaterialTheme.colorScheme.onBackground
     else -> MaterialTheme.colorScheme.onSurfaceVariant
 }

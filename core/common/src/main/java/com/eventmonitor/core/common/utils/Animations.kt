@@ -5,6 +5,12 @@ import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import com.eventmonitor.shared.design.DesignTokens
+import com.eventmonitor.shared.design.SpringToken
+
+/** A shared spring token as a Compose spring. */
+fun <T> SpringToken.toSpec(): SpringSpec<T> =
+    spring(dampingRatio = damping.toFloat(), stiffness = stiffness.toFloat())
 
 /**
  * Common animation specifications for consistent motion design
@@ -18,6 +24,12 @@ object AnimationSpecs {
         dampingRatio = Spring.DampingRatioMediumBouncy,
         stiffness = Spring.StiffnessLow
     )
+
+    /** Button and key press feedback; matches the iOS counter. */
+    val press = DesignTokens.pressSpring.toSpec<Float>()
+
+    /** Odometer digit roll; matches the iOS counter. */
+    val roll = DesignTokens.rollSpring.toSpec<Float>()
 
     val fastSpring = spring<Float>(
         dampingRatio = Spring.DampingRatioNoBouncy,

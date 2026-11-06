@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.eventmonitor.core.common.theme.Signal
 
 enum class Severity { CRITICAL, HIGH, LOW, NEUTRAL }
 
@@ -23,7 +22,7 @@ private fun styleFor(sev: Severity): SevStyle {
     val paper = MaterialTheme.colorScheme.background
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     return when (sev) {
-        Severity.CRITICAL -> SevStyle(Signal, paper, null)
+        Severity.CRITICAL -> SevStyle(MaterialTheme.colorScheme.error, paper, null)
         Severity.HIGH -> SevStyle(ink, paper, null)
         Severity.LOW -> SevStyle(Color.Transparent, ink, ink)
         Severity.NEUTRAL -> SevStyle(Color.Transparent, muted, muted)

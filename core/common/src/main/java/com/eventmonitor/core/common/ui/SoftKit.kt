@@ -20,7 +20,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -72,7 +71,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.Animatable
 import com.eventmonitor.core.common.theme.DataMono
-import com.eventmonitor.core.common.theme.Muted
 import com.eventmonitor.core.common.theme.MonoTiny
 import com.eventmonitor.core.common.utils.HapticFeedbackHelper
 import com.eventmonitor.core.common.utils.rememberHapticFeedback
@@ -92,13 +90,15 @@ val BrandBlue: Color
 
 // Pressed-state companion to BrandBlue — slightly muted version of primary.
 val BrandBlueDeep: Color
-    @Composable get() = if (isSystemInDarkTheme()) Color(0xFFB8B5AE) else Color(0xFF1A1A1A)
+    @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
 
 // Ring/halo on selected surfaces — muted variant for the expanding-ring overlay.
 val BrandBlueGlow: Color
-    @Composable get() = if (isSystemInDarkTheme()) Color(0xFFC4C0B8) else Color(0xFF3A3A3A)
+    @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
 
-val BrandRed = Color(0xFFFD3436)         // the only chromatic accent
+// Over capacity, live and destructive moments only.
+val BrandRed: Color
+    @Composable get() = MaterialTheme.colorScheme.error
 
 // ---------------------------------------------------------------------------
 // SoftAppBar — the primary top bar for the Soft aesthetic.
@@ -763,7 +763,7 @@ fun SoftCapacityBar(
             val active = knownCapacity && animatedPct >= segHigh - (1f / segments)
             val baseColor = when {
                 segHigh >= 0.93f -> BrandRed
-                segHigh >= 0.78f -> Muted
+                segHigh >= 0.78f -> MaterialTheme.colorScheme.onSurfaceVariant
                 else -> BrandBlue
             }
             val target = when {

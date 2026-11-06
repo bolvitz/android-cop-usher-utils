@@ -19,9 +19,9 @@ import androidx.navigation.compose.rememberNavController
 import com.eventmonitor.app.presentation.navigation.NavGraph
 import com.eventmonitor.app.presentation.navigation.Screen
 import com.eventmonitor.core.common.theme.HeadCounterTheme
-import com.eventmonitor.core.common.theme.InkDark
+import com.eventmonitor.core.common.theme.GroundDark
 import com.eventmonitor.core.common.theme.LocalThemeMode
-import com.eventmonitor.core.common.theme.Paper
+import com.eventmonitor.core.common.theme.GroundLight
 import com.eventmonitor.core.common.theme.ThemeMode
 import kotlinx.coroutines.flow.drop
 
@@ -50,14 +50,14 @@ class MainActivity : ComponentActivity() {
             DisposableEffect(darkTheme) {
                 enableEdgeToEdge(
                     statusBarStyle = if (darkTheme) {
-                        SystemBarStyle.dark(InkDark.toArgb())
+                        SystemBarStyle.dark(GroundDark.toArgb())
                     } else {
-                        SystemBarStyle.light(Paper.toArgb(), InkDark.toArgb())
+                        SystemBarStyle.light(GroundLight.toArgb(), GroundDark.toArgb())
                     },
                     navigationBarStyle = if (darkTheme) {
-                        SystemBarStyle.dark(InkDark.toArgb())
+                        SystemBarStyle.dark(GroundDark.toArgb())
                     } else {
-                        SystemBarStyle.light(Paper.toArgb(), InkDark.toArgb())
+                        SystemBarStyle.light(GroundLight.toArgb(), GroundDark.toArgb())
                     },
                 )
                 onDispose {}

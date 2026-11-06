@@ -38,6 +38,9 @@ android {
 }
 
 dependencies {
+    // Shared design tokens
+    implementation(project(":shared"))
+
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.1.21")
 

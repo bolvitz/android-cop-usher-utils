@@ -2,6 +2,7 @@ package com.eventmonitor.core.common.ui
 
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.eventmonitor.shared.design.DesignTokens
 
 // Spacing + sizing tokens used across the FIELD design system.
 object FieldTokens {
@@ -23,7 +24,7 @@ object FieldTokens {
     // Heights
     val ChipHeight = 28.dp
     val KeypadHeight = 80.dp
-    val ToolHeight = 48.dp
+    val ToolHeight = DesignTokens.MIN_TOUCH.dp
     val AppBarIconSize = 36.dp
 
     // Display sizes
