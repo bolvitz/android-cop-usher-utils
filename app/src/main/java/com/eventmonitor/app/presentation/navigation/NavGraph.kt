@@ -86,10 +86,14 @@ fun NavGraph(
 
         composable(
             route = Screen.SharedCounting.route,
-            arguments = listOf(navArgument("venueId") { type = NavType.StringType })
+            arguments = listOf(
+                navArgument("venueId") { type = NavType.StringType },
+                navArgument("eventId") { type = NavType.StringType; nullable = true; defaultValue = null }
+            )
         ) { backStackEntry ->
             SharedCountingScreen(
                 venueId = backStackEntry.arguments?.getString("venueId") ?: "",
+                eventId = backStackEntry.arguments?.getString("eventId"),
                 onBack = { navController.popBackStack() }
             )
         }
@@ -104,7 +108,10 @@ fun NavGraph(
             SharedHistoryScreen(
                 venueId = venueId,
                 onBack = { navController.popBackStack() },
-                onOpenTrends = { navController.navigate(Screen.SharedTrends.createRoute(venueId)) }
+                onOpenTrends = { navController.navigate(Screen.SharedTrends.createRoute(venueId)) },
+                onOpenCount = { eventVenueId, eventId ->
+                    navController.navigate(Screen.SharedCounting.createRoute(eventVenueId, eventId))
+                }
             )
         }
 

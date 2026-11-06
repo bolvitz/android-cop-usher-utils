@@ -23,8 +23,10 @@ sealed class Screen(val route: String) {
 
     object SharedReports : Screen("shared_reports")
 
-    object SharedCounting : Screen("shared_counting/{venueId}") {
-        fun createRoute(venueId: String) = "shared_counting/$venueId"
+    /** Pass [eventId] to resume an existing count; otherwise the intake screen opens first. */
+    object SharedCounting : Screen("shared_counting/{venueId}?eventId={eventId}") {
+        fun createRoute(venueId: String, eventId: String? = null) =
+            if (eventId != null) "shared_counting/$venueId?eventId=$eventId" else "shared_counting/$venueId"
     }
 
     object SharedHistory : Screen("shared_history?venueId={venueId}") {
