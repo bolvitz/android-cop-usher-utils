@@ -28,8 +28,6 @@ import com.eventmonitor.app.presentation.screens.reports.SharedReportsScreen
 import com.eventmonitor.app.presentation.screens.venues.SharedVenueEditScreen
 import com.eventmonitor.app.presentation.screens.venues.SharedVenueListScreen
 import com.eventmonitor.shared.presentation.scope.AppShellUiState
-import org.koin.androidx.compose.koinViewModel
-import org.koin.core.parameter.parametersOf
 
 @Composable
 fun NavGraph(
@@ -44,8 +42,6 @@ fun NavGraph(
     val toAreas: (String) -> Unit = { navController.navigate(Screen.SharedAreaManagement.createRoute(it)) }
     val toHistory: (String?) -> Unit = { navController.navigate(Screen.SharedHistory.createRoute(it)) }
     val toVenues: () -> Unit = { navController.navigate(Screen.SharedVenueList.route) }
-    // Lists keyed by scope so switching venue builds a fresh, correctly filtered ViewModel.
-    val scopeKey = shellState.selectedVenueId ?: "all"
 
     NavHost(
         navController = navController,
@@ -76,7 +72,7 @@ fun NavGraph(
                     venueId = venueId,
                     onBack = null,
                     onOpen = { navController.navigate(Screen.SharedIncidentDetail.createRoute(it)) },
-                    viewModel = koinViewModel(key = "incidents_$scopeKey") { parametersOf(venueId) }
+                    venues = shellState.venues
                 )
             }
         }
@@ -88,7 +84,7 @@ fun NavGraph(
                     locationId = venueId,
                     onBack = null,
                     onOpen = { navController.navigate(Screen.SharedLostItemDetail.createRoute(it)) },
-                    viewModel = koinViewModel(key = "lost_$scopeKey") { parametersOf(venueId) }
+                    venues = shellState.venues
                 )
             }
         }

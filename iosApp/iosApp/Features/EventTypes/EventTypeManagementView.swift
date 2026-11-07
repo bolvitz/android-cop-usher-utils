@@ -32,47 +32,51 @@ struct EventTypeManagementView: View {
     @State private var newDescription = ""
 
     var body: some View {
-        List {
-            ForEach(model.state.eventTypes, id: \.id) { type in
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text(type.name).font(.headline)
-                        if !type.description_.isEmpty {
-                            Text(type.description_)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+        Group {
+            if model.state.eventTypes.isEmpty {
+                EmptyMessage(text: "No event types yet.")
+            } else {
+                CardList {
+                    ForEach(model.state.eventTypes, id: \.id) { type in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(type.name).font(.headline).foregroundStyle(AppColor.text)
+                                if !type.description_.isEmpty {
+                                    Text(type.description_)
+                                        .font(.caption)
+                                        .foregroundStyle(AppColor.secondaryText)
+                                }
+                            }
+                            Spacer()
+                            Toggle(type.name, isOn: Binding(
+                                get: { type.isActive },
+                                set: { model.toggle(type, isActive: $0) }
+                            ))
+                            .labelsHidden()
+                            TextAction(title: "Delete") { model.delete(type.id) }
                         }
-                    }
-                    Spacer()
-                    Toggle("", isOn: Binding(
-                        get: { type.isActive },
-                        set: { model.toggle(type, isActive: $0) }
-                    ))
-                    .labelsHidden()
-                }
-                .swipeActions {
-                    Button(role: .destructive) { model.delete(type.id) } label: {
-                        Label("Delete", systemImage: "trash")
+                        .appCard()
                     }
                 }
             }
         }
-        .navigationTitle("Event Types")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { showingAdd = true } label: { Image(systemName: "plus") }
-            }
-        }
+        .appBackground()
+        .appNavigationTitle("Event Types")
+        .fab("Add event type") { showingAdd = true }
         .sheet(isPresented: $showingAdd) { addSheet }
     }
 
     private var addSheet: some View {
         NavigationStack {
-            Form {
-                TextField("Name", text: $newName)
-                TextField("Description", text: $newDescription)
+            ScrollView {
+                VStack(spacing: 8) {
+                    OutlinedField(label: "Name", text: $newName)
+                    OutlinedField(label: "Description", text: $newDescription)
+                }
+                .padding(16)
             }
-            .navigationTitle("New Event Type")
+            .appBackground()
+            .appNavigationTitle("New Event Type")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { resetSheet() }

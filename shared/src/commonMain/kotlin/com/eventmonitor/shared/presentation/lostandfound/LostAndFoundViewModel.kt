@@ -32,14 +32,15 @@ data class LostAndFoundUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class LostAndFoundViewModel(
     private val lostItemRepository: LostItemRepository,
-    private val locationId: String? = null
+    locationId: String? = null
 ) : SharedViewModel() {
 
+    private val _locationId = MutableStateFlow(locationId)
     private val _filters = MutableStateFlow(LostAndFoundFilters())
     private val _error = MutableStateFlow<String?>(null)
 
     private val itemsFlow: Flow<List<LostItemDto>> =
-        _filters.flatMapLatest { f -> sourceFor(f) }
+        combine(_locationId, _filters, ::Pair).flatMapLatest { (l, f) -> sourceFor(l, f) }
 
     val uiState: StateFlow<LostAndFoundUiState> =
         combine(itemsFlow, _filters, _error) { items, filters, error ->
@@ -51,12 +52,20 @@ class LostAndFoundViewModel(
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LostAndFoundUiState())
 
-    private fun sourceFor(f: LostAndFoundFilters): Flow<List<LostItemDto>> = when {
+    private fun sourceFor(locationId: String?, f: LostAndFoundFilters): Flow<List<LostItemDto>> = when {
         f.query.isNotBlank() -> lostItemRepository.searchItems(f.query)
         locationId != null && f.status != null -> lostItemRepository.getItemsByLocationAndStatus(locationId, f.status)
         locationId != null -> lostItemRepository.getItemsByLocation(locationId)
         f.status != null -> lostItemRepository.getItemsByStatus(f.status)
         else -> lostItemRepository.getAllItems()
+    }
+
+    /** Switches scope in place; filters reset as a fresh screen would. */
+    fun setLocation(locationId: String?) {
+        if (_locationId.value == locationId) return
+        _locationId.value = locationId
+        _filters.value = LostAndFoundFilters()
+        _error.value = null
     }
 
     fun filterByStatus(status: String?) = _filters.update { it.copy(status = status, query = "") }
@@ -69,9 +78,11 @@ class LostAndFoundViewModel(
         foundZone: String,
         color: String = "",
         brand: String = "",
-        reportedBy: String = ""
+        reportedBy: String = "",
+        /** Target venue when the list shows all venues; defaults to the scoped one. */
+        locationId: String? = null
     ) {
-        val location = locationId ?: return
+        val location = locationId ?: _locationId.value ?: return
         viewModelScope.launch {
             lostItemRepository.createItem(
                 locationId = location,

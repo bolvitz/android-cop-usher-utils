@@ -16,10 +16,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eventmonitor.app.presentation.screens.common.VenuePickerDialog
 import com.eventmonitor.shared.data.models.LostItemDto
 import com.eventmonitor.shared.domain.models.ItemCategory
 import com.eventmonitor.shared.domain.models.ItemStatus
 import com.eventmonitor.shared.presentation.lostandfound.LostAndFoundViewModel
+import com.eventmonitor.shared.presentation.scope.VenueScopeRow
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -29,10 +31,15 @@ fun SharedLostAndFoundScreen(
     locationId: String?,
     onBack: (() -> Unit)?,
     onOpen: (String) -> Unit,
+    /** Choices for a new item when [locationId] is null (all venues). */
+    venues: List<VenueScopeRow> = emptyList(),
     viewModel: LostAndFoundViewModel = koinViewModel { parametersOf(locationId) }
 ) {
+    LaunchedEffect(viewModel, locationId) { viewModel.setLocation(locationId) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var showAdd by remember { mutableStateOf(false) }
+    // Non-null while the add dialog is open: the venue the new item goes to.
+    var addVenueId by remember(locationId) { mutableStateOf<String?>(null) }
+    var pickVenue by remember(locationId) { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -49,8 +56,8 @@ fun SharedLostAndFoundScreen(
             )
         },
         floatingActionButton = {
-            if (locationId != null) {
-                FloatingActionButton(onClick = { showAdd = true }) {
+            if (locationId != null || venues.isNotEmpty()) {
+                FloatingActionButton(onClick = { if (locationId != null) addVenueId = locationId else pickVenue = true }) {
                     Icon(Icons.Filled.Add, contentDescription = "Add found item")
                 }
             }
@@ -85,12 +92,20 @@ fun SharedLostAndFoundScreen(
         }
     }
 
-    if (showAdd) {
+    if (pickVenue) {
+        VenuePickerDialog(
+            venues = venues,
+            onPick = { pickVenue = false; addVenueId = it },
+            onDismiss = { pickVenue = false }
+        )
+    }
+
+    addVenueId?.let { target ->
         AddItemDialog(
-            onDismiss = { showAdd = false },
+            onDismiss = { addVenueId = null },
             onConfirm = { desc, category, zone ->
-                viewModel.createItem(description = desc, category = category, foundZone = zone)
-                showAdd = false
+                viewModel.createItem(description = desc, category = category, foundZone = zone, locationId = target)
+                addVenueId = null
             }
         )
     }

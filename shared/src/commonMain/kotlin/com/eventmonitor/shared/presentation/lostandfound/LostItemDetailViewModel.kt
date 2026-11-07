@@ -22,6 +22,12 @@ class LostItemDetailViewModel(
         viewModelScope.launch { lostItemRepository.updateItem(updated) }
     }
 
+    /** Field-wise save for Swift, which cannot use Kotlin's `copy` default arguments. */
+    fun save(description: String, category: String, foundZone: String, color: String, brand: String) {
+        val current = item.value ?: return
+        save(current.copy(description = description, category = category, foundZone = foundZone, color = color, brand = brand))
+    }
+
     fun updateStatus(status: String) {
         viewModelScope.launch { lostItemRepository.updateItemStatus(itemId, status) }
     }

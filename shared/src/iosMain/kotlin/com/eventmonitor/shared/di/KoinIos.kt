@@ -6,8 +6,11 @@ import com.eventmonitor.shared.presentation.eventtypes.EventTypeManagementViewMo
 import com.eventmonitor.shared.presentation.headcounter.CountingViewModel
 import com.eventmonitor.shared.presentation.headcounter.HistoryViewModel
 import com.eventmonitor.shared.presentation.headcounter.TrendsViewModel
+import com.eventmonitor.shared.presentation.incidents.IncidentDetailViewModel
 import com.eventmonitor.shared.presentation.incidents.IncidentListViewModel
 import com.eventmonitor.shared.presentation.lostandfound.LostAndFoundViewModel
+import com.eventmonitor.shared.presentation.lostandfound.LostItemDetailViewModel
+import com.eventmonitor.shared.presentation.reports.ReportsViewModel
 import com.eventmonitor.shared.presentation.scope.AppShellViewModel
 import com.eventmonitor.shared.presentation.venues.VenueDetailViewModel
 import com.eventmonitor.shared.presentation.venues.VenueListViewModel
@@ -54,3 +57,11 @@ fun incidentListViewModel(venueId: String?): IncidentListViewModel =
 
 fun lostAndFoundViewModel(locationId: String?): LostAndFoundViewModel =
     KoinPlatform.getKoin().get { parametersOf(locationId) }
+
+fun incidentDetailViewModel(incidentId: String): IncidentDetailViewModel =
+    KoinPlatform.getKoin().get { parametersOf(incidentId) }
+
+fun lostItemDetailViewModel(itemId: String): LostItemDetailViewModel =
+    KoinPlatform.getKoin().get { parametersOf(itemId) }
+
+fun reportsViewModel(): ReportsViewModel = KoinPlatform.getKoin().get()

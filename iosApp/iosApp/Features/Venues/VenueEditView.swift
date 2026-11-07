@@ -68,42 +68,36 @@ struct VenueEditView: View {
     var body: some View {
         Group {
             if model.venue == nil {
-                ProgressView()
+                LoadingView()
             } else {
-                Form {
-                    Section("Details") {
-                        TextField("Name", text: $form.name)
-                        TextField("Location", text: $form.location)
-                        TextField("Code", text: $form.code)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        OutlinedField(label: "Name", text: $form.name)
+                        OutlinedField(label: "Location", text: $form.location)
+                        OutlinedField(label: "Code", text: $form.code)
                             .textInputAutocapitalization(.characters)
                             .autocorrectionDisabled()
-                    }
-                    Section("Contact") {
-                        TextField("Contact person", text: $form.contactPerson)
+                        OutlinedField(label: "Contact person", text: $form.contactPerson)
                             .textContentType(.name)
-                        TextField("Contact phone", text: $form.contactPhone)
-                            .keyboardType(.phonePad)
+                        OutlinedField(label: "Contact phone", text: $form.contactPhone, keyboard: .phonePad)
                             .textContentType(.telephoneNumber)
-                    }
-                    Section("Features") {
+                        Text("Features").font(.subheadline.weight(.medium)).foregroundStyle(AppColor.text)
                         Toggle("Head count", isOn: $form.headCount)
                         Toggle("Lost & found", isOn: $form.lostFound)
                         Toggle("Incident reporting", isOn: $form.incidents)
+                        WideButton(title: "Save") {
+                            model.save(form)
+                            dismiss()
+                        }
+                        .disabled(form.name.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
+                    .foregroundStyle(AppColor.text)
+                    .padding(16)
                 }
             }
         }
-        .navigationTitle("Edit Venue")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
-                    model.save(form)
-                    dismiss()
-                }
-                .disabled(model.venue == nil || form.name.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-        }
+        .appBackground()
+        .appNavigationTitle("Edit Venue")
         .onReceive(model.$venue) { venue in
             // Seed the form once; later emissions shouldn't clobber in-progress edits.
             guard let venue, loadedId != venue.id else {

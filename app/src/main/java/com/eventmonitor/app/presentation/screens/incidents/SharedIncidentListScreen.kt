@@ -14,10 +14,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eventmonitor.app.presentation.screens.common.VenuePickerDialog
 import com.eventmonitor.shared.data.models.IncidentDto
 import com.eventmonitor.shared.domain.models.IncidentSeverity
 import com.eventmonitor.shared.domain.models.IncidentStatus
 import com.eventmonitor.shared.presentation.incidents.IncidentListViewModel
+import com.eventmonitor.shared.presentation.scope.VenueScopeRow
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -27,10 +29,15 @@ fun SharedIncidentListScreen(
     venueId: String?,
     onBack: (() -> Unit)?,
     onOpen: (String) -> Unit,
+    /** Choices for a new incident when [venueId] is null (all venues). */
+    venues: List<VenueScopeRow> = emptyList(),
     viewModel: IncidentListViewModel = koinViewModel { parametersOf(venueId) }
 ) {
+    LaunchedEffect(viewModel, venueId) { viewModel.setVenue(venueId) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var showAdd by remember { mutableStateOf(false) }
+    // Non-null while the add dialog is open: the venue the new incident goes to.
+    var addVenueId by remember(venueId) { mutableStateOf<String?>(null) }
+    var pickVenue by remember(venueId) { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -47,8 +54,8 @@ fun SharedIncidentListScreen(
             )
         },
         floatingActionButton = {
-            if (venueId != null) {
-                FloatingActionButton(onClick = { showAdd = true }) {
+            if (venueId != null || venues.isNotEmpty()) {
+                FloatingActionButton(onClick = { if (venueId != null) addVenueId = venueId else pickVenue = true }) {
                     Icon(Icons.Filled.Add, contentDescription = "Report incident")
                 }
             }
@@ -85,12 +92,20 @@ fun SharedIncidentListScreen(
         }
     }
 
-    if (showAdd) {
+    if (pickVenue) {
+        VenuePickerDialog(
+            venues = venues,
+            onPick = { pickVenue = false; addVenueId = it },
+            onDismiss = { pickVenue = false }
+        )
+    }
+
+    addVenueId?.let { target ->
         AddIncidentDialog(
-            onDismiss = { showAdd = false },
+            onDismiss = { addVenueId = null },
             onConfirm = { title, desc, severity ->
-                viewModel.createIncident(title = title, description = desc, severity = severity)
-                showAdd = false
+                viewModel.createIncident(title = title, description = desc, severity = severity, venueId = target)
+                addVenueId = null
             }
         )
     }

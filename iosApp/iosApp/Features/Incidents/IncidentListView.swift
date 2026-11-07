@@ -8,6 +8,7 @@ final class IncidentListModel: ObservableObject {
     private let lifetime: ViewModelLifetime
 
     init(venueId: String? = nil) {
+        self.venueId = venueId
         viewModel = KoinIosKt.incidentListViewModel(venueId: venueId)
         lifetime = ViewModelLifetime(viewModel)
         state = viewModel.uiState.value as! IncidentListUiState
@@ -16,7 +17,16 @@ final class IncidentListModel: ObservableObject {
         }
     }
 
+    /// The scoped venue; nil when the list shows all venues.
+    let venueId: String?
+
     func filter(_ status: String?) { viewModel.filterByStatus(status: status) }
+    func create(title: String, description: String, severity: String, venueId: String) {
+        viewModel.createIncident(
+            title: title, description: description, severity: severity,
+            category: "", location: "", reportedBy: "", venueId: venueId
+        )
+    }
     func advance(_ id: String, to status: String) { viewModel.updateStatus(incidentId: id, status: status) }
     func delete(_ id: String) { viewModel.delete(incidentId: id) }
 }
@@ -46,100 +56,151 @@ private func nextStatus(after name: String) -> StatusOption? {
 
 struct IncidentListView: View {
     @StateObject private var model: IncidentListModel
+    /// True as a top-level tab, where the nav bar is hidden and the title sits in content.
+    let isTab: Bool
+    let onOpen: (String) -> Void
+    /// Choices for a new incident when the list shows all venues.
+    let venues: [VenueScopeRow]
+    /// Set while the add sheet is open: the venue the new incident goes to.
+    @State private var addVenueId: String?
+    @State private var pickVenue = false
 
-    init(venueId: String? = nil) {
+    init(venueId: String? = nil, isTab: Bool = false, venues: [VenueScopeRow] = [], onOpen: @escaping (String) -> Void) {
+        self.isTab = isTab
+        self.venues = venues
+        self.onOpen = onOpen
         _model = StateObject(wrappedValue: IncidentListModel(venueId: venueId))
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            filterBar
-            content
-        }
-        .navigationTitle("Incidents")
-    }
-
-    private var filterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack {
-                chip("All", active: model.state.filters.status == nil) { model.filter(nil) }
+        VStack(alignment: .leading, spacing: 0) {
+            if isTab { ScreenHeader(title: "Incidents") }
+            ChipRow {
+                FilterChip(title: "All", selected: model.state.filters.status == nil) { model.filter(nil) }
                 ForEach(statusFlow.prefix(3)) { s in
-                    chip(s.label, active: model.state.filters.status == s.name) { model.filter(s.name) }
+                    FilterChip(title: s.label, selected: model.state.filters.status == s.name) { model.filter(s.name) }
                 }
             }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
+            content
+        }
+        .appBackground()
+        .appNavigationTitle("Incidents")
+        .fab("Report incident", isShown: model.venueId != nil || !venues.isEmpty) {
+            if let id = model.venueId { addVenueId = id } else { pickVenue = true }
+        }
+        .venuePicker(isPresented: $pickVenue, venues: venues) { addVenueId = $0 }
+        .sheet(isPresented: Binding(get: { addVenueId != nil }, set: { if !$0 { addVenueId = nil } })) {
+            if let target = addVenueId {
+                AddIncidentSheet { title, description, severity in
+                    model.create(title: title, description: description, severity: severity, venueId: target)
+                }
+            }
         }
     }
 
     @ViewBuilder private var content: some View {
         if model.state.isLoading {
-            Spacer(); ProgressView(); Spacer()
+            LoadingView()
         } else if model.state.isEmpty {
-            ContentUnavailableView("No Incidents", systemImage: "exclamationmark.triangle")
+            EmptyMessage(text: "No incidents reported.")
         } else {
-            List {
+            CardList {
                 ForEach(model.state.incidents, id: \.id) { incident in
-                    IncidentRow(incident: incident) { next in
-                        model.advance(incident.id, to: next)
-                    }
-                    .swipeActions {
-                        Button(role: .destructive) { model.delete(incident.id) } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
+                    IncidentCard(
+                        incident: incident,
+                        onOpen: { onOpen(incident.id) },
+                        onAdvance: { model.advance(incident.id, to: $0) },
+                        onDelete: { model.delete(incident.id) }
+                    )
                 }
             }
-            .listStyle(.plain)
         }
-    }
-
-    private func chip(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline)
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(active ? Color.accentColor : Color(.secondarySystemBackground))
-                .foregroundStyle(active ? .white : .primary)
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
     }
 }
 
-private struct IncidentRow: View {
+private struct IncidentCard: View {
     let incident: IncidentDto
+    let onOpen: () -> Void
     let onAdvance: (String) -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         // Kotlin enums expose displayName/color via fromString lookups.
         let severity = IncidentSeverity.companion.fromString(value: incident.severity)
         let status = IncidentStatus.companion.fromString(value: incident.status)
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(incident.title).font(.headline)
+                Text(incident.title).font(.headline).foregroundStyle(AppColor.text)
                 Spacer()
-                Text(severity.displayName)
-                    .font(.caption2).bold()
-                    .padding(.horizontal, 8).padding(.vertical, 2)
-                    .background(Color(hex: severity.color))
-                    .foregroundStyle(.white)
-                    .clipShape(Capsule())
+                ColorBadge(text: severity.displayName, hex: severity.color)
             }
             if !incident.description_.isEmpty {
-                Text(incident.description_).font(.subheadline).foregroundStyle(.secondary)
+                Text(incident.description_).font(.subheadline).foregroundStyle(AppColor.secondaryText)
+                    .padding(.top, 4)
             }
             HStack {
-                Text(status.displayName)
-                    .font(.caption)
-                    .foregroundStyle(Color(hex: status.color))
+                StatusChip(text: status.displayName, color: Color(hex: status.color))
                 Spacer()
                 if let next = nextStatus(after: incident.status) {
-                    Button("→ \(next.label)") { onAdvance(next.name) }
-                        .font(.caption)
+                    TextAction(title: "→ \(next.label)") { onAdvance(next.name) }
+                }
+                TextAction(title: "Delete", action: onDelete)
+            }
+            .padding(.top, 8)
+        }
+        .appCard()
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onOpen)
+        .accessibilityAction(named: "Open", onOpen)
+    }
+}
+
+private struct AddIncidentSheet: View {
+    let onAdd: (_ title: String, _ description: String, _ severity: String) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var title = ""
+    @State private var description = ""
+    @State private var severity = "MEDIUM"
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    OutlinedField(label: "Title", text: $title)
+                    OutlinedField(label: "Description", text: $description)
+                    SeverityPicker(selected: $severity)
+                }
+                .padding(16)
+            }
+            .appBackground()
+            .appNavigationTitle("Report Incident")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Report") {
+                        onAdd(title.trimmingCharacters(in: .whitespacesAndNewlines), description.trimmingCharacters(in: .whitespacesAndNewlines), severity)
+                        dismiss()
+                    }
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
         }
-        .padding(.vertical, 4)
+        .presentationDetents([.medium])
+    }
+}
+
+/// Low / Medium / High / Critical chips, keyed by the canonical names.
+struct SeverityPicker: View {
+    @Binding var selected: String
+    private let options = [("LOW", "Low"), ("MEDIUM", "Medium"), ("HIGH", "High"), ("CRITICAL", "Critical")]
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(options, id: \.0) { name, label in
+                    FilterChip(title: label, selected: selected == name) { selected = name }
+                }
+            }
+        }
     }
 }

@@ -43,55 +43,31 @@ struct AreaManagementView: View {
     var body: some View {
         Group {
             if model.state.isLoading {
-                ProgressView()
+                LoadingView()
             } else if model.state.isEmpty {
-                ContentUnavailableView {
-                    Label("No Areas", systemImage: "square.grid.2x2")
-                } description: {
-                    Text("Add an area so it can be counted.")
-                } actions: {
-                    Button("Add Area") {
-                        showingAdd = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
+                EmptyMessage(text: "No areas yet. Add one so it can be counted.")
             } else {
-                List {
+                CardList {
                     ForEach(model.state.areas, id: \.id) { area in
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(area.name).font(.headline)
+                                Text(area.name).font(.headline).foregroundStyle(AppColor.text)
                                 Text(area.hasSeatMap ? "Capacity \(area.capacity) • Seat map" : "Capacity \(area.capacity)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .font(.caption)
+                                    .foregroundStyle(AppColor.secondaryText)
                             }
                             Spacer()
-                            Button("Seats") {
-                                onSeatMap(area.id)
-                            }
-                            .buttonStyle(.bordered)
+                            TextAction(title: "Seats") { onSeatMap(area.id) }
+                            TextAction(title: "Delete") { pendingDelete = area }
                         }
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                pendingDelete = area
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
+                        .appCard()
                     }
                 }
             }
         }
-        .navigationTitle("Areas")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showingAdd = true
-                } label: {
-                    Label("Add Area", systemImage: "plus")
-                }
-            }
-        }
+        .appBackground()
+        .appNavigationTitle("Areas")
+        .fab("Add area") { showingAdd = true }
         .sheet(isPresented: $showingAdd) {
             AddAreaSheet { name, capacity in
                 model.create(name: name, capacity: capacity)
@@ -127,20 +103,20 @@ private struct AddAreaSheet: View {
     let onAdd: (_ name: String, _ capacity: Int) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
-    @State private var capacity = 100
+    @State private var capacity = "100"
 
     var body: some View {
         NavigationStack {
-            Form {
-                TextField("Name", text: $name)
-                LabeledContent("Capacity") {
-                    TextField("Capacity", value: $capacity, format: .number)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
+            ScrollView {
+                VStack(spacing: 8) {
+                    OutlinedField(label: "Name", text: $name)
+                    OutlinedField(label: "Capacity", text: $capacity, keyboard: .numberPad)
+                        .onChange(of: capacity) { _, new in capacity = new.filter(\.isNumber) }
                 }
+                .padding(16)
             }
-            .navigationTitle("New Area")
-            .navigationBarTitleDisplayMode(.inline)
+            .appBackground()
+            .appNavigationTitle("New Area")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -149,7 +125,7 @@ private struct AddAreaSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        onAdd(name.trimmingCharacters(in: .whitespaces), max(0, capacity))
+                        onAdd(name.trimmingCharacters(in: .whitespaces), Int(capacity) ?? 0)
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)

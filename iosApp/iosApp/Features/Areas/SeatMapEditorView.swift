@@ -41,60 +41,61 @@ struct SeatMapEditorView: View {
     }
 
     var body: some View {
-        List {
-            Section {
-                Toggle(isOn: Binding(get: { model.state.hasSeatMap }, set: { model.setHasSeatMap($0) })) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Seat map enabled")
-                        Text("Count is derived from occupied seats")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+        VStack(alignment: .leading, spacing: 0) {
+            Toggle(isOn: Binding(get: { model.state.hasSeatMap }, set: { model.setHasSeatMap($0) })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Seat map enabled").foregroundStyle(AppColor.text)
+                    Text("Count is derived from occupied seats")
+                        .font(.caption)
+                        .foregroundStyle(AppColor.secondaryText)
                 }
             }
+            .padding(.horizontal, 16).padding(.vertical, 12)
+            Divider().overlay(AppColor.outline)
 
             if model.state.hasSeatMap {
-                Section {
+                Text("\(model.state.rows.count) rows • \(model.state.totalSeats) seats")
+                    .font(.subheadline.weight(.medium)).foregroundStyle(AppColor.text)
+                    .padding(16)
+                CardList {
                     ForEach(model.state.rows, id: \.row.id) { row in
-                        HStack {
+                        HStack(spacing: 12) {
                             Text(row.row.label)
-                                .font(.headline)
+                                .font(.headline).foregroundStyle(AppColor.text)
                                 .frame(width: 36, height: 36)
-                                .background(Color(.secondarySystemFill), in: RoundedRectangle(cornerRadius: 8))
-                            Text("\(row.seats.count) seats")
+                                .background(AppColor.cardHigh, in: RoundedRectangle(cornerRadius: AppRadius.small))
+                            Text("\(row.seats.count) seats").foregroundStyle(AppColor.text)
                             Spacer()
-                            Stepper(
-                                "Seats in row \(row.row.label)",
-                                onIncrement: { model.resize(row, by: 1) },
-                                onDecrement: row.seats.isEmpty ? nil : {
-                                    model.resize(row, by: -1)
-                                }
-                            )
-                            .labelsHidden()
-                        }
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                model.delete(row)
-                            } label: {
-                                Label("Delete Row", systemImage: "trash")
+                            tonalIcon("minus", label: "Remove seat", enabled: !row.seats.isEmpty) { model.resize(row, by: -1) }
+                            tonalIcon("plus", label: "Add seat") { model.resize(row, by: 1) }
+                            Button { model.delete(row) } label: {
+                                Image(systemName: "trash").foregroundStyle(AppColor.text).frame(width: 40, height: 40)
                             }
+                            .accessibilityLabel("Delete row")
                         }
+                        .appCard()
                     }
-                    Button {
-                        model.addRow()
-                    } label: {
-                        Label("Add Row", systemImage: "plus")
-                    }
-                } header: {
-                    Text("\(model.state.rows.count) rows • \(model.state.totalSeats) seats")
                 }
             } else {
-                Section {
-                    Text("Enable the seat map to add rows and seats.")
-                        .foregroundStyle(.secondary)
-                }
+                EmptyMessage(text: "Enable the seat map to add rows and seats.")
             }
         }
-        .navigationTitle(model.state.areaName.isEmpty ? "Seat Map" : model.state.areaName)
+        .appBackground()
+        .appNavigationTitle(model.state.areaName.isEmpty ? "Seat Map" : model.state.areaName)
+        .fab("Add Row", text: "Add Row", isShown: model.state.hasSeatMap) { model.addRow() }
+    }
+
+    /// Material `FilledTonalIconButton`.
+    private func tonalIcon(_ name: String, label: String, enabled: Bool = true, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: name).font(.body.weight(.semibold))
+                .foregroundStyle(AppColor.text)
+                .frame(width: 40, height: 40)
+                .background(AppColor.cardHigh, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.38)
+        .accessibilityLabel(label)
     }
 }

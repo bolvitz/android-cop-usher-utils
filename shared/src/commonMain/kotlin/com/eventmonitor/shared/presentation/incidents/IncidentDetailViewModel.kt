@@ -23,6 +23,28 @@ class IncidentDetailViewModel(
         viewModelScope.launch { incidentRepository.updateIncident(updated) }
     }
 
+    /** Field-wise save for Swift, which cannot use Kotlin's `copy` default arguments. */
+    fun save(
+        title: String,
+        description: String,
+        severity: String,
+        category: String,
+        location: String,
+        assignedTo: String
+    ) {
+        val current = incident.value ?: return
+        save(
+            current.copy(
+                title = title,
+                description = description,
+                severity = severity,
+                category = category,
+                location = location,
+                assignedTo = assignedTo
+            )
+        )
+    }
+
     fun updateStatus(status: String) {
         viewModelScope.launch { incidentRepository.updateIncidentStatus(incidentId, status) }
     }

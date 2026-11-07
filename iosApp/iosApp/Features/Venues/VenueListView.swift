@@ -33,6 +33,11 @@ enum AppRoute: Hashable {
     case edit(venueId: String)
     case venues
     case eventTypes
+    case reports
+    case incidents(venueId: String)
+    case incidentDetail(incidentId: String)
+    case lostItems(venueId: String)
+    case lostItemDetail(itemId: String)
 }
 
 struct VenueListView: View {
@@ -45,69 +50,26 @@ struct VenueListView: View {
     var body: some View {
         Group {
             if model.state.isLoading {
-                ProgressView("Loading venues…")
+                LoadingView()
             } else if model.state.isEmpty {
-                ContentUnavailableView {
-                    Label("No Venues", systemImage: "building.2")
-                } description: {
-                    Text("Add a venue, then add the areas you want to count.")
-                } actions: {
-                    Button("Add Venue") {
-                        showingAdd = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
+                EmptyMessage(text: "No venues yet. Tap + to add one.")
             } else {
-                List {
+                CardList {
                     ForEach(model.state.venues, id: \.id) { venue in
-                        NavigationLink(value: AppRoute.count(venueId: venue.id, venueName: venue.name)) {
-                            VenueRow(venue: venue)
-                        }
-                        .contextMenu {
-                            menuItems(for: venue)
-                        }
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) {
-                                pendingDelete = venue
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                            Button {
-                                path.append(AppRoute.edit(venueId: venue.id))
-                            } label: {
-                                Label("Edit", systemImage: "pencil")
-                            }
-                            .tint(.blue)
-                        }
-                        .swipeActions(edge: .leading) {
-                            Button {
-                                path.append(AppRoute.areas(venueId: venue.id))
-                            } label: {
-                                Label("Areas", systemImage: "square.grid.2x2")
-                            }
-                            .tint(.indigo)
-                        }
+                        VenueCard(venue: venue, open: { path.append($0) }, onDelete: { pendingDelete = venue })
                     }
                 }
             }
         }
-        .navigationTitle("Venues")
+        .appBackground()
+        .appNavigationTitle("Venues")
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    path.append(AppRoute.history(venueId: nil))
-                } label: {
-                    Label("All History", systemImage: "clock.arrow.circlepath")
-                }
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showingAdd = true
-                } label: {
-                    Label("Add Venue", systemImage: "plus")
-                }
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button("Reports") { path.append(AppRoute.reports) }
+                Button("Event Types") { path.append(AppRoute.eventTypes) }
             }
         }
+        .fab("Add venue") { showingAdd = true }
         .sheet(isPresented: $showingAdd) {
             AddVenueSheet { name, location, code in
                 model.create(name: name, location: location, code: code)
@@ -138,36 +100,6 @@ struct VenueListView: View {
             message: { Text(model.state.errorMessage ?? "") }
         )
     }
-
-    @ViewBuilder
-    private func menuItems(for venue: VenueDto) -> some View {
-        Button {
-            path.append(AppRoute.count(venueId: venue.id, venueName: venue.name))
-        } label: {
-            Label("Head Count", systemImage: "person.3.sequence")
-        }
-        Button {
-            path.append(AppRoute.areas(venueId: venue.id))
-        } label: {
-            Label("Manage Areas", systemImage: "square.grid.2x2")
-        }
-        Button {
-            path.append(AppRoute.history(venueId: venue.id))
-        } label: {
-            Label("History", systemImage: "clock.arrow.circlepath")
-        }
-        Divider()
-        Button {
-            path.append(AppRoute.edit(venueId: venue.id))
-        } label: {
-            Label("Edit Venue", systemImage: "pencil")
-        }
-        Button(role: .destructive) {
-            pendingDelete = venue
-        } label: {
-            Label("Delete", systemImage: "trash")
-        }
-    }
 }
 
 /// Resolves an [AppRoute]; register once per tab stack with `.navigationDestination`.
@@ -197,29 +129,62 @@ struct AppRouteDestination: View {
             VenueListView(path: $path)
         case .eventTypes:
             EventTypeManagementView()
+        case .reports:
+            ReportsView()
+        case let .incidents(venueId):
+            IncidentListView(venueId: venueId) { path.append(AppRoute.incidentDetail(incidentId: $0)) }
+        case let .incidentDetail(incidentId):
+            IncidentDetailView(incidentId: incidentId)
+        case let .lostItems(venueId):
+            LostAndFoundView(locationId: venueId) { path.append(AppRoute.lostItemDetail(itemId: $0)) }
+        case let .lostItemDetail(itemId):
+            LostItemDetailView(itemId: itemId)
         }
     }
 }
 
-private struct VenueRow: View {
+/// Avatar, name and location; tap counts, the ⋮ menu holds the rest, as on Android.
+private struct VenueCard: View {
     let venue: VenueDto
+    let open: (AppRoute) -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
             Text(venue.code.prefix(2).uppercased())
-                .font(.subheadline.bold())
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.white)
                 .frame(width: 40, height: 40)
-                .background(Color(hex: venue.color), in: RoundedRectangle(cornerRadius: 8))
+                .background(Color(hex: venue.color), in: RoundedRectangle(cornerRadius: AppRadius.small))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(venue.name).font(.headline)
+                Text(venue.name).font(.headline).foregroundStyle(AppColor.text)
                 if !venue.location.isEmpty {
-                    Text(venue.location).font(.subheadline).foregroundStyle(.secondary)
+                    Text(venue.location).font(.caption).foregroundStyle(AppColor.secondaryText)
                 }
             }
+            Spacer()
+            Menu {
+                Button("Head Count") { open(.count(venueId: venue.id, venueName: venue.name)) }
+                Button("Manage Areas") { open(.areas(venueId: venue.id)) }
+                Button("History") { open(.history(venueId: venue.id)) }
+                Button("Incidents") { open(.incidents(venueId: venue.id)) }
+                Button("Lost & Found") { open(.lostItems(venueId: venue.id)) }
+                Divider()
+                Button("Edit Venue") { open(.edit(venueId: venue.id)) }
+                Button("Delete", role: .destructive, action: onDelete)
+            } label: {
+                Image(systemName: "ellipsis").rotationEffect(.degrees(90))
+                    .foregroundStyle(AppColor.text)
+                    .frame(width: 48, height: 48)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Actions")
         }
-        .padding(.vertical, 4)
+        .appCard()
+        .contentShape(Rectangle())
+        .onTapGesture { open(.count(venueId: venue.id, venueName: venue.name)) }
+        .accessibilityAction(named: "Head Count") { open(.count(venueId: venue.id, venueName: venue.name)) }
     }
 }
 
@@ -236,15 +201,18 @@ private struct AddVenueSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                TextField("Name", text: $name)
-                TextField("Location", text: $location)
-                TextField("Code (e.g. MC)", text: $code)
-                    .textInputAutocapitalization(.characters)
-                    .autocorrectionDisabled()
+            ScrollView {
+                VStack(spacing: 8) {
+                    OutlinedField(label: "Name", text: $name)
+                    OutlinedField(label: "Location", text: $location)
+                    OutlinedField(label: "Code (e.g. MC)", text: $code)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                }
+                .padding(16)
             }
-            .navigationTitle("New Venue")
-            .navigationBarTitleDisplayMode(.inline)
+            .appBackground()
+            .appNavigationTitle("New Venue")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

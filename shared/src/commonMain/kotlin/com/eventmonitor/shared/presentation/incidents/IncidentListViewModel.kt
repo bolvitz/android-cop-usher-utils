@@ -35,14 +35,15 @@ data class IncidentListUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class IncidentListViewModel(
     private val incidentRepository: IncidentRepository,
-    private val venueId: String? = null
+    venueId: String? = null
 ) : SharedViewModel() {
 
+    private val _venueId = MutableStateFlow(venueId)
     private val _filters = MutableStateFlow(IncidentFilters())
     private val _error = MutableStateFlow<String?>(null)
 
     private val incidentsFlow: Flow<List<IncidentDto>> =
-        _filters.flatMapLatest { f -> sourceFor(f) }
+        combine(_venueId, _filters, ::Pair).flatMapLatest { (v, f) -> sourceFor(v, f) }
 
     val uiState: StateFlow<IncidentListUiState> =
         combine(incidentsFlow, _filters, _error) { incidents, filters, error ->
@@ -54,7 +55,7 @@ class IncidentListViewModel(
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), IncidentListUiState())
 
-    private fun sourceFor(f: IncidentFilters): Flow<List<IncidentDto>> = when {
+    private fun sourceFor(venueId: String?, f: IncidentFilters): Flow<List<IncidentDto>> = when {
         f.query.isNotBlank() -> incidentRepository.searchIncidents(f.query)
         venueId != null && f.status != null -> incidentRepository.getIncidentsByVenueAndStatus(venueId, f.status)
         venueId != null && f.severity != null -> incidentRepository.getIncidentsByVenueAndSeverity(venueId, f.severity)
@@ -62,6 +63,14 @@ class IncidentListViewModel(
         f.status != null -> incidentRepository.getIncidentsByStatus(f.status)
         f.severity != null -> incidentRepository.getIncidentsBySeverity(f.severity)
         else -> incidentRepository.getAllIncidents()
+    }
+
+    /** Switches scope in place; filters reset as a fresh screen would. */
+    fun setVenue(venueId: String?) {
+        if (_venueId.value == venueId) return
+        _venueId.value = venueId
+        _filters.value = IncidentFilters()
+        _error.value = null
     }
 
     fun filterByStatus(status: String?) =
@@ -78,9 +87,11 @@ class IncidentListViewModel(
         severity: String,
         category: String = "",
         location: String = "",
-        reportedBy: String = ""
+        reportedBy: String = "",
+        /** Target venue when the list shows all venues; defaults to the scoped one. */
+        venueId: String? = null
     ) {
-        val venue = venueId ?: return
+        val venue = venueId ?: _venueId.value ?: return
         viewModelScope.launch {
             incidentRepository.createIncident(
                 venueId = venue,
