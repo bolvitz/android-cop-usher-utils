@@ -33,6 +33,8 @@ enum AppRoute: Hashable {
     case edit(venueId: String)
     case venues
     case eventTypes
+    case incident(id: String)
+    case lostItem(id: String)
 }
 
 struct VenueListView: View {
@@ -197,6 +199,10 @@ struct AppRouteDestination: View {
             VenueListView(path: $path)
         case .eventTypes:
             EventTypeManagementView()
+        case let .incident(id):
+            IncidentDetailView(incidentId: id)
+        case let .lostItem(id):
+            LostItemDetailView(itemId: id)
         }
     }
 }

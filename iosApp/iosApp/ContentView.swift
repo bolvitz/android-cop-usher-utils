@@ -33,6 +33,12 @@ struct ContentView: View {
     @State private var tab: AppTab = .live
     @State private var livePath = NavigationPath()
     @State private var countPath = NavigationPath()
+    @State private var incidentsPath = NavigationPath()
+    @State private var lostPath = NavigationPath()
+    /// One-shot requests to open a tab's "new" sheet (from Live shortcuts, or
+    /// from picking a venue under "+" while viewing all venues).
+    @State private var startIncident = false
+    @State private var startLostItem = false
     @State private var morePath = NavigationPath()
 
     var body: some View {
@@ -43,7 +49,14 @@ struct ContentView: View {
         })
         TabView(selection: selection) {
             stack($livePath) {
-                LiveTab(shell: shell, path: $livePath, tab: $tab).navigationTitle("Live")
+                LiveTab(
+                    shell: shell,
+                    path: $livePath,
+                    tab: $tab,
+                    onReportIncident: { startIncident = true; tab = .incidents },
+                    onLogFoundItem: { startLostItem = true; tab = .lostItems }
+                )
+                .navigationTitle("Live")
             }
             .tabItem { Label("Live", systemImage: "waveform.path.ecg") }
             .tag(AppTab.live)
@@ -54,18 +67,30 @@ struct ContentView: View {
             .tabItem { Label("Count", systemImage: "person.badge.plus") }
             .tag(AppTab.count)
 
-            stack(.constant(NavigationPath())) {
+            stack($incidentsPath) {
                 if !state.isLoading {
-                    IncidentListView(venueId: state.selectedVenueId).id("incidents_\(shell.scopeKey)")
+                    IncidentListView(
+                        venueId: state.selectedVenueId,
+                        venues: state.venues,
+                        onPickVenue: { shell.select($0) },
+                        startAdding: $startIncident
+                    )
+                    .id("incidents_\(shell.scopeKey)")
                 }
             }
             .tabItem { Label("Incidents", systemImage: "exclamationmark.triangle") }
             .badge(Int(state.openIncidents))
             .tag(AppTab.incidents)
 
-            stack(.constant(NavigationPath())) {
+            stack($lostPath) {
                 if !state.isLoading {
-                    LostAndFoundView(locationId: state.selectedVenueId).id("lost_\(shell.scopeKey)")
+                    LostAndFoundView(
+                        locationId: state.selectedVenueId,
+                        venues: state.venues,
+                        onPickVenue: { shell.select($0) },
+                        startAdding: $startLostItem
+                    )
+                    .id("lost_\(shell.scopeKey)")
                 }
             }
             // Matches Android, where "Lost & Found" truncates in a 5-item bar.
@@ -86,7 +111,8 @@ struct ContentView: View {
         case .live: livePath = NavigationPath()
         case .count: countPath = NavigationPath()
         case .more: morePath = NavigationPath()
-        case .incidents, .lostItems: break // no pushed screens on iOS yet
+        case .incidents: incidentsPath = NavigationPath()
+        case .lostItems: lostPath = NavigationPath()
         }
     }
 
@@ -126,6 +152,8 @@ private struct LiveTab: View {
     @ObservedObject var shell: AppShellModel
     @Binding var path: NavigationPath
     @Binding var tab: AppTab
+    let onReportIncident: () -> Void
+    let onLogFoundItem: () -> Void
 
     var body: some View {
         let state = shell.state
@@ -156,6 +184,18 @@ private struct LiveTab: View {
                             }
                         }
                         .buttonStyle(.bordered)
+                        HStack {
+                            Button(action: onReportIncident) {
+                                Label("Report incident", systemImage: "exclamationmark.triangle")
+                                    .frame(maxWidth: .infinity, minHeight: 32)
+                            }
+                            Button(action: onLogFoundItem) {
+                                Label("Found item", systemImage: "bag.badge.plus")
+                                    .frame(maxWidth: .infinity, minHeight: 32)
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .font(.subheadline)
                     }
                     .padding(.vertical, 4)
                 }

@@ -19,25 +19,63 @@ final class LostAndFoundModel: ObservableObject {
     func filter(_ status: String?) { viewModel.filterByStatus(status: status) }
     func updateStatus(_ id: String, to status: String) { viewModel.updateStatus(itemId: id, status: status) }
     func delete(_ id: String) { viewModel.delete(itemId: id) }
+    func clearError() { viewModel.clearError() }
+
+    func create(_ form: NewLostItemForm) {
+        viewModel.createItem(
+            description: form.description.trimmed,
+            category: form.category,
+            foundZone: form.foundZone.trimmed,
+            color: form.color.trimmed,
+            brand: form.brand.trimmed,
+            reportedBy: form.reportedBy.trimmed
+        )
+    }
 }
 
-private struct ItemStatusOption: Identifiable {
-    let name: String
-    let label: String
-    var id: String { name }
-}
-
-private let itemStatuses: [ItemStatusOption] = [
-    ItemStatusOption(name: "PENDING", label: "Pending"),
-    ItemStatusOption(name: "CLAIMED", label: "Claimed"),
-    ItemStatusOption(name: "DONATED", label: "Donated"),
-    ItemStatusOption(name: "DISPOSED", label: "Disposed")
+let itemStatuses: [StatusOption] = [
+    StatusOption(name: "PENDING", label: "Pending"),
+    StatusOption(name: "CLAIMED", label: "Claimed"),
+    StatusOption(name: "DONATED", label: "Donated"),
+    StatusOption(name: "DISPOSED", label: "Disposed")
 ]
+
+/// Mirrors the shared `ItemCategory` enum (names are what the database stores).
+let itemCategories: [StatusOption] = [
+    "ELECTRONICS", "CLOTHING", "DOCUMENTS", "ACCESSORIES", "BAGS", "PERSONAL_ITEMS", "KEYS",
+    "WALLETS", "JEWELRY", "TOYS", "BOOKS", "SPORTS_EQUIPMENT", "OTHER"
+].map { StatusOption(name: $0, label: ItemCategory.companion.fromString(value: $0).displayName) }
+
+struct NewLostItemForm {
+    var description = ""
+    var category = "OTHER"
+    var foundZone = ""
+    var color = ""
+    var brand = ""
+    var reportedBy = ""
+
+    var isValid: Bool { !description.trimmed.isEmpty }
+}
 
 struct LostAndFoundView: View {
     @StateObject private var model: LostAndFoundModel
+    private let locationId: String?
+    private let venues: [VenueScopeRow]
+    private let onPickVenue: (String) -> Void
+    /// Set by the shell to open the "found item" sheet once this view appears.
+    @Binding private var startAdding: Bool
+    @State private var showingAdd = false
 
-    init(locationId: String? = nil) {
+    init(
+        locationId: String?,
+        venues: [VenueScopeRow] = [],
+        onPickVenue: @escaping (String) -> Void = { _ in },
+        startAdding: Binding<Bool> = .constant(false)
+    ) {
+        self.locationId = locationId
+        self.venues = venues
+        self.onPickVenue = onPickVenue
+        _startAdding = startAdding
         _model = StateObject(wrappedValue: LostAndFoundModel(locationId: locationId))
     }
 
@@ -47,14 +85,58 @@ struct LostAndFoundView: View {
             content
         }
         .navigationTitle("Lost & Found")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) { addButton }
+        }
+        .sheet(isPresented: $showingAdd) {
+            NewLostItemSheet { model.create($0) }
+        }
+        .onAppear(perform: consumeStartAdding)
+        .onChange(of: startAdding) { consumeStartAdding() }
+        .alert(
+            "Error",
+            isPresented: Binding(get: { model.state.error != nil }, set: { if !$0 { model.clearError() } }),
+            actions: { Button("OK", role: .cancel) {} },
+            message: { Text(model.state.error ?? "") }
+        )
+    }
+
+    private func consumeStartAdding() {
+        // Without a venue, leave the request for the view rebuilt once one is picked.
+        guard startAdding, locationId != nil else { return }
+        startAdding = false
+        showingAdd = true
+    }
+
+    /// Logging needs a venue: in "All venues" scope "+" asks which one first.
+    @ViewBuilder private var addButton: some View {
+        if locationId != nil {
+            Button { showingAdd = true } label: {
+                Label("Log Found Item", systemImage: "plus")
+            }
+        } else {
+            Menu {
+                Section("Found at which venue?") {
+                    ForEach(venues, id: \.id) { venue in
+                        Button(venue.name) {
+                            startAdding = true
+                            onPickVenue(venue.id)
+                        }
+                    }
+                }
+            } label: {
+                Label("Log Found Item", systemImage: "plus")
+            }
+            .disabled(venues.isEmpty)
+        }
     }
 
     private var filterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack {
-                chip("All", active: model.state.filters.status == nil) { model.filter(nil) }
+                FilterChip(title: "All", active: model.state.filters.status == nil) { model.filter(nil) }
                 ForEach(itemStatuses) { s in
-                    chip(s.label, active: model.state.filters.status == s.name) { model.filter(s.name) }
+                    FilterChip(title: s.label, active: model.state.filters.status == s.name) { model.filter(s.name) }
                 }
             }
             .padding(.horizontal)
@@ -66,12 +148,25 @@ struct LostAndFoundView: View {
         if model.state.isLoading {
             Spacer(); ProgressView(); Spacer()
         } else if model.state.isEmpty {
-            ContentUnavailableView("No Items", systemImage: "bag")
+            ContentUnavailableView {
+                Label("No Items", systemImage: "bag")
+            } description: {
+                Text(locationId == nil
+                     ? "Pick a venue with + to log a found item."
+                     : "Items found at this venue appear here.")
+            } actions: {
+                if locationId != nil {
+                    Button("Log Found Item") { showingAdd = true }
+                        .buttonStyle(.borderedProminent)
+                }
+            }
         } else {
             List {
                 ForEach(model.state.items, id: \.id) { item in
-                    LostItemRow(item: item) { status in
-                        model.updateStatus(item.id, to: status)
+                    NavigationLink(value: AppRoute.lostItem(id: item.id)) {
+                        LostItemRow(item: item) { status in
+                            model.updateStatus(item.id, to: status)
+                        }
                     }
                     .swipeActions {
                         Button(role: .destructive) { model.delete(item.id) } label: {
@@ -82,18 +177,6 @@ struct LostAndFoundView: View {
             }
             .listStyle(.plain)
         }
-    }
-
-    private func chip(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline)
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(active ? Color.accentColor : Color(.secondarySystemBackground))
-                .foregroundStyle(active ? .white : .primary)
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
     }
 }
 
@@ -115,15 +198,57 @@ private struct LostItemRow: View {
                     .foregroundStyle(.white)
                     .clipShape(Capsule())
             }
-            Text("\(category.displayName) • \(item.foundZone)")
+            Text(item.foundZone.isEmpty ? category.displayName : "\(category.displayName) • \(item.foundZone)")
                 .font(.subheadline).foregroundStyle(.secondary)
             if item.status == "PENDING" {
+                // Claiming needs a name and contact, so it lives on the detail screen.
                 HStack {
-                    Button("Claim") { onStatus("CLAIMED") }.font(.caption)
-                    Button("Donate") { onStatus("DONATED") }.font(.caption)
+                    Button("Donate") { onStatus("DONATED") }
+                        .font(.caption)
+                        .buttonStyle(.borderless)
                 }
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+private struct NewLostItemSheet: View {
+    let onAdd: (NewLostItemForm) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var form = NewLostItemForm()
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("What was found? (e.g. Black umbrella)", text: $form.description)
+                    Picker("Category", selection: $form.category) {
+                        ForEach(itemCategories) { Text($0.label).tag($0.name) }
+                    }
+                    TextField("Found in (e.g. Row C, Lobby)", text: $form.foundZone)
+                }
+                Section("Details") {
+                    TextField("Colour", text: $form.color)
+                    TextField("Brand", text: $form.brand)
+                    TextField("Logged by", text: $form.reportedBy)
+                        .textContentType(.name)
+                }
+            }
+            .navigationTitle("Found Item")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") {
+                        onAdd(form)
+                        dismiss()
+                    }
+                    .disabled(!form.isValid)
+                }
+            }
+        }
     }
 }

@@ -22,6 +22,30 @@ class LostItemDetailViewModel(
         viewModelScope.launch { lostItemRepository.updateItem(updated) }
     }
 
+    /** Field-wise save for Swift, which can't call the data class `copy`. */
+    fun saveDetails(
+        description: String,
+        category: String,
+        foundZone: String,
+        color: String,
+        brand: String,
+        identifyingMarks: String,
+        notes: String
+    ) {
+        val current = item.value ?: return
+        save(
+            current.copy(
+                description = description,
+                category = category,
+                foundZone = foundZone,
+                color = color,
+                brand = brand,
+                identifyingMarks = identifyingMarks,
+                notes = notes
+            )
+        )
+    }
+
     fun updateStatus(status: String) {
         viewModelScope.launch { lostItemRepository.updateItemStatus(itemId, status) }
     }

@@ -23,6 +23,30 @@ class IncidentDetailViewModel(
         viewModelScope.launch { incidentRepository.updateIncident(updated) }
     }
 
+    /** Field-wise save for Swift, which can't call the data class `copy`. */
+    fun saveDetails(
+        title: String,
+        description: String,
+        severity: String,
+        category: String,
+        location: String,
+        assignedTo: String,
+        notes: String
+    ) {
+        val current = incident.value ?: return
+        save(
+            current.copy(
+                title = title,
+                description = description,
+                severity = severity,
+                category = category,
+                location = location,
+                assignedTo = assignedTo,
+                notes = notes
+            )
+        )
+    }
+
     fun updateStatus(status: String) {
         viewModelScope.launch { incidentRepository.updateIncidentStatus(incidentId, status) }
     }
