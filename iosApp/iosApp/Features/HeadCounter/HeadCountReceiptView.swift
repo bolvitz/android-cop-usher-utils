@@ -88,8 +88,7 @@ struct HeadCountReceiptView: View {
             .zIndex(1)
             .accessibilityHidden(true)
 
-            GeometryReader { geo in
-                let visible = min(paperHeight, geo.size.height)
+            GeometryReader { _ in
                 let remaining = 1 - CGFloat(fed) / CGFloat(feedSteps)
                 ScrollView {
                     VStack(spacing: 0) {
@@ -102,7 +101,9 @@ struct HeadCountReceiptView: View {
                 }
                 .scrollDisabled(printing)
                 .scrollIndicators(.hidden)
-                .offset(x: printing && fed % 2 == 1 ? 0.6 : 0, y: -visible * remaining)
+                // A receipt taller than the viewport feeds its full length, torn edge first; the outer clip hides the rest.
+                .scrollClipDisabled(printing)
+                .offset(x: printing && fed % 2 == 1 ? 0.6 : 0, y: -paperHeight * remaining)
                 .opacity(paperHeight > 0 ? 1 : 0)
                 // Clipping hides the unprinted paper but not its touch area, so ignore touches while it feeds.
                 .allowsHitTesting(!printing)

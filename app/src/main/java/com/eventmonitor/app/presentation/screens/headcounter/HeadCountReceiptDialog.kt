@@ -222,7 +222,7 @@ private fun Printer(reduceMotion: Boolean, modifier: Modifier, paper: @Composabl
             )
         }
 
-        BoxWithConstraints(
+        Box(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
@@ -231,17 +231,19 @@ private fun Printer(reduceMotion: Boolean, modifier: Modifier, paper: @Composabl
                 .offset(y = (-6).dp)
                 .clipToBounds(),
         ) {
-            val viewport = constraints.maxHeight
             Column(
                 Modifier
                     .fillMaxWidth()
                     .graphicsLayer {
-                        val visible = minOf(paperHeight, viewport).toFloat()
-                        translationY = -visible * (1 - fedSmooth / FEED_STEPS)
+                        translationY = -paperHeight * (1 - fedSmooth / FEED_STEPS)
                         translationX = if (printing && fed % 2 == 1) 0.6.dp.toPx() else 0f
                         alpha = if (paperHeight > 0) 1f else 0f
                     }
-                    .verticalScroll(scroll, enabled = !printing),
+                    // A receipt taller than the viewport feeds its full length, torn edge first; the outer clip hides the rest.
+                    .then(
+                        if (printing) Modifier.wrapContentHeight(Alignment.Top, unbounded = true)
+                        else Modifier.verticalScroll(scroll),
+                    ),
             ) {
                 Column(Modifier.fillMaxWidth().onSizeChanged { paperHeight = it.height }) {
                     paper()
