@@ -469,11 +469,17 @@ private fun ZoneChip(area: AreaCountState, selected: Boolean, onClick: () -> Uni
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(area.template.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = fg)
+        // Name and count take different tones so the number reads first, like the stage odometer.
+        Text(
+            area.template.name,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = if (selected) fg.copy(alpha = 0.7f) else fg,
+        )
         Text(
             "${area.count}",
             style = digitStyle(19.dp),
-            color = fg,
+            color = if (!selected && area.isIncluded) CounterPalette.brass else fg,
             textDecoration = if (area.isIncluded) null else TextDecoration.LineThrough,
         )
     }

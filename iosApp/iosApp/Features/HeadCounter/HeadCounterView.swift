@@ -694,15 +694,18 @@ private struct ZoneRail: View {
 
     private func chip(_ area: AreaCountState) -> some View {
         let selected = area.id == activeId
+        let fg = selected ? CounterPalette.ground : area.isIncluded ? CounterPalette.chalk : CounterPalette.pew
         return Button { onSelect(area) } label: {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
+                // Name and count take different tones so the number reads first, like the stage odometer.
                 Text(area.template_.name).font(.subheadline.weight(.medium))
+                    .foregroundStyle(selected ? fg.opacity(0.7) : fg)
                 Text("\(area.count)")
                     .font(CounterFont.digits(19))
+                    .foregroundStyle(!selected && area.isIncluded ? CounterPalette.brass : fg)
                     .strikethrough(!area.isIncluded)
                     .contentTransition(.numericText(value: Double(area.count)))
             }
-            .foregroundStyle(selected ? CounterPalette.ground : area.isIncluded ? CounterPalette.chalk : CounterPalette.pew)
             .padding(.horizontal, 14)
             .frame(height: 40)
             .contentShape(Capsule())
